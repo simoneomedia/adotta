@@ -1,19 +1,26 @@
 (function () {
+    if (!window.AgriSaas) return;
+
     const root = document.querySelector('[data-agri-endpoint]');
-    if (!root || !window.AgriSaas) return;
+    const coordinateMaps = new Map();
+    let adoptableLeafletMap = null;
+    let adoptableMarkers = null;
 
     const apiFetch = async (path, options = {}) => {
+        const { headers: optionHeaders = {}, ...fetchOptions } = options;
+        const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
         const response = await fetch(`${window.AgriSaas.apiBase}${path}`, {
             credentials: 'same-origin',
+            ...fetchOptions,
             headers: {
-                'Content-Type': 'application/json',
+                ...headers,
                 'X-WP-Nonce': window.AgriSaas.nonce,
-                ...(options.headers || {}),
+                ...optionHeaders,
             },
-            ...options,
         });
-        if (!response.ok) throw new Error(`API request failed: ${response.status}`);
-        return response.json();
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || `API request failed: ${response.status}`);
+        return payload;
     };
 
     const appUrl = (path) => new URL(path.replace(/^\//, ''), window.AgriSaas.homeUrl).toString();
@@ -21,6 +28,91 @@
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     }[char]));
+
+    const hasLeaflet = () => Boolean(window.L);
+
+    const getCoordinateInputs = (container) => {
+        const scope = container.closest('form') || container.parentElement || document;
+        return {
+            lat: scope.querySelector('[data-marker-lat]'),
+            lng: scope.querySelector('[data-marker-lng]'),
+        };
+    };
+
+    const defaultLatLng = () => [41.9028, 12.4964];
+
+    const readLatLng = (container) => {
+        const inputs = getCoordinateInputs(container);
+        const lat = Number(inputs.lat?.value);
+        const lng = Number(inputs.lng?.value);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            return [lat, lng];
+        }
+        return defaultLatLng();
+    };
+
+    const setCoordinateMarker = (container, lat, lng, zoom = 13) => {
+        const state = coordinateMaps.get(container);
+        if (!state) return;
+
+        const inputs = getCoordinateInputs(container);
+        if (inputs.lat) inputs.lat.value = Number(lat).toFixed(7);
+        if (inputs.lng) inputs.lng.value = Number(lng).toFixed(7);
+
+        if (!state.marker) {
+            state.marker = window.L.marker([lat, lng], { draggable: true }).addTo(state.map);
+            state.marker.on('dragend', () => {
+                const position = state.marker.getLatLng();
+                setCoordinateMarker(container, position.lat, position.lng, state.map.getZoom());
+            });
+        } else {
+            state.marker.setLatLng([lat, lng]);
+        }
+        state.map.setView([lat, lng], zoom);
+    };
+
+    const initCoordinateMaps = () => {
+        if (!hasLeaflet()) return;
+
+        document.querySelectorAll('[data-coordinate-map]').forEach((container) => {
+            if (coordinateMaps.has(container)) return;
+
+            const map = window.L.map(container).setView(readLatLng(container), 6);
+            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors',
+            }).addTo(map);
+
+            coordinateMaps.set(container, { map, marker: null });
+            map.on('click', (event) => setCoordinateMarker(container, event.latlng.lat, event.latlng.lng, map.getZoom()));
+
+            const [lat, lng] = readLatLng(container);
+            const inputs = getCoordinateInputs(container);
+            if (inputs.lat?.value && inputs.lng?.value) {
+                setCoordinateMarker(container, lat, lng);
+            }
+        });
+    };
+
+    const refreshCoordinateMaps = () => {
+        coordinateMaps.forEach(({ map }) => setTimeout(() => map.invalidateSize(), 80));
+    };
+
+    const bindCoordinateButtons = () => {
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-set-marker]');
+            if (!button) return;
+
+            const form = button.closest('form');
+            const mapContainer = form?.querySelector('[data-coordinate-map]');
+            if (!mapContainer) return;
+
+            initCoordinateMaps();
+            refreshCoordinateMaps();
+            const [lat, lng] = readLatLng(mapContainer);
+            setCoordinateMarker(mapContainer, lat, lng);
+        });
+    };
 
     const statCard = (label, value, meta) => `
         <article class="card stat-card">
@@ -32,43 +124,52 @@
     const treeMeta = (tree) => [tree.farm_name, tree.location, tree.crop_focus].filter(Boolean).join(' · ');
 
     const renderAdoptableMap = (trees) => {
-        const slot = root.querySelector('[data-slot="adoptable-map"]');
+        const slot = root?.querySelector('[data-slot="adoptable-map"]');
         if (!slot) return;
 
         const mappedTrees = trees.filter((tree) => tree.map_latitude && tree.map_longitude);
+        if (!hasLeaflet()) {
+            slot.innerHTML = '<div class="map-placeholder">◎<small>Map library unavailable</small></div>';
+            return;
+        }
+
         if (!mappedTrees.length) {
             slot.innerHTML = '<div class="map-placeholder">◎<small>No coordinates yet</small></div>';
             return;
         }
 
-        const bounds = mappedTrees.reduce((memo, tree) => {
+        if (!slot.querySelector('.leaflet-map')) {
+            slot.innerHTML = '<div class="leaflet-map" data-leaflet-adoptable-map></div><p class="map-note">Pins use tree coordinates when available, otherwise farm coordinates. Zoom and drag the OpenStreetMap view.</p>';
+            adoptableLeafletMap = window.L.map(slot.querySelector('[data-leaflet-adoptable-map]'));
+            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors',
+            }).addTo(adoptableLeafletMap);
+            adoptableMarkers = window.L.layerGroup().addTo(adoptableLeafletMap);
+        }
+
+        adoptableMarkers.clearLayers();
+        const bounds = [];
+        mappedTrees.forEach((tree) => {
             const lat = Number(tree.map_latitude);
             const lng = Number(tree.map_longitude);
-            return {
-                minLat: Math.min(memo.minLat, lat),
-                maxLat: Math.max(memo.maxLat, lat),
-                minLng: Math.min(memo.minLng, lng),
-                maxLng: Math.max(memo.maxLng, lng),
-            };
-        }, { minLat: Infinity, maxLat: -Infinity, minLng: Infinity, maxLng: -Infinity });
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+            bounds.push([lat, lng]);
+            window.L.marker([lat, lng], { title: `${tree.species} · ${tree.farm_name}` })
+                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">View tree</a>`)
+                .addTo(adoptableMarkers);
+        });
 
-        const latSpan = bounds.maxLat - bounds.minLat || 1;
-        const lngSpan = bounds.maxLng - bounds.minLng || 1;
-        slot.innerHTML = `
-            <div class="mini-map">
-                ${mappedTrees.map((tree) => {
-                    const lat = Number(tree.map_latitude);
-                    const lng = Number(tree.map_longitude);
-                    const top = 90 - (((lat - bounds.minLat) / latSpan) * 80);
-                    const left = 10 + (((lng - bounds.minLng) / lngSpan) * 80);
-                    return `<a class="map-pin" style="left:${left}%;top:${top}%;" href="${appUrl(`trees/${tree.id}/`)}" title="${escapeHtml(tree.species)} · ${escapeHtml(tree.farm_name)}">🌳</a>`;
-                }).join('')}
-            </div>
-            <p class="map-note">Pins use tree coordinates when available, otherwise farm coordinates.</p>`;
+        if (bounds.length === 1) {
+            adoptableLeafletMap.setView(bounds[0], 13);
+        } else {
+            adoptableLeafletMap.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
+        }
+        setTimeout(() => adoptableLeafletMap.invalidateSize(), 80);
     };
 
     const renderAdoptableTrees = (trees) => {
-        const slot = root.querySelector('[data-slot="adoptable-trees"]');
+        const slot = root?.querySelector('[data-slot="adoptable-trees"]');
         if (!slot) return;
 
         slot.innerHTML = trees.length ? trees.map((tree) => `
@@ -87,7 +188,7 @@
     };
 
     const loadAdoptableTrees = async () => {
-        if (!root.querySelector('[data-slot="adoptable-trees"]')) return;
+        if (!root?.querySelector('[data-slot="adoptable-trees"]')) return;
         const data = await apiFetch('/catalog/trees');
         renderAdoptableTrees(data.trees || []);
     };
@@ -140,7 +241,7 @@
         ].join('');
         root.querySelector('[data-slot="farms"]').innerHTML = data.farms.length ? data.farms.map((farm) => `
             <div class="farm-row">
-                <div><strong>${escapeHtml(farm.name)}</strong><br><small>${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus)}</small></div>
+                <div><strong>${escapeHtml(farm.name)}</strong><br><small>${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus)}${farm.latitude && farm.longitude ? ` · ${escapeHtml(farm.latitude)}, ${escapeHtml(farm.longitude)}` : ''}</small></div>
                 <span class="badge">${escapeHtml(farm.tree_count)} trees · ${escapeHtml(farm.health_score)} health</span>
             </div>`).join('') : '<div class="card empty-state">No farm records yet. Use Add farm before publishing trees.</div>';
         root.querySelector('[data-slot="farm-trees"]').innerHTML = data.trees.length ? data.trees.map((tree) => `
@@ -173,6 +274,7 @@
                 <p class="eyebrow">${escapeHtml(update.farm_name || update.tree_code || 'Field update')} · ${escapeHtml(update.created_at)}</p>
                 <h3>${escapeHtml(update.title)}</h3>
                 <p>${escapeHtml(update.body)}</p>
+                ${update.media_url ? `<img class="update-media" src="${escapeHtml(update.media_url)}" alt="${escapeHtml(update.title)}" loading="lazy">` : ''}
                 ${update.media_url ? `<a class="button ghost" href="${escapeHtml(update.media_url)}">View media</a>` : ''}
             </article>`).join('') : '<div class="card empty-state">No updates have been published yet.</div>';
     };
@@ -184,60 +286,121 @@
         'updates-feed': (data) => renderUpdates(data.updates || []),
     };
 
-    const loadRoot = () => apiFetch(root.dataset.agriEndpoint)
-        .then((data) => renderers[root.dataset.render]?.(data))
-        .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state">Unable to load dashboard data.</div>'));
-
-    loadRoot();
+    const loadRoot = () => {
+        if (!root) return Promise.resolve();
+        return apiFetch(root.dataset.agriEndpoint)
+            .then((data) => renderers[root.dataset.render]?.(data))
+            .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state">Unable to load dashboard data.</div>'));
+    };
 
     const showPanel = (selector) => {
         document.querySelector(selector)?.removeAttribute('hidden');
+        initCoordinateMaps();
+        refreshCoordinateMaps();
     };
 
-    document.querySelector('[data-open-farm-form]')?.addEventListener('click', () => showPanel('[data-farm-form]'));
-    document.querySelector('[data-open-tree-form]')?.addEventListener('click', () => showPanel('[data-tree-form]'));
-    document.querySelector('[data-open-update-form]')?.addEventListener('click', () => showPanel('[data-update-form]'));
+    const bindDashboardActions = () => {
+        if (!root) return;
 
-    document.addEventListener('click', async (event) => {
-        const requestButton = event.target.closest('[data-request-adoption]');
-        if (requestButton) {
-            requestButton.disabled = true;
-            await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: requestButton.dataset.requestAdoption }) });
-            requestButton.textContent = 'Pending';
-            loadAdoptableTrees();
-            return;
-        }
+        document.querySelector('[data-open-farm-form]')?.addEventListener('click', () => showPanel('[data-farm-form]'));
+        document.querySelector('[data-open-tree-form]')?.addEventListener('click', () => showPanel('[data-tree-form]'));
+        document.querySelector('[data-open-update-form]')?.addEventListener('click', () => showPanel('[data-update-form]'));
 
-        const decisionButton = event.target.closest('[data-adoption-decision]');
-        if (decisionButton) {
-            decisionButton.disabled = true;
-            await apiFetch(`/adoption-requests/${decisionButton.dataset.requestId}/${decisionButton.dataset.adoptionDecision}`, { method: 'POST', body: JSON.stringify({}) });
-            loadRoot();
-        }
-    });
+        document.addEventListener('click', async (event) => {
+            const requestButton = event.target.closest('[data-request-adoption]');
+            if (requestButton) {
+                requestButton.disabled = true;
+                await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: requestButton.dataset.requestAdoption }) });
+                requestButton.textContent = 'Pending';
+                loadAdoptableTrees();
+                return;
+            }
 
-    document.querySelector('[data-agri-farm-form]')?.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
-        const payload = Object.fromEntries(new FormData(form).entries());
-        await apiFetch('/farms', { method: 'POST', body: JSON.stringify(payload) });
-        window.location.reload();
-    });
+            const decisionButton = event.target.closest('[data-adoption-decision]');
+            if (decisionButton) {
+                decisionButton.disabled = true;
+                await apiFetch(`/adoption-requests/${decisionButton.dataset.requestId}/${decisionButton.dataset.adoptionDecision}`, { method: 'POST', body: JSON.stringify({}) });
+                loadRoot();
+            }
+        });
 
-    document.querySelector('[data-agri-tree-form]')?.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
-        const payload = Object.fromEntries(new FormData(form).entries());
-        await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
-        window.location.reload();
-    });
+        document.querySelector('[data-agri-farm-form]')?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const payload = Object.fromEntries(new FormData(form).entries());
+            await apiFetch('/farms', { method: 'POST', body: JSON.stringify(payload) });
+            window.location.reload();
+        });
 
-    document.querySelector('[data-agri-update-form]')?.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
-        const payload = Object.fromEntries(new FormData(form).entries());
-        await apiFetch('/updates', { method: 'POST', body: JSON.stringify(payload) });
-        form.reset();
-        window.location.href = appUrl('updates/');
-    });
+        document.querySelector('[data-agri-tree-form]')?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const payload = Object.fromEntries(new FormData(form).entries());
+            await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
+            window.location.reload();
+        });
+
+        document.querySelector('[data-agri-update-form]')?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const fileInput = form.querySelector('[data-photo-input]');
+            const status = form.querySelector('[data-upload-status]');
+            const mediaUrl = form.querySelector('[data-media-url]');
+
+            if (fileInput?.files?.length) {
+                if (status) status.textContent = 'Optimizing photo to 100 KB and saving to WordPress media…';
+                const uploadData = new FormData();
+                uploadData.append('photo', fileInput.files[0]);
+                const upload = await apiFetch('/media/photo', { method: 'POST', body: uploadData });
+                if (mediaUrl) mediaUrl.value = upload.url;
+                if (status) status.textContent = `Photo optimized and uploaded (${Math.round(upload.size / 1024)} KB).`;
+            }
+
+            const payload = Object.fromEntries(new FormData(form).entries());
+            delete payload.photo;
+            await apiFetch('/updates', { method: 'POST', body: JSON.stringify(payload) });
+            form.reset();
+            window.location.href = appUrl('updates/');
+        });
+    };
+
+    const bindRegistration = () => {
+        const panels = document.querySelectorAll('[data-registration-panel]');
+        if (!panels.length) return;
+
+        document.querySelectorAll('[data-registration-tab]').forEach((tab) => {
+            tab.addEventListener('click', () => {
+                const type = tab.dataset.registrationTab;
+                panels.forEach((panel) => {
+                    panel.hidden = panel.dataset.registrationPanel !== type;
+                });
+                document.querySelectorAll('[data-registration-tab]').forEach((button) => button.classList.toggle('ghost', button !== tab));
+                initCoordinateMaps();
+                refreshCoordinateMaps();
+            });
+        });
+
+        document.querySelectorAll('[data-registration-form]').forEach((form) => {
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const status = form.querySelector('[data-form-status]');
+                if (status) status.textContent = 'Creazione account in corso…';
+                const payload = Object.fromEntries(new FormData(form).entries());
+                payload.account_type = form.dataset.registrationForm;
+                try {
+                    const response = await apiFetch('/register', { method: 'POST', body: JSON.stringify(payload) });
+                    if (status) status.textContent = 'Account creato. Reindirizzamento…';
+                    window.location.href = response.redirect;
+                } catch (error) {
+                    if (status) status.textContent = error.message;
+                }
+            });
+        });
+    };
+
+    bindCoordinateButtons();
+    bindRegistration();
+    bindDashboardActions();
+    initCoordinateMaps();
+    loadRoot();
 }());
