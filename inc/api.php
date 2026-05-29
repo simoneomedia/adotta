@@ -205,6 +205,13 @@ function agri_saas_api_register_user(WP_REST_Request $request): WP_REST_Response
     wp_set_current_user((int) $user_id);
     wp_set_auth_cookie((int) $user_id, true);
 
+    $site_name = get_bloginfo('name');
+    $home = home_url('/');
+    $dest = $account_type === 'farm' ? $home . 'farm-dashboard/' : $home . 'dashboard/';
+    $subject = "Benvenuto su {$site_name}!";
+    $body = "Ciao {$display_name},\n\nIl tuo account è stato creato con successo.\n\nAccedi alla tua dashboard:\n{$dest}\n\nGrazie per unirti a noi!";
+    wp_mail($email, $subject, $body);
+
     return rest_ensure_response([
         'user_id' => (int) $user_id,
         'redirect' => $account_type === 'farm' ? home_url('/farm-dashboard/') : home_url('/dashboard/'),
@@ -379,6 +386,13 @@ function agri_saas_api_farm_dashboard(): WP_REST_Response
 }
 
 
+function agri_saas_farm_cache_key(int $farm_id): string {
+    return 'agri_farm_s_' . $farm_id;
+}
+function agri_saas_invalidate_farm_cache(int $farm_id): void {
+    delete_transient(agri_saas_farm_cache_key($farm_id));
+}
+
 function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|WP_Error
 {
     global $wpdb;
@@ -386,31 +400,55 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
     $farm_id = absint($request['id']);
     $user_id = get_current_user_id();
 
-    $farm = $wpdb->get_row($wpdb->prepare(
-        "SELECT f.*, owner.display_name AS owner_name
-         FROM {$tables['farms']} f
-         LEFT JOIN {$wpdb->users} owner ON owner.ID = f.owner_user_id
-         WHERE f.id = %d",
-        $farm_id
-    ), ARRAY_A);
+    // Rate limiting
+    $ip = preg_replace('/[^0-9a-f:.,]/', '', $_SERVER['REMOTE_ADDR'] ?? '');
+    $rate_key = 'agri_rl_' . md5($ip . '_fp_' . $farm_id);
+    $hits = (int) get_transient($rate_key);
+    if ($hits > 120) {
+        return new WP_Error('agri_saas_rate_limited', 'Troppe richieste. Riprova tra poco.', ['status' => 429]);
+    }
+    set_transient($rate_key, $hits + 1, 60);
+
+    // Cache for farm, trees, follower_count
+    $cached = get_transient(agri_saas_farm_cache_key($farm_id));
+    if ($cached === false) {
+        $farm = $wpdb->get_row($wpdb->prepare(
+            "SELECT f.*, owner.display_name AS owner_name
+             FROM {$tables['farms']} f
+             LEFT JOIN {$wpdb->users} owner ON owner.ID = f.owner_user_id
+             WHERE f.id = %d",
+            $farm_id
+        ), ARRAY_A);
+
+        if (!$farm) {
+            agri_saas_invalidate_farm_cache($farm_id);
+            return new WP_Error('agri_saas_farm_not_found', __('Farm not found.', 'agri-saas'), ['status' => 404]);
+        }
+
+        $trees = $wpdb->get_results($wpdb->prepare(
+            "SELECT t.id, t.species, t.code, t.status, t.planted_at, t.carbon_estimate,
+                    COALESCE(t.latitude, f.latitude) AS map_latitude,
+                    COALESCE(t.longitude, f.longitude) AS map_longitude,
+                    CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN 'tree' ELSE 'farm' END AS coordinate_source,
+                    adopter.display_name AS adopter_name
+             FROM {$tables['trees']} t
+             INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
+             LEFT JOIN {$wpdb->users} adopter ON adopter.ID = t.adopter_user_id
+             WHERE t.farm_id = %d
+             ORDER BY t.status ASC, t.created_at DESC",
+            $farm_id
+        ), ARRAY_A);
+
+        $fc = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['farm_followers']} WHERE farm_id = %d", $farm_id));
+
+        set_transient(agri_saas_farm_cache_key($farm_id), ['farm' => $farm, 'trees' => $trees, 'follower_count' => $fc], 5 * MINUTE_IN_SECONDS);
+    } else {
+        ['farm' => $farm, 'trees' => $trees, 'follower_count' => $fc] = $cached;
+    }
 
     if (!$farm) {
         return new WP_Error('agri_saas_farm_not_found', __('Farm not found.', 'agri-saas'), ['status' => 404]);
     }
-
-    $trees = $wpdb->get_results($wpdb->prepare(
-        "SELECT t.id, t.species, t.code, t.status, t.planted_at, t.carbon_estimate,
-                COALESCE(t.latitude, f.latitude) AS map_latitude,
-                COALESCE(t.longitude, f.longitude) AS map_longitude,
-                CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN 'tree' ELSE 'farm' END AS coordinate_source,
-                adopter.display_name AS adopter_name
-         FROM {$tables['trees']} t
-         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
-         LEFT JOIN {$wpdb->users} adopter ON adopter.ID = t.adopter_user_id
-         WHERE t.farm_id = %d
-         ORDER BY t.status ASC, t.created_at DESC",
-        $farm_id
-    ), ARRAY_A);
 
     $updates = $wpdb->get_results($wpdb->prepare(
         "SELECT u.id, u.farm_id, u.tree_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
@@ -434,7 +472,7 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
             'trees' => count($trees ?: []),
             'availableTrees' => count(array_filter($trees ?: [], static fn(array $tree): bool => ($tree['status'] ?? '') === 'available')),
             'adoptedTrees' => count(array_filter($trees ?: [], static fn(array $tree): bool => ($tree['status'] ?? '') === 'adopted')),
-            'followers' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['farm_followers']} WHERE farm_id = %d", $farm_id)),
+            'followers' => $fc,
         ],
         'isFollowing' => agri_saas_is_farm_follower($farm_id, $user_id),
         'canFollow' => is_user_logged_in() && (int) $farm['owner_user_id'] !== $user_id,
@@ -468,6 +506,7 @@ function agri_saas_api_follow_farm(WP_REST_Request $request): WP_REST_Response|W
         current_time('mysql')
     ));
 
+    agri_saas_invalidate_farm_cache($farm_id);
     return rest_ensure_response(['farm_id' => $farm_id, 'isFollowing' => true]);
 }
 
@@ -482,17 +521,35 @@ function agri_saas_api_unfollow_farm(WP_REST_Request $request): WP_REST_Response
         'follower_user_id' => get_current_user_id(),
     ], ['%d', '%d']);
 
+    agri_saas_invalidate_farm_cache($farm_id);
     return rest_ensure_response(['farm_id' => $farm_id, 'isFollowing' => false]);
 }
 
-function agri_saas_api_adoptable_trees(): WP_REST_Response
+function agri_saas_api_adoptable_trees(WP_REST_Request $request): WP_REST_Response
 {
     global $wpdb;
     $tables = agri_saas_tables();
     $user_id = get_current_user_id();
 
-    $trees = $wpdb->get_results($wpdb->prepare(
-        "SELECT t.id, t.species, t.code, t.status, t.planted_at, t.carbon_estimate,
+    $search = sanitize_text_field($request->get_param('search') ?? '');
+    $limit  = min(50, max(5, (int) ($request->get_param('limit') ?: 50)));
+    $offset = max(0, (int) ($request->get_param('offset') ?: 0));
+
+    $search_clause = '';
+    $params = [$user_id, $user_id];
+
+    if ($search !== '') {
+        $like = '%' . $wpdb->esc_like($search) . '%';
+        $search_clause = ' AND (t.species LIKE %s OR f.name LIKE %s OR f.location LIKE %s)';
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+    }
+
+    $params[] = $limit + 1;
+    $params[] = $offset;
+
+    $sql = "SELECT t.id, t.species, t.code, t.status, t.planted_at, t.carbon_estimate,
                 COALESCE(t.latitude, f.latitude) AS map_latitude,
                 COALESCE(t.longitude, f.longitude) AS map_longitude,
                 CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN 'tree' ELSE 'farm' END AS coordinate_source,
@@ -502,14 +559,18 @@ function agri_saas_api_adoptable_trees(): WP_REST_Response
          INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
          LEFT JOIN {$tables['adoptions']} other_request ON other_request.tree_id = t.id AND other_request.status IN ('pending', 'active') AND other_request.adopter_user_id != %d
          LEFT JOIN {$tables['adoptions']} own_request ON own_request.tree_id = t.id AND own_request.adopter_user_id = %d AND own_request.status = 'pending'
-         WHERE t.status = 'available' AND other_request.id IS NULL
+         WHERE t.status = 'available' AND other_request.id IS NULL" . $search_clause . "
          ORDER BY t.created_at DESC
-         LIMIT 50",
-        $user_id,
-        $user_id
-    ), ARRAY_A);
+         LIMIT %d OFFSET %d";
 
-    return rest_ensure_response(['trees' => $trees ?: []]);
+    $trees = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
+
+    $has_more = count($trees) > $limit;
+    if ($has_more) {
+        array_pop($trees);
+    }
+
+    return rest_ensure_response(['trees' => $trees ?: [], 'has_more' => $has_more]);
 }
 
 function agri_saas_api_create_adoption_request(WP_REST_Request $request): WP_REST_Response|WP_Error
@@ -624,6 +685,25 @@ function agri_saas_api_decide_adoption_request(WP_REST_Request $request): WP_RES
             'status' => 'adopted',
             'adopter_user_id' => (int) $adoption['adopter_user_id'],
         ], ['id' => (int) $adoption['tree_id']], ['%s', '%d'], ['%d']);
+
+        $tree_row = $wpdb->get_row($wpdb->prepare(
+            "SELECT t.species, t.code, f.name AS farm_name, f.id AS farm_id FROM {$tables['trees']} t LEFT JOIN {$tables['farms']} f ON f.id = t.farm_id WHERE t.id = %d",
+            (int) $adoption['tree_id']
+        ), ARRAY_A);
+
+        if ($tree_row) {
+            agri_saas_invalidate_farm_cache((int) $tree_row['farm_id']);
+        }
+
+        $adopter = get_userdata((int) $adoption['adopter_user_id']);
+        if ($adopter && $tree_row) {
+            $tree_url = home_url('/trees/' . (int) $adoption['tree_id'] . '/');
+            wp_mail(
+                $adopter->user_email,
+                'La tua adozione è stata accettata! 🌳',
+                "Ciao {$adopter->display_name},\n\nLa tua richiesta di adozione per {$tree_row['species']} ({$tree_row['code']}) presso {$tree_row['farm_name']} è stata accettata!\n\nSegui il tuo albero:\n{$tree_url}\n\nGrazie per sostenere l'agricoltura sostenibile!"
+            );
+        }
     }
 
     return rest_ensure_response(['id' => $request_id, 'status' => $new_status]);
@@ -712,6 +792,7 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
         return new WP_Error('agri_saas_tree_failed', __('Unable to create tree. Check that the code is unique.', 'agri-saas'), ['status' => 500]);
     }
 
+    agri_saas_invalidate_farm_cache($farm_id);
     return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
 }
 
@@ -833,22 +914,37 @@ function agri_saas_optimize_uploaded_photo(string $tmp_name): string|WP_Error
     return new WP_Error('agri_saas_photo_too_large', __('The image could not be optimized under 100 KB. Try a smaller or less detailed photo.', 'agri-saas'), ['status' => 413]);
 }
 
-function agri_saas_api_updates(): WP_REST_Response
+function agri_saas_api_updates(WP_REST_Request $request): WP_REST_Response
 {
     global $wpdb;
     $tables = agri_saas_tables();
 
-    $updates = $wpdb->get_results(
+    $limit  = min(50, max(5, (int) ($request->get_param('limit') ?: 20)));
+    $offset = max(0, (int) ($request->get_param('offset') ?: 0));
+
+    $raw = $wpdb->get_results($wpdb->prepare(
         "SELECT u.id, u.farm_id, u.tree_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at, f.owner_user_id, f.name AS farm_name, t.code AS tree_code, t.adopter_user_id AS tree_adopter_user_id
          FROM {$tables['updates']} u
          LEFT JOIN {$tables['farms']} f ON f.id = u.farm_id
          LEFT JOIN {$tables['trees']} t ON t.id = u.tree_id
          ORDER BY u.created_at DESC
-         LIMIT 25",
-        ARRAY_A
-    );
+         LIMIT %d OFFSET %d",
+        $limit + 1,
+        $offset
+    ), ARRAY_A);
 
-    return rest_ensure_response(['updates' => agri_saas_filter_visible_updates($updates ?: [], get_current_user_id())]);
+    $has_more = count($raw) > $limit;
+    if ($has_more) {
+        array_pop($raw);
+    }
+
+    $visible = agri_saas_filter_visible_updates($raw ?: [], get_current_user_id());
+
+    return rest_ensure_response([
+        'updates'     => $visible,
+        'has_more'    => $has_more,
+        'next_offset' => $offset + $limit,
+    ]);
 }
 
 function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response|WP_Error
@@ -917,5 +1013,8 @@ function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response
         return new WP_Error('agri_saas_update_failed', __('Unable to create update.', 'agri-saas'), ['status' => 500]);
     }
 
+    if ($farm_id) {
+        agri_saas_invalidate_farm_cache($farm_id);
+    }
     return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
 }

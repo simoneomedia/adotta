@@ -63,7 +63,9 @@ function agri_saas_install_tables(): void
         PRIMARY KEY  (id),
         UNIQUE KEY code (code),
         KEY farm_id (farm_id),
-        KEY adopter_user_id (adopter_user_id)
+        KEY adopter_user_id (adopter_user_id),
+        KEY status (status),
+        KEY status_created (status, created_at)
     ) $charset_collate;");
 
     dbDelta("CREATE TABLE {$tables['updates']} (
@@ -80,7 +82,9 @@ function agri_saas_install_tables(): void
         KEY farm_id (farm_id),
         KEY tree_id (tree_id),
         KEY author_user_id (author_user_id),
-        KEY visibility (visibility)
+        KEY visibility (visibility),
+        KEY created_at (created_at),
+        KEY vis_created (visibility, created_at)
     ) $charset_collate;");
 
     dbDelta("CREATE TABLE {$tables['farm_followers']} (
