@@ -16,6 +16,22 @@ agri_saas_render_shell(__('Client Dashboard', 'agri-saas'), function (): void {
         <article class="card span-2">
             <div class="section-heading">
                 <div>
+                    <p class="eyebrow"><?php esc_html_e('Catalog', 'agri-saas'); ?></p>
+                    <h2><?php esc_html_e('Adoptable trees', 'agri-saas'); ?></h2>
+                </div>
+            </div>
+            <div class="catalog-layout">
+                <div class="card-list" data-slot="adoptable-trees">
+                    <?php agri_saas_empty_state(__('Available trees will appear here with adoption request actions.', 'agri-saas')); ?>
+                </div>
+                <div class="catalog-map" data-slot="adoptable-map" aria-label="<?php esc_attr_e('Adoptable tree map', 'agri-saas'); ?>">
+                    <span class="map-placeholder">◎</span>
+                </div>
+            </div>
+        </article>
+        <article class="card span-2">
+            <div class="section-heading">
+                <div>
                     <p class="eyebrow"><?php esc_html_e('Portfolio', 'agri-saas'); ?></p>
                     <h2><?php esc_html_e('Your adopted trees', 'agri-saas'); ?></h2>
                 </div>

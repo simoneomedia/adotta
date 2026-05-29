@@ -40,6 +40,17 @@ agri_saas_render_shell(__('Farm Dashboard', 'agri-saas'), function (): void {
                 <?php agri_saas_empty_state(__('Published trees will appear here after a farmer adds them.', 'agri-saas')); ?>
             </div>
         </article>
+        <article class="card span-3">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow"><?php esc_html_e('Adoption requests', 'agri-saas'); ?></p>
+                    <h2><?php esc_html_e('Pending client requests', 'agri-saas'); ?></h2>
+                </div>
+            </div>
+            <div class="card-list" data-slot="adoption-requests">
+                <?php agri_saas_empty_state(__('Pending requests will appear here when clients ask to adopt a tree.', 'agri-saas')); ?>
+            </div>
+        </article>
         <aside class="card update-composer" data-farm-form hidden>
             <h2><?php esc_html_e('Register farm', 'agri-saas'); ?></h2>
             <form data-agri-farm-form>
@@ -47,6 +58,8 @@ agri_saas_render_shell(__('Farm Dashboard', 'agri-saas'), function (): void {
                 <label><?php esc_html_e('Location', 'agri-saas'); ?><input name="location" required></label>
                 <label><?php esc_html_e('Acreage', 'agri-saas'); ?><input name="acreage" type="number" min="0" step="0.01"></label>
                 <label><?php esc_html_e('Crop focus', 'agri-saas'); ?><input name="crop_focus"></label>
+                <label><?php esc_html_e('Latitude', 'agri-saas'); ?><input name="latitude" type="number" step="0.0000001"></label>
+                <label><?php esc_html_e('Longitude', 'agri-saas'); ?><input name="longitude" type="number" step="0.0000001"></label>
                 <label><?php esc_html_e('Health score', 'agri-saas'); ?><input name="health_score" type="number" min="0" max="100"></label>
                 <button class="button" type="submit"><?php esc_html_e('Save farm', 'agri-saas'); ?></button>
             </form>
