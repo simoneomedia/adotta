@@ -42,6 +42,15 @@
             </a>`).join('') : '<div class="card empty-state">No adopted trees yet.</div>';
     };
 
+    const updateFarmOptions = (farms) => {
+        document.querySelectorAll('[data-farm-options]').forEach((select) => {
+            select.innerHTML = farms.length ? farms.map((farm) => `
+                <option value="${escapeHtml(farm.id)}">${escapeHtml(farm.name)} · ${escapeHtml(farm.location)}</option>
+            `).join('') : '<option value="">Create a farm first</option>';
+            select.disabled = !farms.length;
+        });
+    };
+
     const renderFarmDashboard = (data) => {
         root.querySelector('[data-slot="stats"]').innerHTML = [
             statCard('Managed farms', data.stats.farms, 'Registered farms'),
@@ -52,7 +61,13 @@
             <div class="farm-row">
                 <div><strong>${escapeHtml(farm.name)}</strong><br><small>${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus)}</small></div>
                 <span class="badge">${escapeHtml(farm.tree_count)} trees · ${escapeHtml(farm.health_score)} health</span>
-            </div>`).join('') : '<div class="card empty-state">No farm records yet.</div>';
+            </div>`).join('') : '<div class="card empty-state">No farm records yet. Use Add farm before publishing trees.</div>';
+        root.querySelector('[data-slot="farm-trees"]').innerHTML = data.trees.length ? data.trees.map((tree) => `
+            <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
+                <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.planted_at || 'Planting date pending')}</small></div>
+                <span class="badge">${escapeHtml(tree.code)} · ${escapeHtml(tree.status)}</span>
+            </a>`).join('') : '<div class="card empty-state">No trees published yet. Use Add tree to make one available for adoption.</div>';
+        updateFarmOptions(data.farms || []);
     };
 
     const renderTreeDetail = (data) => {
@@ -91,8 +106,28 @@
         .then((data) => renderers[root.dataset.render]?.(data))
         .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state">Unable to load dashboard data.</div>'));
 
-    document.querySelector('[data-open-update-form]')?.addEventListener('click', () => {
-        document.querySelector('[data-update-form]')?.removeAttribute('hidden');
+    const showPanel = (selector) => {
+        document.querySelector(selector)?.removeAttribute('hidden');
+    };
+
+    document.querySelector('[data-open-farm-form]')?.addEventListener('click', () => showPanel('[data-farm-form]'));
+    document.querySelector('[data-open-tree-form]')?.addEventListener('click', () => showPanel('[data-tree-form]'));
+    document.querySelector('[data-open-update-form]')?.addEventListener('click', () => showPanel('[data-update-form]'));
+
+    document.querySelector('[data-agri-farm-form]')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const payload = Object.fromEntries(new FormData(form).entries());
+        await apiFetch('/farms', { method: 'POST', body: JSON.stringify(payload) });
+        window.location.reload();
+    });
+
+    document.querySelector('[data-agri-tree-form]')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const payload = Object.fromEntries(new FormData(form).entries());
+        await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
+        window.location.reload();
     });
 
     document.querySelector('[data-agri-update-form]')?.addEventListener('submit', async (event) => {

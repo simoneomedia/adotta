@@ -18,6 +18,18 @@ function agri_saas_register_api_routes(): void
         'permission_callback' => 'agri_saas_can_manage_farms',
     ]);
 
+    register_rest_route('agri-saas/v1', '/farms', [
+        'methods' => WP_REST_Server::CREATABLE,
+        'callback' => 'agri_saas_api_create_farm',
+        'permission_callback' => 'agri_saas_can_manage_farms',
+    ]);
+
+    register_rest_route('agri-saas/v1', '/trees', [
+        'methods' => WP_REST_Server::CREATABLE,
+        'callback' => 'agri_saas_api_create_tree',
+        'permission_callback' => 'agri_saas_can_manage_farms',
+    ]);
+
     register_rest_route('agri-saas/v1', '/trees/(?P<id>\d+)', [
         'methods' => WP_REST_Server::READABLE,
         'callback' => 'agri_saas_api_tree_detail',
@@ -92,6 +104,16 @@ function agri_saas_api_farm_dashboard(): WP_REST_Response
         $user_id
     ));
 
+    $trees = $wpdb->get_results($wpdb->prepare(
+        "SELECT t.id, t.farm_id, t.species, t.code, t.status, t.planted_at, t.carbon_estimate, f.name AS farm_name
+         FROM {$tables['trees']} t
+         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
+         WHERE f.owner_user_id = %d
+         ORDER BY t.created_at DESC
+         LIMIT 10",
+        $user_id
+    ), ARRAY_A);
+
     return rest_ensure_response([
         'stats' => [
             'farms' => count($farms ?: []),
@@ -99,7 +121,85 @@ function agri_saas_api_farm_dashboard(): WP_REST_Response
             'adoptedTrees' => array_sum(array_map(static fn($farm) => (int) $farm['adopted_count'], $farms ?: [])),
         ],
         'farms' => $farms ?: [],
+        'trees' => $trees ?: [],
     ]);
+}
+
+function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+
+    $name = sanitize_text_field($request->get_param('name'));
+    $location = sanitize_text_field($request->get_param('location'));
+
+    if (!$name || !$location) {
+        return new WP_Error('agri_saas_farm_required_fields', __('Farm name and location are required.', 'agri-saas'), ['status' => 400]);
+    }
+
+    $inserted = $wpdb->insert($tables['farms'], [
+        'owner_user_id' => get_current_user_id(),
+        'name' => $name,
+        'location' => $location,
+        'acreage' => (float) $request->get_param('acreage'),
+        'crop_focus' => sanitize_text_field($request->get_param('crop_focus')),
+        'health_score' => min(100, max(0, absint($request->get_param('health_score')))),
+    ], ['%d', '%s', '%s', '%f', '%s', '%d']);
+
+    if (!$inserted) {
+        return new WP_Error('agri_saas_farm_failed', __('Unable to create farm.', 'agri-saas'), ['status' => 500]);
+    }
+
+    return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
+}
+
+function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $farm_id = absint($request->get_param('farm_id'));
+    $species = sanitize_text_field($request->get_param('species'));
+    $code = sanitize_text_field($request->get_param('code'));
+
+    if (!$farm_id || !$species || !$code) {
+        return new WP_Error('agri_saas_tree_required_fields', __('Farm, species, and code are required.', 'agri-saas'), ['status' => 400]);
+    }
+
+    $owns_farm = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM {$tables['farms']} WHERE id = %d AND owner_user_id = %d",
+        $farm_id,
+        get_current_user_id()
+    ));
+
+    if (!$owns_farm) {
+        return new WP_Error('agri_saas_farm_forbidden', __('You can add trees only to your farms.', 'agri-saas'), ['status' => 403]);
+    }
+
+    $status = sanitize_key($request->get_param('status') ?: 'available');
+    if (!in_array($status, ['available', 'adopted', 'maintenance'], true)) {
+        $status = 'available';
+    }
+
+    $latitude = $request->get_param('latitude');
+    $longitude = $request->get_param('longitude');
+    $planted_at = sanitize_text_field($request->get_param('planted_at'));
+
+    $inserted = $wpdb->insert($tables['trees'], [
+        'farm_id' => $farm_id,
+        'species' => $species,
+        'code' => $code,
+        'latitude' => $latitude !== null && $latitude !== '' ? (float) $latitude : null,
+        'longitude' => $longitude !== null && $longitude !== '' ? (float) $longitude : null,
+        'status' => $status,
+        'planted_at' => $planted_at ?: null,
+        'carbon_estimate' => (float) $request->get_param('carbon_estimate'),
+    ], ['%d', '%s', '%s', '%f', '%f', '%s', '%s', '%f']);
+
+    if (!$inserted) {
+        return new WP_Error('agri_saas_tree_failed', __('Unable to create tree. Check that the code is unique.', 'agri-saas'), ['status' => 500]);
+    }
+
+    return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
 }
 
 function agri_saas_api_tree_detail(WP_REST_Request $request): WP_REST_Response|WP_Error

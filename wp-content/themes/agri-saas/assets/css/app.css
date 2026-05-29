@@ -64,7 +64,12 @@ a { color: inherit; text-decoration: none; }
     margin-bottom: 28px;
 }
 .app-topbar h1 { margin: 4px 0 0; font-size: clamp(2rem, 4vw, 3.3rem); }
-.topbar-actions { gap: 12px; }
+.topbar-actions, .button-group { gap: 12px; }
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
 .user-pill {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -133,13 +138,14 @@ a { color: inherit; text-decoration: none; }
 .empty-state { box-shadow: none; text-align: center; color: var(--muted); }
 .empty-icon, .map-placeholder { display: block; font-size: 3rem; }
 .update-composer label { display: grid; gap: 8px; margin-bottom: 14px; font-weight: 700; }
-input, textarea {
+input, select, textarea {
     border: 1px solid var(--border);
     border-radius: 14px;
     font: inherit;
     padding: 12px;
     width: 100%;
 }
+select { background: #fff; }
 textarea { min-height: 120px; resize: vertical; }
 .map-card { min-height: 260px; }
 .map-placeholder {
@@ -163,5 +169,6 @@ textarea { min-height: 120px; resize: vertical; }
 @media (max-width: 640px) {
     .app-main, .app-sidebar { padding: 20px; }
     .app-topbar, .section-heading, .tree-row, .farm-row { align-items: flex-start; flex-direction: column; }
+    .button-group { justify-content: flex-start; }
     .app-nav { grid-template-columns: 1fr; }
 }
