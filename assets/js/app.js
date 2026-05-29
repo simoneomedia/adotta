@@ -6,9 +6,9 @@
     let adoptableMap = null;
     let farmProfileMap = null;
 
+    // ── SimpleOsmMap — usato solo per i selettori di coordinate nei form ────
     const tileSize = 256;
     const tileUrl = (x, y, z) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
-
     const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
     const project = (lat, lng, zoom) => {
@@ -224,6 +224,7 @@
         }
     }
 
+    // ── Utilità ─────────────────────────────────────────────────────────────
     const apiFetch = async (path, options = {}) => {
         const { headers: optionHeaders = {}, ...fetchOptions } = options;
         const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
@@ -237,16 +238,62 @@
             },
         });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.message || `API request failed: ${response.status}`);
+        if (!response.ok) throw new Error(payload.message || `Errore API: ${response.status}`);
         return payload;
     };
 
     const appUrl = (path) => new URL(path.replace(/^\//, ''), window.AgriSaas.homeUrl).toString();
 
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
     }[char]));
 
+    const relativeTime = (dateStr) => {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return String(dateStr);
+        const diff = Math.floor((Date.now() - date) / 1000);
+        if (diff < 60) return 'Adesso';
+        if (diff < 3600) return `${Math.floor(diff / 60)} min fa`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h fa`;
+        if (diff < 604800) return `${Math.floor(diff / 86400)} giorni fa`;
+        return date.toLocaleDateString('it-IT');
+    };
+
+    const visibilityLabel = (v) => ({
+        public: 'Pubblico', followers: 'Follower', adopters: 'Adottanti', tree_adopter: 'Adottante',
+    }[v] || 'Pubblico');
+
+    const statusLabel = (s) => ({
+        available: 'Disponibile', adopted: 'Adottato', maintenance: 'In manutenzione',
+    }[s] || s || '');
+
+    // ── Barra di condivisione social ─────────────────────────────────────────
+    const shareBar = (url, title) => {
+        const encoded = encodeURIComponent(url);
+        const waText = encodeURIComponent(`${title}\n${url}`);
+        const xText = encodeURIComponent(title);
+        return `<div class="share-bar">
+            <a class="share-btn share-wa" href="https://api.whatsapp.com/send?text=${waText}" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                WhatsApp
+            </a>
+            <a class="share-btn share-fb" href="https://www.facebook.com/sharer/sharer.php?u=${encoded}" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                Facebook
+            </a>
+            <a class="share-btn share-x" href="https://twitter.com/intent/tweet?text=${xText}&url=${encoded}" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.742-8.872L2.25 2.25h6.845l4.264 5.64 5.885-5.64Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                X
+            </a>
+            <button class="share-btn share-copy" type="button" data-copy-link="${escapeHtml(url)}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copia link
+            </button>
+        </div>`;
+    };
+
+    // ── Selettori di coordinate ───────────────────────────────────────────────
     const getCoordinateInputs = (container) => {
         const scope = container.closest('form') || container.parentElement || document;
         return {
@@ -279,7 +326,7 @@
             state.marker = state.map.addMarker([lat, lng], {
                 icon: '📍',
                 draggable: true,
-                title: 'Farm marker',
+                title: 'Posizione azienda',
                 onDragEnd: (position) => setCoordinateMarker(container, position.lat, position.lng, state.map.zoom),
             });
         } else {
@@ -326,6 +373,7 @@
         });
     };
 
+    // ── Stat card ─────────────────────────────────────────────────────────────
     const statCard = (label, value, meta) => `
         <article class="card stat-card">
             <span>${escapeHtml(label)}</span>
@@ -335,46 +383,54 @@
 
     const treeMeta = (tree) => [tree.farm_name, tree.location, tree.crop_focus].filter(Boolean).join(' · ');
 
+    // ── Mappe Leaflet con cluster ─────────────────────────────────────────────
+    const makeLeafletMap = (el) => {
+        if (!window.L) return null;
+        const map = L.map(el);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+            maxZoom: 19,
+        }).addTo(map);
+        return map;
+    };
+
+    const makeCluster = () => (window.L?.markerClusterGroup ? L.markerClusterGroup() : L.featureGroup());
+
     const renderAdoptableMap = (trees) => {
         const slot = root?.querySelector('[data-slot="adoptable-map"]');
         if (!slot) return;
 
-        const mappedTrees = trees.filter((tree) => {
-            const lat = Number(tree.map_latitude);
-            const lng = Number(tree.map_longitude);
-            return Number.isFinite(lat) && Number.isFinite(lng);
-        });
+        if (adoptableMap) { adoptableMap.remove(); adoptableMap = null; }
+
+        const mappedTrees = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
 
         if (!mappedTrees.length) {
-            slot.innerHTML = '<div class="map-placeholder">◎<small>No coordinates yet</small></div>';
-            adoptableMap = null;
+            slot.innerHTML = '<div class="map-placeholder">◎<small>Nessuna coordinata disponibile</small></div>';
             return;
         }
 
-        if (!slot.querySelector('[data-osm-adoptable-map]')) {
-            slot.innerHTML = '<div class="leaflet-map" data-osm-adoptable-map></div><p class="map-note">Pins use tree coordinates when available, otherwise farm coordinates. Zoom and drag the OpenStreetMap view.</p>';
-            adoptableMap = new SimpleOsmMap(slot.querySelector('[data-osm-adoptable-map]'), { center: defaultLatLng(), zoom: 6 });
-        }
+        slot.innerHTML = '<div class="leaflet-map"></div><p class="map-note">I pin usano le coordinate dell\'albero quando disponibili, altrimenti quelle dell\'azienda.</p>';
+        adoptableMap = makeLeafletMap(slot.querySelector('.leaflet-map'));
+        if (!adoptableMap) return;
 
-        adoptableMap.clearMarkers();
+        const cluster = makeCluster();
         const bounds = [];
+
         mappedTrees.forEach((tree) => {
             const lat = Number(tree.map_latitude);
             const lng = Number(tree.map_longitude);
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
             bounds.push([lat, lng]);
-            adoptableMap.addMarker([lat, lng], {
-                title: `${tree.species} · ${tree.farm_name}`,
-                popup: `<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">View tree</a>`,
-            });
+            L.marker([lat, lng])
+                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`)
+                .addTo(cluster);
         });
 
+        cluster.addTo(adoptableMap);
         if (bounds.length === 1) {
             adoptableMap.setView(bounds[0], 13);
         } else {
-            adoptableMap.fitBounds(bounds, { maxZoom: 14 });
+            adoptableMap.fitBounds(bounds, { maxZoom: 14, padding: [28, 28] });
         }
-        setTimeout(() => adoptableMap.render(), 80);
     };
 
     const renderAdoptableTrees = (trees) => {
@@ -386,13 +442,13 @@
                 <a href="${appUrl(`trees/${tree.id}/`)}">
                     <strong>${escapeHtml(tree.species)}</strong><br>
                     <small>${escapeHtml(treeMeta(tree))}</small><br>
-                    <small>${tree.map_latitude && tree.map_longitude ? `${escapeHtml(tree.map_latitude)}, ${escapeHtml(tree.map_longitude)} · ${escapeHtml(tree.coordinate_source)} coordinates` : 'Coordinates pending'}</small>
+                    <small>${tree.map_latitude && tree.map_longitude ? `${escapeHtml(tree.map_latitude)}, ${escapeHtml(tree.map_longitude)} · coordinate ${escapeHtml(tree.coordinate_source)}` : 'Coordinate non ancora disponibili'}</small>
                 </a>
                 <div class="row-actions">
                     <span class="badge">${escapeHtml(tree.code)}</span>
-                    <button class="button" type="button" data-request-adoption="${escapeHtml(tree.id)}" ${tree.request_status === 'pending' ? 'disabled' : ''}>${tree.request_status === 'pending' ? 'Pending' : 'Request adoption'}</button>
+                    <button class="button" type="button" data-request-adoption="${escapeHtml(tree.id)}" ${tree.request_status === 'pending' ? 'disabled' : ''}>${tree.request_status === 'pending' ? 'In attesa' : 'Richiedi adozione'}</button>
                 </div>
-            </article>`).join('') : '<div class="card empty-state">No adoptable trees are available right now.</div>';
+            </article>`).join('') : '<div class="card empty-state">Nessun albero disponibile per l\'adozione al momento.</div>';
         renderAdoptableMap(trees);
     };
 
@@ -404,23 +460,23 @@
 
     const renderClientDashboard = (data) => {
         root.querySelector('[data-slot="stats"]').innerHTML = [
-            statCard('Adopted trees', data.stats.adoptedTrees, 'In your adoption portfolio'),
-            statCard('Active adoptions', data.stats.activeAdoptions, 'Currently active'),
-            statCard('Carbon estimate', `${data.stats.estimatedCarbonKg} kg`, 'Estimated sequestration'),
+            statCard('Alberi adottati', data.stats.adoptedTrees, 'Nel tuo portafoglio'),
+            statCard('Adozioni attive', data.stats.activeAdoptions, 'Attualmente attive'),
+            statCard('Stima CO₂', `${data.stats.estimatedCarbonKg} kg`, 'Sequestro stimato'),
         ].join('');
         root.querySelector('[data-slot="trees"]').innerHTML = data.trees.length ? data.trees.map((tree) => `
             <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
                 <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small></div>
                 <span class="badge">${escapeHtml(tree.code)}</span>
-            </a>`).join('') : '<div class="card empty-state">No adopted trees yet.</div>';
-        loadAdoptableTrees().catch(() => root.querySelector('[data-slot="adoptable-trees"]')?.insertAdjacentHTML('beforeend', '<div class="card empty-state">Unable to load adoptable trees.</div>'));
+            </a>`).join('') : '<div class="card empty-state">Nessun albero adottato ancora.</div>';
+        loadAdoptableTrees().catch(() => root.querySelector('[data-slot="adoptable-trees"]')?.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare gli alberi disponibili.</div>'));
     };
 
     const updateFarmOptions = (farms) => {
         document.querySelectorAll('[data-farm-options]').forEach((select) => {
             select.innerHTML = farms.length ? farms.map((farm) => `
                 <option value="${escapeHtml(farm.id)}">${escapeHtml(farm.name)} · ${escapeHtml(farm.location)}</option>
-            `).join('') : '<option value="">Create a farm first</option>';
+            `).join('') : '<option value="">Crea prima un\'azienda</option>';
             select.disabled = !farms.length;
         });
     };
@@ -433,31 +489,32 @@
             <article class="tree-row request-row">
                 <div>
                     <strong>${escapeHtml(request.species)} · ${escapeHtml(request.code)}</strong><br>
-                    <small>${escapeHtml(request.farm_name)} · requested by ${escapeHtml(request.adopter_name || request.adopter_email || `User #${request.adopter_user_id}`)} · ${escapeHtml(request.requested_at)}</small><br><small>${escapeHtml([request.adopter_email, request.adopter_whatsapp ? `WhatsApp ${request.adopter_whatsapp}` : '', request.adopter_phone ? `Phone ${request.adopter_phone}` : ''].filter(Boolean).join(' · '))}</small>
+                    <small>${escapeHtml(request.farm_name)} · richiesta da ${escapeHtml(request.adopter_name || request.adopter_email || `Utente #${request.adopter_user_id}`)} · ${escapeHtml(request.requested_at)}</small><br>
+                    <small>${escapeHtml([request.adopter_email, request.adopter_whatsapp ? `WhatsApp ${request.adopter_whatsapp}` : '', request.adopter_phone ? `Telefono ${request.adopter_phone}` : ''].filter(Boolean).join(' · '))}</small>
                 </div>
                 <div class="row-actions">
-                    <button class="button" type="button" data-adoption-decision="accept" data-request-id="${escapeHtml(request.id)}">Accept</button>
-                    <button class="button ghost" type="button" data-adoption-decision="reject" data-request-id="${escapeHtml(request.id)}">Reject</button>
+                    <button class="button" type="button" data-adoption-decision="accept" data-request-id="${escapeHtml(request.id)}">Accetta</button>
+                    <button class="button ghost" type="button" data-adoption-decision="reject" data-request-id="${escapeHtml(request.id)}">Rifiuta</button>
                 </div>
-            </article>`).join('') : '<div class="card empty-state">No pending adoption requests.</div>';
+            </article>`).join('') : '<div class="card empty-state">Nessuna richiesta di adozione in sospeso.</div>';
     };
 
     const renderFarmDashboard = (data) => {
         root.querySelector('[data-slot="stats"]').innerHTML = [
-            statCard('Managed farms', data.stats.farms, 'Registered farms'),
-            statCard('Available trees', data.stats.availableTrees, 'Ready for adoption'),
-            statCard('Adopted trees', data.stats.adoptedTrees, 'Sponsored by clients'),
+            statCard('Aziende gestite', data.stats.farms, 'Aziende registrate'),
+            statCard('Alberi disponibili', data.stats.availableTrees, 'Pronti per adozione'),
+            statCard('Alberi adottati', data.stats.adoptedTrees, 'Sponsorizzati da clienti'),
         ].join('');
         root.querySelector('[data-slot="farms"]').innerHTML = data.farms.length ? data.farms.map((farm) => `
             <div class="farm-row">
                 <div><strong><a href="${appUrl(`farms/${farm.id}/`)}">${escapeHtml(farm.name)}</a></strong><br><small>${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus)}${farm.latitude && farm.longitude ? ` · ${escapeHtml(farm.latitude)}, ${escapeHtml(farm.longitude)}` : ''}</small></div>
-                <span class="badge">${escapeHtml(farm.tree_count)} trees · ${escapeHtml(farm.health_score)} health</span>
-            </div>`).join('') : '<div class="card empty-state">No farm records yet. Use Add farm before publishing trees.</div>';
+                <span class="badge">${escapeHtml(farm.tree_count)} alberi · salute ${escapeHtml(farm.health_score)}</span>
+            </div>`).join('') : '<div class="card empty-state">Nessuna azienda registrata. Aggiungi prima un\'azienda prima di pubblicare alberi.</div>';
         root.querySelector('[data-slot="farm-trees"]').innerHTML = data.trees.length ? data.trees.map((tree) => `
             <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
-                <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.planted_at || 'Planting date pending')}</small></div>
-                <span class="badge">${escapeHtml(tree.code)} · ${escapeHtml(tree.status)}</span>
-            </a>`).join('') : '<div class="card empty-state">No trees published yet. Use Add tree to make one available for adoption.</div>';
+                <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.planted_at || 'Data messa a dimora non ancora disponibile')}</small></div>
+                <span class="badge">${escapeHtml(tree.code)} · ${escapeHtml(statusLabel(tree.status))}</span>
+            </a>`).join('') : '<div class="card empty-state">Nessun albero pubblicato ancora. Usa "Aggiungi albero" per renderlo disponibile all\'adozione.</div>';
         renderAdoptionRequests(data.requests || []);
         updateFarmOptions(data.farms || []);
     };
@@ -469,66 +526,101 @@
             <h2>${escapeHtml(tree.species)}</h2>
             <p>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)} · ${escapeHtml(tree.crop_focus)}</p>
             <div class="stats-grid">
-                ${statCard('Status', tree.status, 'Current lifecycle')}
-                ${statCard('Carbon', `${tree.carbon_estimate} kg`, 'Estimated sequestration')}
-                ${statCard('Planted', tree.planted_at || 'Pending', 'Planting date')}
+                ${statCard('Stato', statusLabel(tree.status), 'Ciclo di vita attuale')}
+                ${statCard('CO₂', `${tree.carbon_estimate} kg`, 'Sequestro stimato')}
+                ${statCard('Messa a dimora', tree.planted_at || 'In attesa', 'Data di piantagione')}
+            </div>
+            <div class="share-section">
+                <p class="eyebrow">Condividi questo albero</p>
+                ${shareBar(window.location.href, `${tree.species} · ${tree.code}`)}
             </div>`;
         renderUpdates(data.updates || []);
     };
 
+    // ── Feed aggiornamenti stile Instagram ───────────────────────────────────
     const renderUpdates = (updates) => {
-        const slot = root.querySelector('[data-slot="updates"]');
-        slot.innerHTML = updates.length ? updates.map((update) => `
-            <article class="timeline-item">
-                <p class="eyebrow">${escapeHtml(update.farm_name || update.tree_code || 'Field update')} · ${escapeHtml(update.created_at)} · ${escapeHtml(update.visibility || 'public')}</p>
-                <h3>${escapeHtml(update.title)}</h3>
-                <p>${escapeHtml(update.body)}</p>
-                ${update.media_url ? `<img class="update-media" src="${escapeHtml(update.media_url)}" alt="${escapeHtml(update.title)}" loading="lazy">` : ''}
-                ${update.media_url ? `<a class="button ghost" href="${escapeHtml(update.media_url)}">View media</a>` : ''}
-            </article>`).join('') : '<div class="card empty-state">No updates have been published yet.</div>';
+        const slot = root?.querySelector('[data-slot="updates"]');
+        if (!slot) return;
+
+        if (!updates.length) {
+            slot.innerHTML = '<div class="card empty-state">Nessun aggiornamento pubblicato ancora.</div>';
+            return;
+        }
+
+        slot.innerHTML = updates.map((update) => {
+            const shareUrl = update.tree_id
+                ? appUrl(`trees/${update.tree_id}/`)
+                : (update.farm_id ? appUrl(`farms/${update.farm_id}/`) : window.location.href);
+            const author = update.farm_name || update.tree_code || 'Aggiornamento';
+            const avatar = update.tree_id ? '🌳' : '🌿';
+            const vis = update.visibility || 'public';
+
+            return `
+                <article class="insta-post">
+                    <header class="insta-post-header">
+                        <div class="insta-avatar">${avatar}</div>
+                        <div class="insta-post-meta">
+                            <strong class="insta-author">${escapeHtml(author)}</strong>
+                            <time class="insta-timestamp">${escapeHtml(relativeTime(update.created_at))}</time>
+                        </div>
+                        <span class="insta-visibility insta-vis-${escapeHtml(vis)}">${escapeHtml(visibilityLabel(vis))}</span>
+                    </header>
+                    ${update.media_url ? `<div class="insta-media"><img src="${escapeHtml(update.media_url)}" alt="${escapeHtml(update.title)}" loading="lazy"></div>` : ''}
+                    <div class="insta-body">
+                        <h3 class="insta-title">${escapeHtml(update.title)}</h3>
+                        <p class="insta-caption">${escapeHtml(update.body)}</p>
+                    </div>
+                    <footer class="insta-footer">
+                        ${shareBar(shareUrl, update.title)}
+                    </footer>
+                </article>`;
+        }).join('');
     };
 
-
+    // ── Mappa profilo azienda con cluster ────────────────────────────────────
     const renderFarmProfileMap = (trees) => {
         const slot = root?.querySelector('[data-slot="farm-profile-map"]');
         if (!slot) return;
 
-        const mappedTrees = trees.filter((tree) => {
-            const lat = Number(tree.map_latitude);
-            const lng = Number(tree.map_longitude);
-            return Number.isFinite(lat) && Number.isFinite(lng);
-        });
+        if (farmProfileMap) { farmProfileMap.remove(); farmProfileMap = null; }
+
+        const mappedTrees = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
 
         if (!mappedTrees.length) {
-            slot.innerHTML = '<div class="map-placeholder">◎<small>No tree coordinates yet</small></div>';
-            farmProfileMap = null;
+            slot.innerHTML = '<div class="map-placeholder">◎<small>Nessuna coordinata albero disponibile</small></div>';
             return;
         }
 
-        if (!slot.querySelector('[data-osm-farm-profile-map]')) {
-            slot.innerHTML = '<div class="leaflet-map" data-osm-farm-profile-map></div><p class="map-note">All published trees are shown. Adopted and available trees stay visible in this showcase.</p>';
-            farmProfileMap = new SimpleOsmMap(slot.querySelector('[data-osm-farm-profile-map]'), { center: defaultLatLng(), zoom: 6 });
-        }
+        slot.innerHTML = '<div class="leaflet-map"></div><p class="map-note">Tutti gli alberi pubblicati sono visibili sulla mappa. Adottati e disponibili restano entrambi visibili in vetrina.</p>';
+        farmProfileMap = makeLeafletMap(slot.querySelector('.leaflet-map'));
+        if (!farmProfileMap) return;
 
-        farmProfileMap.clearMarkers();
+        const cluster = makeCluster();
         const bounds = [];
+
         mappedTrees.forEach((tree) => {
             const lat = Number(tree.map_latitude);
             const lng = Number(tree.map_longitude);
             bounds.push([lat, lng]);
-            farmProfileMap.addMarker([lat, lng], {
-                icon: tree.status === 'adopted' ? '🌳' : '🌱',
-                title: `${tree.species} · ${tree.code}`,
-                popup: `<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.code)} · ${escapeHtml(tree.status)}<br><a href="${appUrl(`trees/${tree.id}/`)}">View tree</a>`,
-            });
+            const icon = tree.status === 'adopted' ? '🌳' : '🌱';
+            L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'leaflet-tree-icon',
+                    html: `<span style="font-size:1.3rem;line-height:1;display:block;text-align:center;">${icon}</span>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 28],
+                }),
+            })
+                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.code)} · ${escapeHtml(statusLabel(tree.status))}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`)
+                .addTo(cluster);
         });
 
+        cluster.addTo(farmProfileMap);
         if (bounds.length === 1) {
             farmProfileMap.setView(bounds[0], 14);
         } else {
-            farmProfileMap.fitBounds(bounds, { maxZoom: 15 });
+            farmProfileMap.fitBounds(bounds, { maxZoom: 15, padding: [28, 28] });
         }
-        setTimeout(() => farmProfileMap.render(), 80);
     };
 
     const contactButton = (href, label) => href ? `<a class="button ghost" href="${escapeHtml(href)}">${escapeHtml(label)}</a>` : '';
@@ -536,37 +628,40 @@
     const renderFarmProfile = (data) => {
         const farm = data.farm;
         root.querySelector('[data-slot="farm-title"]').textContent = farm.name;
-        root.querySelector('[data-slot="farm-summary"]').innerHTML = `${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus || 'Mixed crops')}<br>${escapeHtml(farm.description || 'This farm uses its profile as a public showcase for trees, photos and field updates.')}`;
+        root.querySelector('[data-slot="farm-summary"]').innerHTML = `${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus || 'Colture miste')}<br>${escapeHtml(farm.description || 'Questa azienda usa il suo profilo come vetrina pubblica per alberi, foto e aggiornamenti dal campo.')}`;
         root.querySelector('[data-slot="farm-contacts"]').innerHTML = [
             contactButton(farm.contact_email ? `mailto:${farm.contact_email}` : '', 'Email'),
             contactButton(farm.contact_whatsapp ? `https://wa.me/${String(farm.contact_whatsapp).replace(/\D/g, '')}` : '', 'WhatsApp'),
-            contactButton(farm.contact_phone ? `tel:${farm.contact_phone}` : '', 'Phone'),
-        ].join('') || '<span class="badge">Contacts coming soon</span>';
+            contactButton(farm.contact_phone ? `tel:${farm.contact_phone}` : '', 'Telefono'),
+        ].join('') || '<span class="badge">Contatti in arrivo</span>';
 
         const followButton = root.querySelector('[data-follow-farm]');
         if (followButton) {
             followButton.hidden = false;
             followButton.dataset.farmId = farm.id;
             followButton.dataset.following = data.isFollowing ? '1' : '0';
-            followButton.textContent = data.canFollow ? (data.isFollowing ? 'Following' : 'Follow farm') : 'Log in to follow';
+            followButton.textContent = data.canFollow ? (data.isFollowing ? 'Seguendo' : 'Segui azienda') : 'Accedi per seguire';
             followButton.classList.toggle('ghost', Boolean(data.isFollowing));
             followButton.dataset.loginUrl = data.loginUrl || '';
         }
 
+        const shareSlot = root.querySelector('[data-slot="farm-share"]');
+        if (shareSlot) shareSlot.innerHTML = shareBar(window.location.href, farm.name);
+
         root.querySelector('[data-slot="farm-profile-stats"]').innerHTML = [
-            statCard('Trees', data.stats.trees, 'All visible in the showcase'),
-            statCard('Adopted', data.stats.adoptedTrees, 'Already sponsored'),
-            statCard('Followers', data.stats.followers, 'Clients following updates'),
+            statCard('Alberi', data.stats.trees, 'Tutti visibili in vetrina'),
+            statCard('Adottati', data.stats.adoptedTrees, 'Già sponsorizzati'),
+            statCard('Follower', data.stats.followers, 'Clienti che seguono gli aggiornamenti'),
         ].join('');
 
         root.querySelector('[data-slot="farm-profile-trees"]').innerHTML = data.trees.length ? data.trees.map((tree) => `
             <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
-                <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.code)} · ${escapeHtml(tree.planted_at || 'Planting date pending')} · ${escapeHtml(tree.coordinate_source || 'farm')} coordinates</small></div>
-                <span class="badge">${escapeHtml(tree.status)}${tree.adopter_name ? ` · ${escapeHtml(tree.adopter_name)}` : ''}</span>
-            </a>`).join('') : '<div class="card empty-state">No trees have been published by this farm yet.</div>';
+                <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.code)} · ${escapeHtml(tree.planted_at || 'Data non disponibile')} · coordinate ${escapeHtml(tree.coordinate_source || 'azienda')}</small></div>
+                <span class="badge">${escapeHtml(statusLabel(tree.status))}${tree.adopter_name ? ` · ${escapeHtml(tree.adopter_name)}` : ''}</span>
+            </a>`).join('') : '<div class="card empty-state">Nessun albero pubblicato da questa azienda.</div>';
 
         root.querySelector('[data-slot="farm-photos"]').innerHTML = data.photos.length ? data.photos.slice(0, 6).map((url) => `
-            <a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Farm photo" loading="lazy"></a>`).join('') : '<div class="card empty-state">No photos yet.</div>';
+            <a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Foto azienda" loading="lazy"></a>`).join('') : '<div class="card empty-state">Nessuna foto ancora.</div>';
 
         renderFarmProfileMap(data.trees || []);
         renderUpdates(data.updates || []);
@@ -584,7 +679,7 @@
         if (!root) return Promise.resolve();
         return apiFetch(root.dataset.agriEndpoint)
             .then((data) => renderers[root.dataset.render]?.(data))
-            .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state">Unable to load dashboard data.</div>'));
+            .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare i dati. Riprova tra poco.</div>'));
     };
 
     const showPanel = (selector) => {
@@ -601,11 +696,25 @@
         document.querySelector('[data-open-update-form]')?.addEventListener('click', () => showPanel('[data-update-form]'));
 
         document.addEventListener('click', async (event) => {
+            const copyBtn = event.target.closest('[data-copy-link]');
+            if (copyBtn) {
+                const url = copyBtn.dataset.copyLink;
+                try {
+                    await navigator.clipboard.writeText(url);
+                    const orig = copyBtn.innerHTML;
+                    copyBtn.textContent = '✓ Copiato!';
+                    setTimeout(() => { copyBtn.innerHTML = orig; }, 2200);
+                } catch {
+                    prompt('Copia questo link:', url);
+                }
+                return;
+            }
+
             const requestButton = event.target.closest('[data-request-adoption]');
             if (requestButton) {
                 requestButton.disabled = true;
                 await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: requestButton.dataset.requestAdoption }) });
-                requestButton.textContent = 'Pending';
+                requestButton.textContent = 'In attesa';
                 loadAdoptableTrees();
                 return;
             }
@@ -656,12 +765,12 @@
             const mediaUrl = form.querySelector('[data-media-url]');
 
             if (fileInput?.files?.length) {
-                if (status) status.textContent = 'Optimizing photo to 100 KB and saving to WordPress media…';
+                if (status) status.textContent = 'Ottimizzazione foto a 100 KB e salvataggio nella media library di WordPress…';
                 const uploadData = new FormData();
                 uploadData.append('photo', fileInput.files[0]);
                 const upload = await apiFetch('/media/photo', { method: 'POST', body: uploadData });
                 if (mediaUrl) mediaUrl.value = upload.url;
-                if (status) status.textContent = `Photo optimized and uploaded (${Math.round(upload.size / 1024)} KB).`;
+                if (status) status.textContent = `Foto ottimizzata e caricata (${Math.round(upload.size / 1024)} KB).`;
             }
 
             const payload = Object.fromEntries(new FormData(form).entries());
