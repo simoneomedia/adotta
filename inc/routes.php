@@ -7,6 +7,7 @@ add_action('init', 'agri_saas_register_routes');
 function agri_saas_register_routes(): void
 {
     add_rewrite_rule('^dashboard/?$', 'index.php?agri_saas_route=dashboard', 'top');
+    add_rewrite_rule('^farms/([0-9]+)/?$', 'index.php?agri_saas_route=farm-profile&farm_id=$matches[1]', 'top');
     add_rewrite_rule('^farm-dashboard/?$', 'index.php?agri_saas_route=farm-dashboard', 'top');
     add_rewrite_rule('^trees/([0-9]+)/?$', 'index.php?agri_saas_route=tree-detail&tree_id=$matches[1]', 'top');
     add_rewrite_rule('^updates/?$', 'index.php?agri_saas_route=updates', 'top');
@@ -17,6 +18,7 @@ function agri_saas_query_vars(array $vars): array
 {
     $vars[] = 'agri_saas_route';
     $vars[] = 'tree_id';
+    $vars[] = 'farm_id';
     return $vars;
 }
 
@@ -28,11 +30,14 @@ function agri_saas_template_router(string $template): string
         return $template;
     }
 
-    agri_saas_require_login();
+    if ($route !== 'farm-profile') {
+        agri_saas_require_login();
+    }
 
     $routes = [
         'dashboard' => AGRI_SAAS_PATH . '/templates/dashboard-client.php',
         'farm-dashboard' => AGRI_SAAS_PATH . '/templates/dashboard-farm.php',
+        'farm-profile' => AGRI_SAAS_PATH . '/templates/farm-profile.php',
         'tree-detail' => AGRI_SAAS_PATH . '/templates/tree-detail.php',
         'updates' => AGRI_SAAS_PATH . '/templates/updates.php',
     ];

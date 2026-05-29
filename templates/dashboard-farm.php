@@ -58,6 +58,12 @@ agri_saas_render_shell(__('Farm Dashboard', 'agri-saas'), function (): void {
                 <label><?php esc_html_e('Location', 'agri-saas'); ?><input name="location" required></label>
                 <label><?php esc_html_e('Acreage', 'agri-saas'); ?><input name="acreage" type="number" min="0" step="0.01"></label>
                 <label><?php esc_html_e('Crop focus', 'agri-saas'); ?><input name="crop_focus"></label>
+                <label><?php esc_html_e('Showcase description', 'agri-saas'); ?><textarea name="description"></textarea></label>
+                <div class="form-grid-2">
+                    <label><?php esc_html_e('Contact email', 'agri-saas'); ?><input name="contact_email" type="email"></label>
+                    <label><?php esc_html_e('WhatsApp', 'agri-saas'); ?><input name="contact_whatsapp" type="tel"></label>
+                </div>
+                <label><?php esc_html_e('Phone', 'agri-saas'); ?><input name="contact_phone" type="tel"></label>
                 <div class="form-grid-2">
                     <label><?php esc_html_e('Latitude', 'agri-saas'); ?><input name="latitude" type="number" step="0.0000001" min="-90" max="90" data-marker-lat></label>
                     <label><?php esc_html_e('Longitude', 'agri-saas'); ?><input name="longitude" type="number" step="0.0000001" min="-180" max="180" data-marker-lng></label>
@@ -99,8 +105,16 @@ agri_saas_render_shell(__('Farm Dashboard', 'agri-saas'), function (): void {
                 <label><?php esc_html_e('Photo (optimized to max 100 KB)', 'agri-saas'); ?><input name="photo" type="file" accept="image/*" data-photo-input></label>
                 <input name="media_url" type="hidden" data-media-url>
                 <p class="map-note" data-upload-status><?php esc_html_e('Photos are compressed locally on the server and saved in the WordPress media library; no paid CDN is required.', 'agri-saas'); ?></p>
-                <label><?php esc_html_e('Farm ID', 'agri-saas'); ?><input name="farm_id" type="number" min="1"></label>
-                <label><?php esc_html_e('Tree ID', 'agri-saas'); ?><input name="tree_id" type="number" min="1"></label>
+                <label><?php esc_html_e('Farm', 'agri-saas'); ?><select name="farm_id" data-farm-options required></select></label>
+                <label><?php esc_html_e('Tree ID (required only for tree adopter private updates)', 'agri-saas'); ?><input name="tree_id" type="number" min="1"></label>
+                <label><?php esc_html_e('Visibility', 'agri-saas'); ?>
+                    <select name="visibility">
+                        <option value="public"><?php esc_html_e('Public: visible to everyone on the web app', 'agri-saas'); ?></option>
+                        <option value="followers"><?php esc_html_e('Private: adopters or followers of this farm', 'agri-saas'); ?></option>
+                        <option value="adopters"><?php esc_html_e('Private: adopters of this farm only', 'agri-saas'); ?></option>
+                        <option value="tree_adopter"><?php esc_html_e('Private: adopter of the selected tree only', 'agri-saas'); ?></option>
+                    </select>
+                </label>
                 <button class="button" type="submit"><?php esc_html_e('Publish update', 'agri-saas'); ?></button>
             </form>
         </aside>
