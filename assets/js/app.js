@@ -3,8 +3,225 @@
 
     const root = document.querySelector('[data-agri-endpoint]');
     const coordinateMaps = new Map();
-    let adoptableLeafletMap = null;
-    let adoptableMarkers = null;
+    let adoptableMap = null;
+
+    const tileSize = 256;
+    const tileUrl = (x, y, z) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+    const project = (lat, lng, zoom) => {
+        const sin = Math.sin((clamp(lat, -85.05112878, 85.05112878) * Math.PI) / 180);
+        const scale = tileSize * (2 ** zoom);
+        return {
+            x: ((lng + 180) / 360) * scale,
+            y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale,
+        };
+    };
+
+    const unproject = (x, y, zoom) => {
+        const scale = tileSize * (2 ** zoom);
+        const lng = (x / scale) * 360 - 180;
+        const n = Math.PI - (2 * Math.PI * y) / scale;
+        const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+        return { lat, lng };
+    };
+
+    class SimpleOsmMap {
+        constructor(container, options = {}) {
+            this.container = container;
+            this.center = { lat: options.center?.[0] ?? 41.9028, lng: options.center?.[1] ?? 12.4964 };
+            this.zoom = options.zoom ?? 6;
+            this.markers = [];
+            this.clickHandlers = [];
+            this.drag = null;
+            this.container.classList.add('osm-map');
+            this.container.innerHTML = '<div class="osm-tile-layer"></div><div class="osm-marker-layer"></div><div class="osm-zoom"><button type="button" data-osm-zoom="in">+</button><button type="button" data-osm-zoom="out">−</button></div><a class="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>';
+            this.tileLayer = this.container.querySelector('.osm-tile-layer');
+            this.markerLayer = this.container.querySelector('.osm-marker-layer');
+            this.bindEvents();
+            this.render();
+        }
+
+        bindEvents() {
+            this.container.querySelector('[data-osm-zoom="in"]').addEventListener('click', () => this.setZoom(this.zoom + 1));
+            this.container.querySelector('[data-osm-zoom="out"]').addEventListener('click', () => this.setZoom(this.zoom - 1));
+
+            this.container.addEventListener('wheel', (event) => {
+                event.preventDefault();
+                this.setZoom(this.zoom + (event.deltaY < 0 ? 1 : -1));
+            }, { passive: false });
+
+            this.container.addEventListener('pointerdown', (event) => {
+                if (event.target.closest('.osm-marker, .osm-zoom, .osm-attribution')) return;
+                this.drag = {
+                    id: event.pointerId,
+                    x: event.clientX,
+                    y: event.clientY,
+                    moved: false,
+                    centerPoint: project(this.center.lat, this.center.lng, this.zoom),
+                };
+                this.container.setPointerCapture(event.pointerId);
+                this.container.classList.add('is-dragging');
+            });
+
+            this.container.addEventListener('pointermove', (event) => {
+                if (!this.drag || this.drag.id !== event.pointerId) return;
+                const dx = event.clientX - this.drag.x;
+                const dy = event.clientY - this.drag.y;
+                if (Math.abs(dx) + Math.abs(dy) > 4) this.drag.moved = true;
+                const next = unproject(this.drag.centerPoint.x - dx, this.drag.centerPoint.y - dy, this.zoom);
+                this.center = { lat: clamp(next.lat, -85, 85), lng: next.lng };
+                this.render();
+            });
+
+            this.container.addEventListener('pointerup', (event) => {
+                if (!this.drag || this.drag.id !== event.pointerId) return;
+                const wasClick = !this.drag.moved;
+                this.container.releasePointerCapture(event.pointerId);
+                this.container.classList.remove('is-dragging');
+                this.drag = null;
+                if (wasClick) {
+                    const latlng = this.eventToLatLng(event);
+                    this.clickHandlers.forEach((handler) => handler({ latlng }));
+                }
+            });
+        }
+
+        eventToLatLng(event) {
+            const rect = this.container.getBoundingClientRect();
+            const centerPoint = project(this.center.lat, this.center.lng, this.zoom);
+            const x = centerPoint.x + event.clientX - rect.left - rect.width / 2;
+            const y = centerPoint.y + event.clientY - rect.top - rect.height / 2;
+            return unproject(x, y, this.zoom);
+        }
+
+        setZoom(zoom) {
+            this.zoom = clamp(zoom, 2, 19);
+            this.render();
+        }
+
+        setView(latlng, zoom = this.zoom) {
+            this.center = { lat: Number(latlng[0]), lng: Number(latlng[1]) };
+            this.zoom = clamp(zoom, 2, 19);
+            this.render();
+        }
+
+        fitBounds(bounds, options = {}) {
+            if (!bounds.length) return;
+            const lats = bounds.map((item) => item[0]);
+            const lngs = bounds.map((item) => item[1]);
+            const center = [(Math.min(...lats) + Math.max(...lats)) / 2, (Math.min(...lngs) + Math.max(...lngs)) / 2];
+            let zoom = options.maxZoom ?? 14;
+            const rect = this.container.getBoundingClientRect();
+            for (let candidate = zoom; candidate >= 2; candidate--) {
+                const points = bounds.map((item) => project(item[0], item[1], candidate));
+                const width = Math.max(...points.map((point) => point.x)) - Math.min(...points.map((point) => point.x));
+                const height = Math.max(...points.map((point) => point.y)) - Math.min(...points.map((point) => point.y));
+                if (width <= rect.width - 56 && height <= rect.height - 56) {
+                    zoom = candidate;
+                    break;
+                }
+            }
+            this.setView(center, zoom);
+        }
+
+        on(eventName, handler) {
+            if (eventName === 'click') this.clickHandlers.push(handler);
+        }
+
+        clearMarkers() {
+            this.markers = [];
+            this.markerLayer.innerHTML = '';
+        }
+
+        addMarker(latlng, options = {}) {
+            const marker = document.createElement(options.href ? 'a' : 'button');
+            marker.className = 'osm-marker';
+            marker.type = options.href ? undefined : 'button';
+            if (options.href) marker.href = options.href;
+            marker.textContent = options.icon || '🌳';
+            marker.title = options.title || '';
+            if (options.popup) marker.dataset.popup = options.popup;
+            this.markerLayer.append(marker);
+            const entry = { marker, lat: Number(latlng[0]), lng: Number(latlng[1]), draggable: Boolean(options.draggable), onDragEnd: options.onDragEnd };
+            this.markers.push(entry);
+
+            if (options.popup) {
+                marker.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    this.container.querySelectorAll('.osm-popup').forEach((popup) => popup.remove());
+                    const popup = document.createElement('div');
+                    popup.className = 'osm-popup';
+                    popup.innerHTML = options.popup;
+                    marker.append(popup);
+                });
+            }
+
+            if (entry.draggable) this.bindMarkerDrag(entry);
+            this.positionMarker(entry);
+            return entry;
+        }
+
+        bindMarkerDrag(entry) {
+            entry.marker.addEventListener('pointerdown', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                entry.drag = true;
+                entry.marker.setPointerCapture(event.pointerId);
+                entry.marker.classList.add('is-dragging');
+            });
+            entry.marker.addEventListener('pointermove', (event) => {
+                if (!entry.drag) return;
+                const latlng = this.eventToLatLng(event);
+                entry.lat = latlng.lat;
+                entry.lng = latlng.lng;
+                this.positionMarker(entry);
+            });
+            entry.marker.addEventListener('pointerup', (event) => {
+                if (!entry.drag) return;
+                entry.drag = false;
+                entry.marker.releasePointerCapture(event.pointerId);
+                entry.marker.classList.remove('is-dragging');
+                entry.onDragEnd?.({ lat: entry.lat, lng: entry.lng });
+            });
+        }
+
+        positionMarker(entry) {
+            const rect = this.container.getBoundingClientRect();
+            const centerPoint = project(this.center.lat, this.center.lng, this.zoom);
+            const point = project(entry.lat, entry.lng, this.zoom);
+            entry.marker.style.left = `${rect.width / 2 + point.x - centerPoint.x}px`;
+            entry.marker.style.top = `${rect.height / 2 + point.y - centerPoint.y}px`;
+        }
+
+        renderTiles() {
+            const rect = this.container.getBoundingClientRect();
+            const centerPoint = project(this.center.lat, this.center.lng, this.zoom);
+            const startX = Math.floor((centerPoint.x - rect.width / 2) / tileSize);
+            const endX = Math.floor((centerPoint.x + rect.width / 2) / tileSize);
+            const startY = Math.floor((centerPoint.y - rect.height / 2) / tileSize);
+            const endY = Math.floor((centerPoint.y + rect.height / 2) / tileSize);
+            const maxTile = 2 ** this.zoom;
+            const tiles = [];
+
+            for (let x = startX; x <= endX; x++) {
+                for (let y = startY; y <= endY; y++) {
+                    if (y < 0 || y >= maxTile) continue;
+                    const wrappedX = ((x % maxTile) + maxTile) % maxTile;
+                    const left = x * tileSize - centerPoint.x + rect.width / 2;
+                    const top = y * tileSize - centerPoint.y + rect.height / 2;
+                    tiles.push(`<img src="${tileUrl(wrappedX, y, this.zoom)}" alt="" draggable="false" style="left:${left}px;top:${top}px;">`);
+                }
+            }
+            this.tileLayer.innerHTML = tiles.join('');
+        }
+
+        render() {
+            this.renderTiles();
+            this.markers.forEach((marker) => this.positionMarker(marker));
+        }
+    }
 
     const apiFetch = async (path, options = {}) => {
         const { headers: optionHeaders = {}, ...fetchOptions } = options;
@@ -28,8 +245,6 @@
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     }[char]));
-
-    const hasLeaflet = () => Boolean(window.L);
 
     const getCoordinateInputs = (container) => {
         const scope = container.closest('form') || container.parentElement || document;
@@ -60,31 +275,27 @@
         if (inputs.lng) inputs.lng.value = Number(lng).toFixed(7);
 
         if (!state.marker) {
-            state.marker = window.L.marker([lat, lng], { draggable: true }).addTo(state.map);
-            state.marker.on('dragend', () => {
-                const position = state.marker.getLatLng();
-                setCoordinateMarker(container, position.lat, position.lng, state.map.getZoom());
+            state.marker = state.map.addMarker([lat, lng], {
+                icon: '📍',
+                draggable: true,
+                title: 'Farm marker',
+                onDragEnd: (position) => setCoordinateMarker(container, position.lat, position.lng, state.map.zoom),
             });
         } else {
-            state.marker.setLatLng([lat, lng]);
+            state.marker.lat = Number(lat);
+            state.marker.lng = Number(lng);
+            state.map.positionMarker(state.marker);
         }
         state.map.setView([lat, lng], zoom);
     };
 
     const initCoordinateMaps = () => {
-        if (!hasLeaflet()) return;
-
         document.querySelectorAll('[data-coordinate-map]').forEach((container) => {
             if (coordinateMaps.has(container)) return;
 
-            const map = window.L.map(container).setView(readLatLng(container), 6);
-            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap contributors',
-            }).addTo(map);
-
+            const map = new SimpleOsmMap(container, { center: readLatLng(container), zoom: 6 });
             coordinateMaps.set(container, { map, marker: null });
-            map.on('click', (event) => setCoordinateMarker(container, event.latlng.lat, event.latlng.lng, map.getZoom()));
+            map.on('click', (event) => setCoordinateMarker(container, event.latlng.lat, event.latlng.lng, map.zoom));
 
             const [lat, lng] = readLatLng(container);
             const inputs = getCoordinateInputs(container);
@@ -95,7 +306,7 @@
     };
 
     const refreshCoordinateMaps = () => {
-        coordinateMaps.forEach(({ map }) => setTimeout(() => map.invalidateSize(), 80));
+        coordinateMaps.forEach(({ map }) => setTimeout(() => map.render(), 80));
     };
 
     const bindCoordinateButtons = () => {
@@ -135,37 +346,34 @@
 
         if (!mappedTrees.length) {
             slot.innerHTML = '<div class="map-placeholder">◎<small>No coordinates yet</small></div>';
+            adoptableMap = null;
             return;
         }
 
-        if (!slot.querySelector('.leaflet-map')) {
-            slot.innerHTML = '<div class="leaflet-map" data-leaflet-adoptable-map></div><p class="map-note">Pins use tree coordinates when available, otherwise farm coordinates. Zoom and drag the OpenStreetMap view.</p>';
-            adoptableLeafletMap = window.L.map(slot.querySelector('[data-leaflet-adoptable-map]'));
-            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap contributors',
-            }).addTo(adoptableLeafletMap);
-            adoptableMarkers = window.L.layerGroup().addTo(adoptableLeafletMap);
+        if (!slot.querySelector('[data-osm-adoptable-map]')) {
+            slot.innerHTML = '<div class="leaflet-map" data-osm-adoptable-map></div><p class="map-note">Pins use tree coordinates when available, otherwise farm coordinates. Zoom and drag the OpenStreetMap view.</p>';
+            adoptableMap = new SimpleOsmMap(slot.querySelector('[data-osm-adoptable-map]'), { center: defaultLatLng(), zoom: 6 });
         }
 
-        adoptableMarkers.clearLayers();
+        adoptableMap.clearMarkers();
         const bounds = [];
         mappedTrees.forEach((tree) => {
             const lat = Number(tree.map_latitude);
             const lng = Number(tree.map_longitude);
             if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
             bounds.push([lat, lng]);
-            window.L.marker([lat, lng], { title: `${tree.species} · ${tree.farm_name}` })
-                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">View tree</a>`)
-                .addTo(adoptableMarkers);
+            adoptableMap.addMarker([lat, lng], {
+                title: `${tree.species} · ${tree.farm_name}`,
+                popup: `<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">View tree</a>`,
+            });
         });
 
         if (bounds.length === 1) {
-            adoptableLeafletMap.setView(bounds[0], 13);
+            adoptableMap.setView(bounds[0], 13);
         } else {
-            adoptableLeafletMap.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
+            adoptableMap.fitBounds(bounds, { maxZoom: 14 });
         }
-        setTimeout(() => adoptableLeafletMap.invalidateSize(), 80);
+        setTimeout(() => adoptableMap.render(), 80);
     };
 
     const renderAdoptableTrees = (trees) => {
