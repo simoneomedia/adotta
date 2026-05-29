@@ -6,6 +6,12 @@ if (!defined('ABSPATH')) {
 add_action('rest_api_init', 'agri_saas_register_api_routes');
 function agri_saas_register_api_routes(): void
 {
+    register_rest_route('agri-saas/v1', '/register', [
+        'methods' => WP_REST_Server::CREATABLE,
+        'callback' => 'agri_saas_api_register_user',
+        'permission_callback' => '__return_true',
+    ]);
+
     register_rest_route('agri-saas/v1', '/dashboard/client', [
         'methods' => WP_REST_Server::READABLE,
         'callback' => 'agri_saas_api_client_dashboard',
@@ -56,6 +62,12 @@ function agri_saas_register_api_routes(): void
         'args' => ['id' => ['sanitize_callback' => 'absint']],
     ]);
 
+    register_rest_route('agri-saas/v1', '/media/photo', [
+        'methods' => WP_REST_Server::CREATABLE,
+        'callback' => 'agri_saas_api_upload_photo',
+        'permission_callback' => 'agri_saas_can_manage_farms',
+    ]);
+
     register_rest_route('agri-saas/v1', '/updates', [
         [
             'methods' => WP_REST_Server::READABLE,
@@ -67,6 +79,107 @@ function agri_saas_register_api_routes(): void
             'callback' => 'agri_saas_api_create_update',
             'permission_callback' => 'agri_saas_can_manage_farms',
         ],
+    ]);
+}
+
+
+function agri_saas_sanitize_coordinate(mixed $value, float $min, float $max): float|null
+{
+    if ($value === null || $value === '') {
+        return null;
+    }
+
+    if (!is_numeric($value)) {
+        return null;
+    }
+
+    $coordinate = (float) $value;
+    if ($coordinate < $min || $coordinate > $max) {
+        return null;
+    }
+
+    return $coordinate;
+}
+
+function agri_saas_api_register_user(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    if (is_user_logged_in()) {
+        return new WP_Error('agri_saas_already_logged_in', __('You are already registered and logged in.', 'agri-saas'), ['status' => 400]);
+    }
+
+    $account_type = sanitize_key($request->get_param('account_type'));
+    if (!in_array($account_type, ['client', 'farm'], true)) {
+        return new WP_Error('agri_saas_registration_type', __('Choose client or farm registration.', 'agri-saas'), ['status' => 400]);
+    }
+
+    $email = sanitize_email($request->get_param('email'));
+    $password = (string) $request->get_param('password');
+    $display_name = sanitize_text_field($request->get_param('display_name'));
+
+    if (!$email || !is_email($email) || strlen($password) < 8 || !$display_name) {
+        return new WP_Error('agri_saas_registration_required', __('Name, valid email, and an 8+ character password are required.', 'agri-saas'), ['status' => 400]);
+    }
+
+    if (email_exists($email)) {
+        return new WP_Error('agri_saas_registration_email_exists', __('An account with this email already exists.', 'agri-saas'), ['status' => 409]);
+    }
+
+    $username_base = sanitize_user(current(explode('@', $email)), true) ?: 'agri_user';
+    $username = $username_base;
+    $suffix = 1;
+    while (username_exists($username)) {
+        $username = $username_base . $suffix;
+        $suffix++;
+    }
+
+    $user_id = wp_insert_user([
+        'user_login' => $username,
+        'user_email' => $email,
+        'user_pass' => $password,
+        'display_name' => $display_name,
+        'role' => $account_type === 'farm' ? 'farm_manager' : 'client',
+    ]);
+
+    if (is_wp_error($user_id)) {
+        return $user_id;
+    }
+
+    if ($account_type === 'farm') {
+        global $wpdb;
+        $tables = agri_saas_tables();
+        $farm_name = sanitize_text_field($request->get_param('farm_name'));
+        $location = sanitize_text_field($request->get_param('location'));
+
+        if (!$farm_name || !$location) {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+            wp_delete_user((int) $user_id);
+            return new WP_Error('agri_saas_registration_farm_required', __('Farm name and location are required.', 'agri-saas'), ['status' => 400]);
+        }
+
+        $inserted = $wpdb->insert($tables['farms'], [
+            'owner_user_id' => (int) $user_id,
+            'name' => $farm_name,
+            'location' => $location,
+            'acreage' => (float) $request->get_param('acreage'),
+            'crop_focus' => sanitize_text_field($request->get_param('crop_focus')),
+            'health_score' => 0,
+            'latitude' => agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90),
+            'longitude' => agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180),
+        ], ['%d', '%s', '%s', '%f', '%s', '%d', '%f', '%f']);
+
+        if (!$inserted) {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+            wp_delete_user((int) $user_id);
+            return new WP_Error('agri_saas_registration_farm_failed', __('Unable to create the farm profile.', 'agri-saas'), ['status' => 500]);
+        }
+    }
+
+    wp_set_current_user((int) $user_id);
+    wp_set_auth_cookie((int) $user_id, true);
+
+    return rest_ensure_response([
+        'user_id' => (int) $user_id,
+        'redirect' => $account_type === 'farm' ? home_url('/farm-dashboard/') : home_url('/dashboard/'),
     ]);
 }
 
@@ -312,8 +425,8 @@ function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|W
         return new WP_Error('agri_saas_farm_required_fields', __('Farm name and location are required.', 'agri-saas'), ['status' => 400]);
     }
 
-    $latitude = $request->get_param('latitude');
-    $longitude = $request->get_param('longitude');
+    $latitude = agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90);
+    $longitude = agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180);
 
     $inserted = $wpdb->insert($tables['farms'], [
         'owner_user_id' => get_current_user_id(),
@@ -322,8 +435,8 @@ function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|W
         'acreage' => (float) $request->get_param('acreage'),
         'crop_focus' => sanitize_text_field($request->get_param('crop_focus')),
         'health_score' => min(100, max(0, absint($request->get_param('health_score')))),
-        'latitude' => $latitude !== null && $latitude !== '' ? (float) $latitude : null,
-        'longitude' => $longitude !== null && $longitude !== '' ? (float) $longitude : null,
+        'latitude' => $latitude,
+        'longitude' => $longitude,
     ], ['%d', '%s', '%s', '%f', '%s', '%d', '%f', '%f']);
 
     if (!$inserted) {
@@ -360,16 +473,16 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
         $status = 'available';
     }
 
-    $latitude = $request->get_param('latitude');
-    $longitude = $request->get_param('longitude');
+    $latitude = agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90);
+    $longitude = agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180);
     $planted_at = sanitize_text_field($request->get_param('planted_at'));
 
     $inserted = $wpdb->insert($tables['trees'], [
         'farm_id' => $farm_id,
         'species' => $species,
         'code' => $code,
-        'latitude' => $latitude !== null && $latitude !== '' ? (float) $latitude : null,
-        'longitude' => $longitude !== null && $longitude !== '' ? (float) $longitude : null,
+        'latitude' => $latitude,
+        'longitude' => $longitude,
         'status' => $status,
         'planted_at' => $planted_at ?: null,
         'carbon_estimate' => (float) $request->get_param('carbon_estimate'),
@@ -406,6 +519,93 @@ function agri_saas_api_tree_detail(WP_REST_Request $request): WP_REST_Response|W
     ), ARRAY_A);
 
     return rest_ensure_response(['tree' => $tree, 'updates' => $updates ?: []]);
+}
+
+
+function agri_saas_api_upload_photo(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    $files = $request->get_file_params();
+    if (empty($files['photo']) || !empty($files['photo']['error'])) {
+        return new WP_Error('agri_saas_photo_required', __('Choose a photo to upload.', 'agri-saas'), ['status' => 400]);
+    }
+
+    $file = $files['photo'];
+    $mime = wp_check_filetype_and_ext($file['tmp_name'], $file['name']);
+    if (empty($mime['type']) || !str_starts_with($mime['type'], 'image/')) {
+        return new WP_Error('agri_saas_photo_type', __('Only image uploads are supported.', 'agri-saas'), ['status' => 400]);
+    }
+
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/media.php';
+
+    $optimized = agri_saas_optimize_uploaded_photo($file['tmp_name']);
+    if (is_wp_error($optimized)) {
+        return $optimized;
+    }
+
+    $sideload = [
+        'name' => sanitize_file_name(pathinfo($file['name'], PATHINFO_FILENAME) . '-optimized.jpg'),
+        'type' => 'image/jpeg',
+        'tmp_name' => $optimized,
+        'error' => 0,
+        'size' => filesize($optimized),
+    ];
+
+    $attachment_id = media_handle_sideload($sideload, 0, __('Optimized farm photo', 'agri-saas'));
+    if (is_wp_error($attachment_id)) {
+        @unlink($optimized);
+        return $attachment_id;
+    }
+
+    return rest_ensure_response([
+        'id' => (int) $attachment_id,
+        'url' => wp_get_attachment_url($attachment_id),
+        'size' => (int) filesize(get_attached_file($attachment_id)),
+    ]);
+}
+
+function agri_saas_optimize_uploaded_photo(string $tmp_name): string|WP_Error
+{
+    $max_bytes = 100 * 1024;
+    $max_dimension = 1600;
+    $quality = 82;
+
+    while ($max_dimension >= 480) {
+        $editor = wp_get_image_editor($tmp_name);
+        if (is_wp_error($editor)) {
+            return $editor;
+        }
+
+        $size = $editor->get_size();
+        if (!empty($size['width']) && !empty($size['height']) && max($size['width'], $size['height']) > $max_dimension) {
+            $editor->resize($max_dimension, $max_dimension, false);
+        }
+
+        for ($current_quality = $quality; $current_quality >= 42; $current_quality -= 10) {
+            $editor->set_quality($current_quality);
+            $target = wp_tempnam('agri-saas-photo.jpg');
+            if (!$target) {
+                return new WP_Error('agri_saas_photo_temp', __('Unable to create a temporary optimized photo.', 'agri-saas'), ['status' => 500]);
+            }
+
+            $saved = $editor->save($target, 'image/jpeg');
+            if (is_wp_error($saved)) {
+                @unlink($target);
+                return $saved;
+            }
+
+            if (filesize($target) <= $max_bytes) {
+                return $target;
+            }
+
+            @unlink($target);
+        }
+
+        $max_dimension -= 240;
+    }
+
+    return new WP_Error('agri_saas_photo_too_large', __('The image could not be optimized under 100 KB. Try a smaller or less detailed photo.', 'agri-saas'), ['status' => 413]);
 }
 
 function agri_saas_api_updates(): WP_REST_Response
