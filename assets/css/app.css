@@ -237,3 +237,157 @@ textarea { min-height: 120px; resize: vertical; }
 @media (max-width: 640px) {
     .row-actions { align-items: flex-start; }
 }
+
+.registration-shell {
+    align-items: stretch;
+    gap: 24px;
+    grid-template-columns: minmax(280px, .85fr) minmax(320px, 1.15fr);
+    place-items: stretch;
+}
+.registration-hero {
+    align-self: start;
+    max-width: none;
+}
+.registration-grid {
+    display: grid;
+    gap: 18px;
+}
+.registration-panel h2 {
+    margin-top: 0;
+}
+.registration-panel form,
+.form-grid-2 {
+    display: grid;
+    gap: 14px;
+}
+.form-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.form-status {
+    color: var(--brand-dark);
+    font-weight: 800;
+    margin: 0;
+}
+.coordinate-map,
+.leaflet-map {
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    min-height: 320px;
+    overflow: hidden;
+    width: 100%;
+}
+.coordinate-map .leaflet-control-attribution,
+.leaflet-map .leaflet-control-attribution {
+    font-size: .7rem;
+}
+.catalog-map {
+    padding: 0;
+}
+.catalog-map .map-note {
+    padding: 0 14px 14px;
+}
+.catalog-map .leaflet-map {
+    border: 0;
+    border-radius: 22px 22px 0 0;
+    min-height: 320px;
+}
+.update-media {
+    border-radius: 16px;
+    display: block;
+    height: auto;
+    margin: 14px 0;
+    max-width: min(100%, 560px);
+}
+
+@media (max-width: 980px) {
+    .registration-shell,
+    .form-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+.osm-map {
+    background: #d7e6ef;
+    cursor: grab;
+    position: relative;
+    touch-action: none;
+    user-select: none;
+}
+.osm-map.is-dragging {
+    cursor: grabbing;
+}
+.osm-tile-layer,
+.osm-marker-layer {
+    inset: 0;
+    overflow: hidden;
+    position: absolute;
+}
+.osm-tile-layer img {
+    height: 256px;
+    position: absolute;
+    width: 256px;
+}
+.osm-marker {
+    background: #fff;
+    border: 2px solid var(--brand);
+    border-radius: 999px;
+    box-shadow: 0 8px 18px rgba(23, 49, 31, .28);
+    cursor: pointer;
+    font-size: 1.15rem;
+    line-height: 1;
+    min-height: 34px;
+    min-width: 34px;
+    padding: 5px;
+    position: absolute;
+    transform: translate(-50%, -100%);
+    z-index: 2;
+}
+.osm-marker.is-dragging {
+    cursor: grabbing;
+    z-index: 4;
+}
+.osm-popup {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    bottom: calc(100% + 10px);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    font-size: .85rem;
+    left: 50%;
+    line-height: 1.4;
+    min-width: 180px;
+    padding: 10px;
+    position: absolute;
+    transform: translateX(-50%);
+    white-space: normal;
+}
+.osm-zoom {
+    display: grid;
+    gap: 4px;
+    left: 12px;
+    position: absolute;
+    top: 12px;
+    z-index: 3;
+}
+.osm-zoom button {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(23, 49, 31, .16);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 900;
+    height: 34px;
+    width: 34px;
+}
+.osm-attribution {
+    background: rgba(255, 255, 255, .86);
+    bottom: 0;
+    color: var(--muted);
+    font-size: .7rem;
+    padding: 3px 6px;
+    position: absolute;
+    right: 0;
+    z-index: 3;
+}

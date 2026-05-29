@@ -58,8 +58,12 @@ agri_saas_render_shell(__('Farm Dashboard', 'agri-saas'), function (): void {
                 <label><?php esc_html_e('Location', 'agri-saas'); ?><input name="location" required></label>
                 <label><?php esc_html_e('Acreage', 'agri-saas'); ?><input name="acreage" type="number" min="0" step="0.01"></label>
                 <label><?php esc_html_e('Crop focus', 'agri-saas'); ?><input name="crop_focus"></label>
-                <label><?php esc_html_e('Latitude', 'agri-saas'); ?><input name="latitude" type="number" step="0.0000001"></label>
-                <label><?php esc_html_e('Longitude', 'agri-saas'); ?><input name="longitude" type="number" step="0.0000001"></label>
+                <div class="form-grid-2">
+                    <label><?php esc_html_e('Latitude', 'agri-saas'); ?><input name="latitude" type="number" step="0.0000001" min="-90" max="90" data-marker-lat></label>
+                    <label><?php esc_html_e('Longitude', 'agri-saas'); ?><input name="longitude" type="number" step="0.0000001" min="-180" max="180" data-marker-lng></label>
+                </div>
+                <button class="button ghost" type="button" data-set-marker><?php esc_html_e('Imposta marcatore', 'agri-saas'); ?></button>
+                <div class="coordinate-map" data-coordinate-map aria-label="<?php esc_attr_e('Farm coordinate map', 'agri-saas'); ?>"></div>
                 <label><?php esc_html_e('Health score', 'agri-saas'); ?><input name="health_score" type="number" min="0" max="100"></label>
                 <button class="button" type="submit"><?php esc_html_e('Save farm', 'agri-saas'); ?></button>
             </form>
@@ -77,8 +81,12 @@ agri_saas_render_shell(__('Farm Dashboard', 'agri-saas'), function (): void {
                     </select>
                 </label>
                 <label><?php esc_html_e('Planted at', 'agri-saas'); ?><input name="planted_at" type="date"></label>
-                <label><?php esc_html_e('Latitude', 'agri-saas'); ?><input name="latitude" type="number" step="0.0000001"></label>
-                <label><?php esc_html_e('Longitude', 'agri-saas'); ?><input name="longitude" type="number" step="0.0000001"></label>
+                <div class="form-grid-2">
+                    <label><?php esc_html_e('Latitude', 'agri-saas'); ?><input name="latitude" type="number" step="0.0000001" min="-90" max="90" data-marker-lat></label>
+                    <label><?php esc_html_e('Longitude', 'agri-saas'); ?><input name="longitude" type="number" step="0.0000001" min="-180" max="180" data-marker-lng></label>
+                </div>
+                <button class="button ghost" type="button" data-set-marker><?php esc_html_e('Imposta marcatore', 'agri-saas'); ?></button>
+                <div class="coordinate-map" data-coordinate-map aria-label="<?php esc_attr_e('Farm coordinate map', 'agri-saas'); ?>"></div>
                 <label><?php esc_html_e('Carbon estimate (kg)', 'agri-saas'); ?><input name="carbon_estimate" type="number" min="0" step="0.01"></label>
                 <button class="button" type="submit"><?php esc_html_e('Publish tree', 'agri-saas'); ?></button>
             </form>
@@ -88,6 +96,9 @@ agri_saas_render_shell(__('Farm Dashboard', 'agri-saas'), function (): void {
             <form data-agri-update-form>
                 <label><?php esc_html_e('Title', 'agri-saas'); ?><input name="title" required></label>
                 <label><?php esc_html_e('Message', 'agri-saas'); ?><textarea name="body" required></textarea></label>
+                <label><?php esc_html_e('Photo (optimized to max 100 KB)', 'agri-saas'); ?><input name="photo" type="file" accept="image/*" data-photo-input></label>
+                <input name="media_url" type="hidden" data-media-url>
+                <p class="map-note" data-upload-status><?php esc_html_e('Photos are compressed locally on the server and saved in the WordPress media library; no paid CDN is required.', 'agri-saas'); ?></p>
                 <label><?php esc_html_e('Farm ID', 'agri-saas'); ?><input name="farm_id" type="number" min="1"></label>
                 <label><?php esc_html_e('Tree ID', 'agri-saas'); ?><input name="tree_id" type="number" min="1"></label>
                 <button class="button" type="submit"><?php esc_html_e('Publish update', 'agri-saas'); ?></button>
