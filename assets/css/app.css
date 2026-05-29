@@ -119,7 +119,8 @@ a { color: inherit; text-decoration: none; }
 }
 .button:hover { background: var(--brand-dark); }
 .button.ghost { background: var(--surface-soft); color: var(--brand-dark); }
-.card-list, .timeline { display: grid; gap: 14px; }
+.card-list { display: grid; gap: 14px; }
+.timeline { display: grid; gap: 22px; }
 .tree-row, .farm-row, .timeline-item {
     background: var(--surface-soft);
     border: 1px solid var(--border);
@@ -454,4 +455,165 @@ textarea { min-height: 120px; resize: vertical; }
     .farm-profile-shell { padding: 20px; }
     .farm-hero { flex-direction: column; }
     .photo-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Post stile Instagram ────────────────────────────────────────────────── */
+.insta-post {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(23, 49, 31, .06);
+    transition: box-shadow .2s;
+}
+.insta-post:hover {
+    box-shadow: 0 6px 24px rgba(23, 49, 31, .12);
+}
+.insta-post-header {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+}
+.insta-avatar {
+    align-items: center;
+    background: var(--surface-soft);
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    display: flex;
+    flex-shrink: 0;
+    font-size: 1.3rem;
+    height: 44px;
+    justify-content: center;
+    width: 44px;
+}
+.insta-post-meta {
+    flex: 1;
+    min-width: 0;
+}
+.insta-author {
+    color: var(--text);
+    display: block;
+    font-size: .95rem;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.insta-timestamp {
+    color: var(--muted);
+    font-size: .78rem;
+}
+.insta-visibility {
+    border-radius: 999px;
+    flex-shrink: 0;
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    padding: 4px 10px;
+    text-transform: uppercase;
+}
+.insta-vis-public       { background: #e8f5e9; color: #1b5e20; }
+.insta-vis-followers    { background: #e3f2fd; color: #0d47a1; }
+.insta-vis-adopters     { background: #fff3e0; color: #e65100; }
+.insta-vis-tree_adopter { background: #f3e5f5; color: #6a1b9a; }
+.insta-media {
+    aspect-ratio: 4 / 3;
+    background: var(--surface-soft);
+    overflow: hidden;
+    width: 100%;
+}
+.insta-media img {
+    display: block;
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+}
+.insta-body {
+    padding: 14px 16px 10px;
+}
+.insta-title {
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 8px;
+}
+.insta-caption {
+    color: var(--muted);
+    font-size: .9rem;
+    line-height: 1.55;
+    margin: 0;
+}
+.insta-footer {
+    border-top: 1px solid var(--border);
+    padding: 10px 16px 14px;
+}
+
+/* ── Barra di condivisione ───────────────────────────────────────────────── */
+.share-bar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.share-btn {
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 700;
+    gap: 5px;
+    line-height: 1;
+    padding: 7px 13px;
+    text-decoration: none;
+    transition: background .15s, border-color .15s, color .15s;
+}
+.share-btn svg { flex-shrink: 0; }
+.share-btn:hover  { background: var(--surface-soft); border-color: var(--brand); color: var(--brand-dark); }
+.share-wa  { background: #f0faf3; border-color: #b8e6c8; color: #1a7a3c; }
+.share-wa:hover  { background: #d4f0e1; border-color: #1a7a3c; color: #0e5228; }
+.share-fb  { background: #eef3ff; border-color: #c4d3fa; color: #1877f2; }
+.share-fb:hover  { background: #dce6ff; border-color: #1877f2; }
+.share-x   { background: #fafafa; border-color: #ddd; color: #111; }
+.share-x:hover   { background: #f0f0f0; border-color: #111; }
+.share-copy { color: var(--muted); }
+
+/* ── Sezione condivisione albero / azienda ──────────────────────────────── */
+.share-section {
+    border-top: 1px solid var(--border);
+    margin-top: 20px;
+    padding-top: 16px;
+}
+.share-section .eyebrow { margin: 0 0 10px; }
+
+/* ── Farm hero con share ─────────────────────────────────────────────────── */
+.farm-hero-actions {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.farm-hero-actions [data-slot="farm-share"] { align-self: flex-end; }
+
+/* ── Leaflet z-index nelle shell dell'app ───────────────────────────────── */
+.app-shell .leaflet-pane,
+.app-shell .leaflet-control,
+.farm-profile-shell .leaflet-pane,
+.farm-profile-shell .leaflet-control { z-index: 10; }
+.app-shell .leaflet-top,
+.app-shell .leaflet-bottom,
+.farm-profile-shell .leaflet-top,
+.farm-profile-shell .leaflet-bottom { z-index: 11; }
+
+.leaflet-tree-icon { background: none; border: none; }
+
+@media (max-width: 640px) {
+    .share-bar { gap: 6px; }
+    .share-btn { font-size: .74rem; padding: 6px 10px; }
+    .farm-hero-actions { align-items: flex-start; }
 }
