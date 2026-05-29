@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) {
 }
 
 define('AGRI_SAAS_VERSION', '1.0.0');
+define('AGRI_SAAS_THEME_SLUG', basename(get_template_directory()));
 define('AGRI_SAAS_PATH', get_template_directory());
 define('AGRI_SAAS_URI', get_template_directory_uri());
 
@@ -20,3 +21,4 @@ require_once AGRI_SAAS_PATH . '/inc/database.php';
 require_once AGRI_SAAS_PATH . '/inc/routes.php';
 require_once AGRI_SAAS_PATH . '/inc/api.php';
 require_once AGRI_SAAS_PATH . '/inc/auth.php';
+require_once AGRI_SAAS_PATH . '/inc/updater.php';
