@@ -5,6 +5,36 @@ if (!defined('ABSPATH')) {
 require_once AGRI_SAAS_PATH . '/components/cards.php';
 
 $farm_id = absint(get_query_var('farm_id'));
+
+add_action('wp_head', function () use ($farm_id): void {
+    if (!$farm_id) return;
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $farm = $wpdb->get_row($wpdb->prepare(
+        "SELECT name, description, location, crop_focus FROM {$tables['farms']} WHERE id = %d",
+        $farm_id
+    ), ARRAY_A);
+    if (!$farm) return;
+    $title       = esc_attr($farm['name'] . ' — Adotta un albero');
+    $description = esc_attr(wp_trim_words($farm['description'] ?: $farm['location'] . ' · ' . $farm['crop_focus'], 25, '…'));
+    $url         = esc_url(home_url('/farms/' . $farm_id . '/'));
+    $image       = esc_url((string) $wpdb->get_var($wpdb->prepare(
+        "SELECT media_url FROM {$tables['updates']} WHERE farm_id = %d AND media_url != '' ORDER BY created_at DESC LIMIT 1",
+        $farm_id
+    )));
+    ?>
+    <meta property="og:type"        content="website">
+    <meta property="og:title"       content="<?php echo $title; ?>">
+    <meta property="og:description" content="<?php echo $description; ?>">
+    <meta property="og:url"         content="<?php echo $url; ?>">
+    <?php if ($image) : ?><meta property="og:image" content="<?php echo $image; ?>"><?php endif; ?>
+    <meta name="twitter:card"        content="summary_large_image">
+    <meta name="twitter:title"       content="<?php echo $title; ?>">
+    <meta name="twitter:description" content="<?php echo $description; ?>">
+    <?php if ($image) : ?><meta name="twitter:image" content="<?php echo $image; ?>"><?php endif; ?>
+    <?php
+}, 5);
+
 get_header();
 ?>
 <main class="farm-profile-shell" data-agri-endpoint="/farms/<?php echo esc_attr((string) $farm_id); ?>/profile" data-render="farm-profile">

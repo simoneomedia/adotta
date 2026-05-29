@@ -5,6 +5,8 @@
     const coordinateMaps = new Map();
     let adoptableMap = null;
     let farmProfileMap = null;
+    let feedOffset = 0;
+    const FEED_LIMIT = 20;
 
     // ── SimpleOsmMap — usato solo per i selettori di coordinate nei form ────
     const tileSize = 256;
@@ -437,18 +439,48 @@
         const slot = root?.querySelector('[data-slot="adoptable-trees"]');
         if (!slot) return;
 
-        slot.innerHTML = trees.length ? trees.map((tree) => `
-            <article class="tree-row catalog-row">
-                <a href="${appUrl(`trees/${tree.id}/`)}">
-                    <strong>${escapeHtml(tree.species)}</strong><br>
-                    <small>${escapeHtml(treeMeta(tree))}</small><br>
-                    <small>${tree.map_latitude && tree.map_longitude ? `${escapeHtml(tree.map_latitude)}, ${escapeHtml(tree.map_longitude)} · coordinate ${escapeHtml(tree.coordinate_source)}` : 'Coordinate non ancora disponibili'}</small>
-                </a>
-                <div class="row-actions">
-                    <span class="badge">${escapeHtml(tree.code)}</span>
-                    <button class="button" type="button" data-request-adoption="${escapeHtml(tree.id)}" ${tree.request_status === 'pending' ? 'disabled' : ''}>${tree.request_status === 'pending' ? 'In attesa' : 'Richiedi adozione'}</button>
-                </div>
-            </article>`).join('') : '<div class="card empty-state">Nessun albero disponibile per l\'adozione al momento.</div>';
+        if (trees.length) {
+            slot.innerHTML = `<div class="catalog-search-wrap">
+                <input type="search" class="catalog-search-input" placeholder="Cerca specie, azienda, luogo…" data-tree-search aria-label="Cerca alberi">
+            </div>
+            <div class="catalog-rows">${trees.map((tree) => `
+                <article class="tree-row catalog-row">
+                    <a href="${appUrl(`trees/${tree.id}/`)}">
+                        <strong>${escapeHtml(tree.species)}</strong><br>
+                        <small>${escapeHtml(treeMeta(tree))}</small><br>
+                        <small>${tree.map_latitude && tree.map_longitude ? `${escapeHtml(tree.map_latitude)}, ${escapeHtml(tree.map_longitude)} · coordinate ${escapeHtml(tree.coordinate_source)}` : 'Coordinate non ancora disponibili'}</small>
+                    </a>
+                    <div class="row-actions">
+                        <span class="badge">${escapeHtml(tree.code)}</span>
+                        <button class="button" type="button" data-request-adoption="${escapeHtml(tree.id)}" ${tree.request_status === 'pending' ? 'disabled' : ''}>${tree.request_status === 'pending' ? 'In attesa' : 'Richiedi adozione'}</button>
+                    </div>
+                </article>`).join('')}</div>`;
+
+            const searchInput = slot.querySelector('[data-tree-search]');
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    const q = searchInput.value.toLowerCase().trim();
+                    slot.querySelectorAll('.catalog-row').forEach((row) => {
+                        row.hidden = Boolean(q && !row.textContent.toLowerCase().includes(q));
+                    });
+                    const visible = [...slot.querySelectorAll('.catalog-row:not([hidden])')].length;
+                    let noRes = slot.querySelector('.catalog-no-results');
+                    if (!visible && q) {
+                        if (!noRes) {
+                            noRes = document.createElement('p');
+                            noRes.className = 'catalog-no-results';
+                            noRes.textContent = 'Nessun albero corrisponde alla ricerca.';
+                            slot.querySelector('.catalog-rows')?.appendChild(noRes);
+                        }
+                    } else if (noRes) {
+                        noRes.remove();
+                    }
+                });
+            }
+        } else {
+            slot.innerHTML = '<div class="card empty-state">Nessun albero disponibile per l\'adozione al momento.</div>';
+        }
+
         renderAdoptableMap(trees);
     };
 
@@ -538,16 +570,16 @@
     };
 
     // ── Feed aggiornamenti stile Instagram ───────────────────────────────────
-    const renderUpdates = (updates) => {
+    const renderUpdates = (updates, append = false) => {
         const slot = root?.querySelector('[data-slot="updates"]');
         if (!slot) return;
 
-        if (!updates.length) {
+        if (!updates.length && !append) {
             slot.innerHTML = '<div class="card empty-state">Nessun aggiornamento pubblicato ancora.</div>';
             return;
         }
 
-        slot.innerHTML = updates.map((update) => {
+        const html = updates.map((update) => {
             const shareUrl = update.tree_id
                 ? appUrl(`trees/${update.tree_id}/`)
                 : (update.farm_id ? appUrl(`farms/${update.farm_id}/`) : window.location.href);
@@ -575,6 +607,91 @@
                     </footer>
                 </article>`;
         }).join('');
+
+        if (append) {
+            slot.insertAdjacentHTML('beforeend', html);
+        } else {
+            slot.innerHTML = html || '<div class="card empty-state">Nessun aggiornamento pubblicato ancora.</div>';
+        }
+    };
+
+    // ── Lightbox ─────────────────────────────────────────────────────────────
+    const initLightbox = () => {
+        const overlay = document.createElement('div');
+        overlay.className = 'lightbox-overlay';
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('role', 'dialog');
+        overlay.innerHTML = '<button class="lightbox-close" type="button" aria-label="Chiudi">✕</button><img class="lightbox-img" alt="">';
+        document.body.appendChild(overlay);
+
+        const closeLightbox = () => overlay.classList.remove('is-open');
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay || e.target.classList.contains('lightbox-close')) closeLightbox();
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+        document.addEventListener('click', (e) => {
+            const trigger = e.target.closest('.insta-media img, .photo-grid a');
+            if (!trigger) return;
+            e.preventDefault();
+            const img = trigger.tagName === 'IMG' ? trigger : trigger.querySelector('img');
+            if (!img) return;
+            overlay.querySelector('.lightbox-img').src = img.src;
+            overlay.querySelector('.lightbox-img').alt = img.alt;
+            overlay.classList.add('is-open');
+        });
+    };
+
+    // ── Adoption modal ────────────────────────────────────────────────────────
+    const createAdoptionModal = () => {
+        const modal = document.createElement('div');
+        modal.className = 'adoption-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.innerHTML = `<div class="adoption-modal-card">
+            <div class="adoption-modal-icon">🌱</div>
+            <h2>Richiesta inviata!</h2>
+            <p class="adoption-modal-body"></p>
+            <button class="button" type="button" data-close-adoption-modal>Ottimo!</button>
+        </div>`;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal || e.target.closest('[data-close-adoption-modal]')) modal.classList.remove('is-open');
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.classList.remove('is-open'); });
+        return modal;
+    };
+
+    let adoptionModal = null;
+    const showAdoptionModal = (species, farmInfo, code) => {
+        if (!adoptionModal) adoptionModal = createAdoptionModal();
+        adoptionModal.querySelector('.adoption-modal-body').innerHTML =
+            `Hai richiesto di adottare <strong>${escapeHtml(species || 'albero')}</strong>${code ? ` (${escapeHtml(code)})` : ''}${farmInfo ? `<br>presso <strong>${escapeHtml(farmInfo)}</strong>` : ''}.<br><br>La tua richiesta è in attesa di approvazione.`;
+        adoptionModal.classList.add('is-open');
+    };
+
+    // ── Validazione form ──────────────────────────────────────────────────────
+    const validateForm = (form) => {
+        let valid = true;
+        form.querySelectorAll('[required]').forEach((field) => {
+            let errorEl = field.parentElement?.querySelector('.field-error');
+            if (!errorEl) {
+                errorEl = document.createElement('span');
+                errorEl.className = 'field-error';
+                field.after(errorEl);
+            }
+            let msg = '';
+            if (!field.value.trim()) {
+                msg = 'Campo obbligatorio';
+            } else if (field.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value)) {
+                msg = 'Inserisci un\'email valida';
+            } else if (field.type === 'password' && field.value.length < 8) {
+                msg = 'Password di almeno 8 caratteri';
+            }
+            errorEl.textContent = msg;
+            field.classList.toggle('is-invalid', Boolean(msg));
+            if (msg) valid = false;
+        });
+        return valid;
     };
 
     // ── Mappa profilo azienda con cluster ────────────────────────────────────
@@ -671,7 +788,22 @@
         'client-dashboard': renderClientDashboard,
         'farm-dashboard': renderFarmDashboard,
         'tree-detail': renderTreeDetail,
-        'updates-feed': (data) => renderUpdates(data.updates || []),
+        'updates-feed': (data) => {
+            feedOffset = data.next_offset ?? FEED_LIMIT;
+            renderUpdates(data.updates || []);
+            const slot = root?.querySelector('[data-slot="updates"]');
+            if (!slot) return;
+            let loadMoreBtn = document.querySelector('[data-load-more-updates]');
+            if (loadMoreBtn) loadMoreBtn.remove();
+            if (data.has_more) {
+                loadMoreBtn = document.createElement('button');
+                loadMoreBtn.className = 'button ghost load-more-btn';
+                loadMoreBtn.type = 'button';
+                loadMoreBtn.dataset.loadMoreUpdates = '1';
+                loadMoreBtn.textContent = 'Carica altri aggiornamenti';
+                slot.after(loadMoreBtn);
+            }
+        },
         'farm-profile': renderFarmProfile,
     };
 
@@ -710,11 +842,39 @@
                 return;
             }
 
+            const loadMoreBtn = event.target.closest('[data-load-more-updates]');
+            if (loadMoreBtn) {
+                loadMoreBtn.disabled = true;
+                loadMoreBtn.textContent = 'Caricamento…';
+                try {
+                    const data = await apiFetch(`/updates?limit=${FEED_LIMIT}&offset=${feedOffset}`);
+                    feedOffset = data.next_offset ?? (feedOffset + FEED_LIMIT);
+                    renderUpdates(data.updates || [], true);
+                    loadMoreBtn.hidden = !data.has_more;
+                    loadMoreBtn.disabled = false;
+                    loadMoreBtn.textContent = 'Carica altri aggiornamenti';
+                } catch {
+                    loadMoreBtn.disabled = false;
+                    loadMoreBtn.textContent = 'Errore — Riprova';
+                }
+                return;
+            }
+
             const requestButton = event.target.closest('[data-request-adoption]');
             if (requestButton) {
                 requestButton.disabled = true;
-                await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: requestButton.dataset.requestAdoption }) });
+                try {
+                    await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: requestButton.dataset.requestAdoption }) });
+                } catch (err) {
+                    requestButton.disabled = false;
+                    return;
+                }
+                const row = requestButton.closest('.catalog-row');
+                const species = row?.querySelector('strong')?.textContent?.trim() || '';
+                const farmInfo = row?.querySelector('small')?.textContent?.split('·')[0]?.trim() || '';
+                const code = row?.querySelector('.badge')?.textContent?.trim() || '';
                 requestButton.textContent = 'In attesa';
+                showAdoptionModal(species, farmInfo, code);
                 loadAdoptableTrees();
                 return;
             }
@@ -744,6 +904,7 @@
         document.querySelector('[data-agri-farm-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
             const form = event.currentTarget;
+            if (!validateForm(form)) return;
             const payload = Object.fromEntries(new FormData(form).entries());
             await apiFetch('/farms', { method: 'POST', body: JSON.stringify(payload) });
             window.location.reload();
@@ -752,6 +913,7 @@
         document.querySelector('[data-agri-tree-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
             const form = event.currentTarget;
+            if (!validateForm(form)) return;
             const payload = Object.fromEntries(new FormData(form).entries());
             await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
             window.location.reload();
@@ -760,6 +922,7 @@
         document.querySelector('[data-agri-update-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
             const form = event.currentTarget;
+            if (!validateForm(form)) return;
             const fileInput = form.querySelector('[data-photo-input]');
             const status = form.querySelector('[data-upload-status]');
             const mediaUrl = form.querySelector('[data-media-url]');
@@ -801,6 +964,7 @@
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 const status = form.querySelector('[data-form-status]');
+                if (!validateForm(form)) { if (status) status.textContent = ''; return; }
                 if (status) status.textContent = 'Creazione account in corso…';
                 const payload = Object.fromEntries(new FormData(form).entries());
                 payload.account_type = form.dataset.registrationForm;
@@ -819,5 +983,6 @@
     bindRegistration();
     bindDashboardActions();
     initCoordinateMaps();
+    initLightbox();
     loadRoot();
 }());
