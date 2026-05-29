@@ -29,6 +29,69 @@
             <small>${escapeHtml(meta)}</small>
         </article>`;
 
+    const treeMeta = (tree) => [tree.farm_name, tree.location, tree.crop_focus].filter(Boolean).join(' · ');
+
+    const renderAdoptableMap = (trees) => {
+        const slot = root.querySelector('[data-slot="adoptable-map"]');
+        if (!slot) return;
+
+        const mappedTrees = trees.filter((tree) => tree.map_latitude && tree.map_longitude);
+        if (!mappedTrees.length) {
+            slot.innerHTML = '<div class="map-placeholder">◎<small>No coordinates yet</small></div>';
+            return;
+        }
+
+        const bounds = mappedTrees.reduce((memo, tree) => {
+            const lat = Number(tree.map_latitude);
+            const lng = Number(tree.map_longitude);
+            return {
+                minLat: Math.min(memo.minLat, lat),
+                maxLat: Math.max(memo.maxLat, lat),
+                minLng: Math.min(memo.minLng, lng),
+                maxLng: Math.max(memo.maxLng, lng),
+            };
+        }, { minLat: Infinity, maxLat: -Infinity, minLng: Infinity, maxLng: -Infinity });
+
+        const latSpan = bounds.maxLat - bounds.minLat || 1;
+        const lngSpan = bounds.maxLng - bounds.minLng || 1;
+        slot.innerHTML = `
+            <div class="mini-map">
+                ${mappedTrees.map((tree) => {
+                    const lat = Number(tree.map_latitude);
+                    const lng = Number(tree.map_longitude);
+                    const top = 90 - (((lat - bounds.minLat) / latSpan) * 80);
+                    const left = 10 + (((lng - bounds.minLng) / lngSpan) * 80);
+                    return `<a class="map-pin" style="left:${left}%;top:${top}%;" href="${appUrl(`trees/${tree.id}/`)}" title="${escapeHtml(tree.species)} · ${escapeHtml(tree.farm_name)}">🌳</a>`;
+                }).join('')}
+            </div>
+            <p class="map-note">Pins use tree coordinates when available, otherwise farm coordinates.</p>`;
+    };
+
+    const renderAdoptableTrees = (trees) => {
+        const slot = root.querySelector('[data-slot="adoptable-trees"]');
+        if (!slot) return;
+
+        slot.innerHTML = trees.length ? trees.map((tree) => `
+            <article class="tree-row catalog-row">
+                <a href="${appUrl(`trees/${tree.id}/`)}">
+                    <strong>${escapeHtml(tree.species)}</strong><br>
+                    <small>${escapeHtml(treeMeta(tree))}</small><br>
+                    <small>${tree.map_latitude && tree.map_longitude ? `${escapeHtml(tree.map_latitude)}, ${escapeHtml(tree.map_longitude)} · ${escapeHtml(tree.coordinate_source)} coordinates` : 'Coordinates pending'}</small>
+                </a>
+                <div class="row-actions">
+                    <span class="badge">${escapeHtml(tree.code)}</span>
+                    <button class="button" type="button" data-request-adoption="${escapeHtml(tree.id)}" ${tree.request_status === 'pending' ? 'disabled' : ''}>${tree.request_status === 'pending' ? 'Pending' : 'Request adoption'}</button>
+                </div>
+            </article>`).join('') : '<div class="card empty-state">No adoptable trees are available right now.</div>';
+        renderAdoptableMap(trees);
+    };
+
+    const loadAdoptableTrees = async () => {
+        if (!root.querySelector('[data-slot="adoptable-trees"]')) return;
+        const data = await apiFetch('/catalog/trees');
+        renderAdoptableTrees(data.trees || []);
+    };
+
     const renderClientDashboard = (data) => {
         root.querySelector('[data-slot="stats"]').innerHTML = [
             statCard('Adopted trees', data.stats.adoptedTrees, 'In your adoption portfolio'),
@@ -40,6 +103,7 @@
                 <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small></div>
                 <span class="badge">${escapeHtml(tree.code)}</span>
             </a>`).join('') : '<div class="card empty-state">No adopted trees yet.</div>';
+        loadAdoptableTrees().catch(() => root.querySelector('[data-slot="adoptable-trees"]')?.insertAdjacentHTML('beforeend', '<div class="card empty-state">Unable to load adoptable trees.</div>'));
     };
 
     const updateFarmOptions = (farms) => {
@@ -49,6 +113,23 @@
             `).join('') : '<option value="">Create a farm first</option>';
             select.disabled = !farms.length;
         });
+    };
+
+    const renderAdoptionRequests = (requests) => {
+        const slot = root.querySelector('[data-slot="adoption-requests"]');
+        if (!slot) return;
+
+        slot.innerHTML = requests.length ? requests.map((request) => `
+            <article class="tree-row request-row">
+                <div>
+                    <strong>${escapeHtml(request.species)} · ${escapeHtml(request.code)}</strong><br>
+                    <small>${escapeHtml(request.farm_name)} · requested by ${escapeHtml(request.adopter_name || request.adopter_email || `User #${request.adopter_user_id}`)} · ${escapeHtml(request.requested_at)}</small>
+                </div>
+                <div class="row-actions">
+                    <button class="button" type="button" data-adoption-decision="accept" data-request-id="${escapeHtml(request.id)}">Accept</button>
+                    <button class="button ghost" type="button" data-adoption-decision="reject" data-request-id="${escapeHtml(request.id)}">Reject</button>
+                </div>
+            </article>`).join('') : '<div class="card empty-state">No pending adoption requests.</div>';
     };
 
     const renderFarmDashboard = (data) => {
@@ -67,6 +148,7 @@
                 <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.planted_at || 'Planting date pending')}</small></div>
                 <span class="badge">${escapeHtml(tree.code)} · ${escapeHtml(tree.status)}</span>
             </a>`).join('') : '<div class="card empty-state">No trees published yet. Use Add tree to make one available for adoption.</div>';
+        renderAdoptionRequests(data.requests || []);
         updateFarmOptions(data.farms || []);
     };
 
@@ -102,9 +184,11 @@
         'updates-feed': (data) => renderUpdates(data.updates || []),
     };
 
-    apiFetch(root.dataset.agriEndpoint)
+    const loadRoot = () => apiFetch(root.dataset.agriEndpoint)
         .then((data) => renderers[root.dataset.render]?.(data))
         .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state">Unable to load dashboard data.</div>'));
+
+    loadRoot();
 
     const showPanel = (selector) => {
         document.querySelector(selector)?.removeAttribute('hidden');
@@ -113,6 +197,24 @@
     document.querySelector('[data-open-farm-form]')?.addEventListener('click', () => showPanel('[data-farm-form]'));
     document.querySelector('[data-open-tree-form]')?.addEventListener('click', () => showPanel('[data-tree-form]'));
     document.querySelector('[data-open-update-form]')?.addEventListener('click', () => showPanel('[data-update-form]'));
+
+    document.addEventListener('click', async (event) => {
+        const requestButton = event.target.closest('[data-request-adoption]');
+        if (requestButton) {
+            requestButton.disabled = true;
+            await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: requestButton.dataset.requestAdoption }) });
+            requestButton.textContent = 'Pending';
+            loadAdoptableTrees();
+            return;
+        }
+
+        const decisionButton = event.target.closest('[data-adoption-decision]');
+        if (decisionButton) {
+            decisionButton.disabled = true;
+            await apiFetch(`/adoption-requests/${decisionButton.dataset.requestId}/${decisionButton.dataset.adoptionDecision}`, { method: 'POST', body: JSON.stringify({}) });
+            loadRoot();
+        }
+    });
 
     document.querySelector('[data-agri-farm-form]')?.addEventListener('submit', async (event) => {
         event.preventDefault();

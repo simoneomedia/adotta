@@ -18,6 +18,25 @@ function agri_saas_register_api_routes(): void
         'permission_callback' => 'agri_saas_can_manage_farms',
     ]);
 
+    register_rest_route('agri-saas/v1', '/catalog/trees', [
+        'methods' => WP_REST_Server::READABLE,
+        'callback' => 'agri_saas_api_adoptable_trees',
+        'permission_callback' => 'is_user_logged_in',
+    ]);
+
+    register_rest_route('agri-saas/v1', '/adoption-requests', [
+        'methods' => WP_REST_Server::CREATABLE,
+        'callback' => 'agri_saas_api_create_adoption_request',
+        'permission_callback' => 'is_user_logged_in',
+    ]);
+
+    register_rest_route('agri-saas/v1', '/adoption-requests/(?P<id>\d+)/(?P<decision>accept|reject)', [
+        'methods' => WP_REST_Server::CREATABLE,
+        'callback' => 'agri_saas_api_decide_adoption_request',
+        'permission_callback' => 'agri_saas_can_manage_farms',
+        'args' => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
     register_rest_route('agri-saas/v1', '/farms', [
         'methods' => WP_REST_Server::CREATABLE,
         'callback' => 'agri_saas_api_create_farm',
@@ -114,6 +133,17 @@ function agri_saas_api_farm_dashboard(): WP_REST_Response
         $user_id
     ), ARRAY_A);
 
+    $requests = $wpdb->get_results($wpdb->prepare(
+        "SELECT a.id, a.tree_id, a.adopter_user_id, a.requested_at, t.species, t.code, f.name AS farm_name, u.display_name AS adopter_name, u.user_email AS adopter_email
+         FROM {$tables['adoptions']} a
+         INNER JOIN {$tables['trees']} t ON t.id = a.tree_id
+         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
+         LEFT JOIN {$wpdb->users} u ON u.ID = a.adopter_user_id
+         WHERE f.owner_user_id = %d AND a.status = 'pending'
+         ORDER BY a.requested_at ASC, a.starts_at ASC",
+        $user_id
+    ), ARRAY_A);
+
     return rest_ensure_response([
         'stats' => [
             'farms' => count($farms ?: []),
@@ -122,7 +152,152 @@ function agri_saas_api_farm_dashboard(): WP_REST_Response
         ],
         'farms' => $farms ?: [],
         'trees' => $trees ?: [],
+        'requests' => $requests ?: [],
     ]);
+}
+
+function agri_saas_api_adoptable_trees(): WP_REST_Response
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $user_id = get_current_user_id();
+
+    $trees = $wpdb->get_results($wpdb->prepare(
+        "SELECT t.id, t.species, t.code, t.status, t.planted_at, t.carbon_estimate,
+                COALESCE(t.latitude, f.latitude) AS map_latitude,
+                COALESCE(t.longitude, f.longitude) AS map_longitude,
+                CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN 'tree' ELSE 'farm' END AS coordinate_source,
+                f.name AS farm_name, f.location, f.crop_focus,
+                own_request.status AS request_status
+         FROM {$tables['trees']} t
+         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
+         LEFT JOIN {$tables['adoptions']} other_request ON other_request.tree_id = t.id AND other_request.status IN ('pending', 'active') AND other_request.adopter_user_id != %d
+         LEFT JOIN {$tables['adoptions']} own_request ON own_request.tree_id = t.id AND own_request.adopter_user_id = %d AND own_request.status = 'pending'
+         WHERE t.status = 'available' AND other_request.id IS NULL
+         ORDER BY t.created_at DESC
+         LIMIT 50",
+        $user_id,
+        $user_id
+    ), ARRAY_A);
+
+    return rest_ensure_response(['trees' => $trees ?: []]);
+}
+
+function agri_saas_api_create_adoption_request(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $tree_id = absint($request->get_param('tree_id'));
+    $user_id = get_current_user_id();
+
+    if (!$tree_id) {
+        return new WP_Error('agri_saas_tree_required', __('Tree is required.', 'agri-saas'), ['status' => 400]);
+    }
+
+    $tree = $wpdb->get_row($wpdb->prepare(
+        "SELECT t.id, t.status, f.owner_user_id
+         FROM {$tables['trees']} t
+         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
+         WHERE t.id = %d",
+        $tree_id
+    ), ARRAY_A);
+
+    if (!$tree || $tree['status'] !== 'available') {
+        return new WP_Error('agri_saas_tree_unavailable', __('This tree is not available for adoption.', 'agri-saas'), ['status' => 400]);
+    }
+
+    if ((int) $tree['owner_user_id'] === $user_id) {
+        return new WP_Error('agri_saas_own_tree_request', __('You cannot request adoption for your own tree.', 'agri-saas'), ['status' => 400]);
+    }
+
+    $blocking_request = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM {$tables['adoptions']} WHERE tree_id = %d AND status IN ('pending', 'active')",
+        $tree_id
+    ));
+
+    if ($blocking_request) {
+        return new WP_Error('agri_saas_request_exists', __('This tree already has an adoption request.', 'agri-saas'), ['status' => 409]);
+    }
+
+    $existing_id = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM {$tables['adoptions']} WHERE tree_id = %d AND adopter_user_id = %d",
+        $tree_id,
+        $user_id
+    ));
+
+    if ($existing_id) {
+        $updated = $wpdb->update($tables['adoptions'], [
+            'status' => 'pending',
+            'starts_at' => current_time('mysql'),
+            'requested_at' => current_time('mysql'),
+            'decided_at' => null,
+        ], ['id' => $existing_id], ['%s', '%s', '%s', '%s'], ['%d']);
+
+        if ($updated === false) {
+            return new WP_Error('agri_saas_request_failed', __('Unable to create adoption request.', 'agri-saas'), ['status' => 500]);
+        }
+
+        return rest_ensure_response(['id' => $existing_id, 'status' => 'pending']);
+    }
+
+    $inserted = $wpdb->insert($tables['adoptions'], [
+        'tree_id' => $tree_id,
+        'adopter_user_id' => $user_id,
+        'starts_at' => current_time('mysql'),
+        'requested_at' => current_time('mysql'),
+        'status' => 'pending',
+    ], ['%d', '%d', '%s', '%s', '%s']);
+
+    if (!$inserted) {
+        return new WP_Error('agri_saas_request_failed', __('Unable to create adoption request.', 'agri-saas'), ['status' => 500]);
+    }
+
+    return rest_ensure_response(['id' => (int) $wpdb->insert_id, 'status' => 'pending']);
+}
+
+function agri_saas_api_decide_adoption_request(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $request_id = absint($request['id']);
+    $decision = sanitize_key($request['decision']);
+    $user_id = get_current_user_id();
+
+    $adoption = $wpdb->get_row($wpdb->prepare(
+        "SELECT a.id, a.tree_id, a.adopter_user_id, a.status, f.owner_user_id
+         FROM {$tables['adoptions']} a
+         INNER JOIN {$tables['trees']} t ON t.id = a.tree_id
+         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
+         WHERE a.id = %d",
+        $request_id
+    ), ARRAY_A);
+
+    if (!$adoption || (int) $adoption['owner_user_id'] !== $user_id) {
+        return new WP_Error('agri_saas_request_not_found', __('Adoption request not found.', 'agri-saas'), ['status' => 404]);
+    }
+
+    if ($adoption['status'] !== 'pending') {
+        return new WP_Error('agri_saas_request_not_pending', __('Only pending requests can be decided.', 'agri-saas'), ['status' => 400]);
+    }
+
+    $new_status = $decision === 'accept' ? 'active' : 'rejected';
+    $updated = $wpdb->update($tables['adoptions'], [
+        'status' => $new_status,
+        'decided_at' => current_time('mysql'),
+    ], ['id' => $request_id], ['%s', '%s'], ['%d']);
+
+    if ($updated === false) {
+        return new WP_Error('agri_saas_decision_failed', __('Unable to update adoption request.', 'agri-saas'), ['status' => 500]);
+    }
+
+    if ($new_status === 'active') {
+        $wpdb->update($tables['trees'], [
+            'status' => 'adopted',
+            'adopter_user_id' => (int) $adoption['adopter_user_id'],
+        ], ['id' => (int) $adoption['tree_id']], ['%s', '%d'], ['%d']);
+    }
+
+    return rest_ensure_response(['id' => $request_id, 'status' => $new_status]);
 }
 
 function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|WP_Error
@@ -137,6 +312,9 @@ function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|W
         return new WP_Error('agri_saas_farm_required_fields', __('Farm name and location are required.', 'agri-saas'), ['status' => 400]);
     }
 
+    $latitude = $request->get_param('latitude');
+    $longitude = $request->get_param('longitude');
+
     $inserted = $wpdb->insert($tables['farms'], [
         'owner_user_id' => get_current_user_id(),
         'name' => $name,
@@ -144,7 +322,9 @@ function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|W
         'acreage' => (float) $request->get_param('acreage'),
         'crop_focus' => sanitize_text_field($request->get_param('crop_focus')),
         'health_score' => min(100, max(0, absint($request->get_param('health_score')))),
-    ], ['%d', '%s', '%s', '%f', '%s', '%d']);
+        'latitude' => $latitude !== null && $latitude !== '' ? (float) $latitude : null,
+        'longitude' => $longitude !== null && $longitude !== '' ? (float) $longitude : null,
+    ], ['%d', '%s', '%s', '%f', '%s', '%d', '%f', '%f']);
 
     if (!$inserted) {
         return new WP_Error('agri_saas_farm_failed', __('Unable to create farm.', 'agri-saas'), ['status' => 500]);

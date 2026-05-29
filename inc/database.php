@@ -36,6 +36,8 @@ function agri_saas_install_tables(): void
         acreage DECIMAL(10,2) DEFAULT 0,
         crop_focus VARCHAR(191) DEFAULT '',
         health_score TINYINT UNSIGNED DEFAULT 0,
+        latitude DECIMAL(10,7) DEFAULT NULL,
+        longitude DECIMAL(10,7) DEFAULT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY  (id),
         KEY owner_user_id (owner_user_id)
@@ -79,9 +81,12 @@ function agri_saas_install_tables(): void
         tree_id BIGINT UNSIGNED NOT NULL,
         adopter_user_id BIGINT UNSIGNED NOT NULL,
         starts_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        status VARCHAR(40) NOT NULL DEFAULT 'active',
+        requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        decided_at DATETIME DEFAULT NULL,
+        status VARCHAR(40) NOT NULL DEFAULT 'pending',
         PRIMARY KEY  (id),
         UNIQUE KEY tree_user (tree_id, adopter_user_id),
-        KEY adopter_user_id (adopter_user_id)
+        KEY adopter_user_id (adopter_user_id),
+        KEY status (status)
     ) $charset_collate;");
 }
