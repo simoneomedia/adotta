@@ -595,11 +595,16 @@ function agri_saas_optimize_uploaded_photo(string $tmp_name): string|WP_Error
                 return $saved;
             }
 
-            if (filesize($target) <= $max_bytes) {
-                return $target;
+            $saved_path = $saved['path'] ?? $target;
+            if ($saved_path !== $target) {
+                @unlink($target);
             }
 
-            @unlink($target);
+            if (file_exists($saved_path) && filesize($saved_path) <= $max_bytes) {
+                return $saved_path;
+            }
+
+            @unlink($saved_path);
         }
 
         $max_dimension -= 240;
