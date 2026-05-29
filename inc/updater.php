@@ -149,9 +149,19 @@ function agri_saas_get_github_branch(): string
     return $branch ?: 'main';
 }
 
-function agri_saas_check_github_theme_update(object $transient): object
+/**
+ * Checks WordPress' theme update transient for a newer GitHub version.
+ *
+ * WordPress can pass false to this filter before the update transient has been
+ * initialized, so accept and return the original value when it is not an
+ * update object.
+ *
+ * @param object|false $transient Theme update transient.
+ * @return object|false Unmodified non-object values or the updated transient.
+ */
+function agri_saas_check_github_theme_update($transient)
 {
-    if (empty($transient->checked) || !isset($transient->checked[AGRI_SAAS_THEME_SLUG])) {
+    if (!is_object($transient) || empty($transient->checked) || !isset($transient->checked[AGRI_SAAS_THEME_SLUG])) {
         return $transient;
     }
 
@@ -162,6 +172,10 @@ function agri_saas_check_github_theme_update(object $transient): object
 
     if (version_compare($release['version'], AGRI_SAAS_VERSION, '<=')) {
         return $transient;
+    }
+
+    if (!isset($transient->response) || !is_array($transient->response)) {
+        $transient->response = [];
     }
 
     $transient->response[AGRI_SAAS_THEME_SLUG] = [
