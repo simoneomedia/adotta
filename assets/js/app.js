@@ -338,11 +338,11 @@
         const slot = root?.querySelector('[data-slot="adoptable-map"]');
         if (!slot) return;
 
-        const mappedTrees = trees.filter((tree) => tree.map_latitude && tree.map_longitude);
-        if (!hasLeaflet()) {
-            slot.innerHTML = '<div class="map-placeholder">◎<small>Map library unavailable</small></div>';
-            return;
-        }
+        const mappedTrees = trees.filter((tree) => {
+            const lat = Number(tree.map_latitude);
+            const lng = Number(tree.map_longitude);
+            return Number.isFinite(lat) && Number.isFinite(lng);
+        });
 
         if (!mappedTrees.length) {
             slot.innerHTML = '<div class="map-placeholder">◎<small>No coordinates yet</small></div>';
