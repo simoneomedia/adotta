@@ -339,6 +339,11 @@
         if (!slot) return;
 
         const mappedTrees = trees.filter((tree) => tree.map_latitude && tree.map_longitude);
+        if (!hasLeaflet()) {
+            slot.innerHTML = '<div class="map-placeholder">◎<small>Map library unavailable</small></div>';
+            return;
+        }
+
         if (!mappedTrees.length) {
             slot.innerHTML = '<div class="map-placeholder">◎<small>No coordinates yet</small></div>';
             adoptableMap = null;
