@@ -8,7 +8,7 @@
     let feedOffset = 0;
     const FEED_LIMIT = 20;
 
-    // ── SimpleOsmMap — usato solo per i selettori di coordinate nei form ────
+    // ── SimpleOsmMap — coordinate pickers only ───────────────────────────────
     const tileSize = 256;
     const tileUrl = (x, y, z) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
     const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -58,10 +58,7 @@
             this.container.addEventListener('pointerdown', (event) => {
                 if (event.target.closest('.osm-marker, .osm-zoom, .osm-attribution')) return;
                 this.drag = {
-                    id: event.pointerId,
-                    x: event.clientX,
-                    y: event.clientY,
-                    moved: false,
+                    id: event.pointerId, x: event.clientX, y: event.clientY, moved: false,
                     centerPoint: project(this.center.lat, this.center.lng, this.zoom),
                 };
                 this.container.setPointerCapture(event.pointerId);
@@ -99,16 +96,8 @@
             return unproject(x, y, this.zoom);
         }
 
-        setZoom(zoom) {
-            this.zoom = clamp(zoom, 2, 19);
-            this.render();
-        }
-
-        setView(latlng, zoom = this.zoom) {
-            this.center = { lat: Number(latlng[0]), lng: Number(latlng[1]) };
-            this.zoom = clamp(zoom, 2, 19);
-            this.render();
-        }
+        setZoom(zoom) { this.zoom = clamp(zoom, 2, 19); this.render(); }
+        setView(latlng, zoom = this.zoom) { this.center = { lat: Number(latlng[0]), lng: Number(latlng[1]) }; this.zoom = clamp(zoom, 2, 19); this.render(); }
 
         fitBounds(bounds, options = {}) {
             if (!bounds.length) return;
@@ -121,22 +110,13 @@
                 const points = bounds.map((item) => project(item[0], item[1], candidate));
                 const width = Math.max(...points.map((point) => point.x)) - Math.min(...points.map((point) => point.x));
                 const height = Math.max(...points.map((point) => point.y)) - Math.min(...points.map((point) => point.y));
-                if (width <= rect.width - 56 && height <= rect.height - 56) {
-                    zoom = candidate;
-                    break;
-                }
+                if (width <= rect.width - 56 && height <= rect.height - 56) { zoom = candidate; break; }
             }
             this.setView(center, zoom);
         }
 
-        on(eventName, handler) {
-            if (eventName === 'click') this.clickHandlers.push(handler);
-        }
-
-        clearMarkers() {
-            this.markers = [];
-            this.markerLayer.innerHTML = '';
-        }
+        on(eventName, handler) { if (eventName === 'click') this.clickHandlers.push(handler); }
+        clearMarkers() { this.markers = []; this.markerLayer.innerHTML = ''; }
 
         addMarker(latlng, options = {}) {
             const marker = document.createElement(options.href ? 'a' : 'button');
@@ -167,27 +147,9 @@
         }
 
         bindMarkerDrag(entry) {
-            entry.marker.addEventListener('pointerdown', (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                entry.drag = true;
-                entry.marker.setPointerCapture(event.pointerId);
-                entry.marker.classList.add('is-dragging');
-            });
-            entry.marker.addEventListener('pointermove', (event) => {
-                if (!entry.drag) return;
-                const latlng = this.eventToLatLng(event);
-                entry.lat = latlng.lat;
-                entry.lng = latlng.lng;
-                this.positionMarker(entry);
-            });
-            entry.marker.addEventListener('pointerup', (event) => {
-                if (!entry.drag) return;
-                entry.drag = false;
-                entry.marker.releasePointerCapture(event.pointerId);
-                entry.marker.classList.remove('is-dragging');
-                entry.onDragEnd?.({ lat: entry.lat, lng: entry.lng });
-            });
+            entry.marker.addEventListener('pointerdown', (event) => { event.preventDefault(); event.stopPropagation(); entry.drag = true; entry.marker.setPointerCapture(event.pointerId); entry.marker.classList.add('is-dragging'); });
+            entry.marker.addEventListener('pointermove', (event) => { if (!entry.drag) return; const latlng = this.eventToLatLng(event); entry.lat = latlng.lat; entry.lng = latlng.lng; this.positionMarker(entry); });
+            entry.marker.addEventListener('pointerup', (event) => { if (!entry.drag) return; entry.drag = false; entry.marker.releasePointerCapture(event.pointerId); entry.marker.classList.remove('is-dragging'); entry.onDragEnd?.({ lat: entry.lat, lng: entry.lng }); });
         }
 
         positionMarker(entry) {
@@ -207,7 +169,6 @@
             const endY = Math.floor((centerPoint.y + rect.height / 2) / tileSize);
             const maxTile = 2 ** this.zoom;
             const tiles = [];
-
             for (let x = startX; x <= endX; x++) {
                 for (let y = startY; y <= endY; y++) {
                     if (y < 0 || y >= maxTile) continue;
@@ -220,24 +181,17 @@
             this.tileLayer.innerHTML = tiles.join('');
         }
 
-        render() {
-            this.renderTiles();
-            this.markers.forEach((marker) => this.positionMarker(marker));
-        }
+        render() { this.renderTiles(); this.markers.forEach((marker) => this.positionMarker(marker)); }
     }
 
-    // ── Utilità ─────────────────────────────────────────────────────────────
+    // ── Utility ──────────────────────────────────────────────────────────────
     const apiFetch = async (path, options = {}) => {
         const { headers: optionHeaders = {}, ...fetchOptions } = options;
         const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
         const response = await fetch(`${window.AgriSaas.apiBase}${path}`, {
             credentials: 'same-origin',
             ...fetchOptions,
-            headers: {
-                ...headers,
-                'X-WP-Nonce': window.AgriSaas.nonce,
-                ...optionHeaders,
-            },
+            headers: { ...headers, 'X-WP-Nonce': window.AgriSaas.nonce, ...optionHeaders },
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.message || `Errore API: ${response.status}`);
@@ -262,15 +216,15 @@
         return date.toLocaleDateString('it-IT');
     };
 
-    const visibilityLabel = (v) => ({
-        public: 'Pubblico', followers: 'Follower', adopters: 'Adottanti', tree_adopter: 'Adottante',
-    }[v] || 'Pubblico');
+    const visibilityLabel = (v) => ({ public: 'Pubblico', followers: 'Follower', adopters: 'Adottanti', tree_adopter: 'Adottante' }[v] || 'Pubblico');
+    const statusLabel = (s) => ({ available: 'Disponibile', adopted: 'Adottato', maintenance: 'In manutenzione' }[s] || s || '');
+    const rewardTypeLabel = (t) => ({ physical: 'Prodotto fisico', digital: 'Digitale', experience: 'Esperienza', surprise: 'A sorpresa' }[t] || t || '');
 
-    const statusLabel = (s) => ({
-        available: 'Disponibile', adopted: 'Adottato', maintenance: 'In manutenzione',
-    }[s] || s || '');
+    const verifiedBadge = (isVerified) => isVerified
+        ? '<span class="verified-badge" title="Agricoltore verificato">✓ Verificato</span>'
+        : '';
 
-    // ── Barra di condivisione social ─────────────────────────────────────────
+    // ── Share bar ─────────────────────────────────────────────────────────────
     const shareBar = (url, title) => {
         const encoded = encodeURIComponent(url);
         const waText = encodeURIComponent(`${title}\n${url}`);
@@ -295,13 +249,22 @@
         </div>`;
     };
 
-    // ── Selettori di coordinate ───────────────────────────────────────────────
+    // ── Reaction bar ──────────────────────────────────────────────────────────
+    const reactionBar = (update) => {
+        const reactions = update.reactions || { heart: 0, leaf: 0, clap: 0 };
+        const my = update.my_reaction || null;
+        const btn = (emoji, key) => {
+            const count = reactions[key] || 0;
+            const active = my === key ? ' is-active' : '';
+            return `<button class="reaction-btn${active}" type="button" data-react="${escapeHtml(String(update.id))}" data-reaction="${key}" aria-pressed="${my === key}">${emoji} <span class="reaction-count">${count > 0 ? count : ''}</span></button>`;
+        };
+        return `<div class="reaction-bar">${btn('❤️', 'heart')}${btn('🌿', 'leaf')}${btn('👏', 'clap')}</div>`;
+    };
+
+    // ── Coordinate pickers ────────────────────────────────────────────────────
     const getCoordinateInputs = (container) => {
         const scope = container.closest('form') || container.parentElement || document;
-        return {
-            lat: scope.querySelector('[data-marker-lat]'),
-            lng: scope.querySelector('[data-marker-lng]'),
-        };
+        return { lat: scope.querySelector('[data-marker-lat]'), lng: scope.querySelector('[data-marker-lng]') };
     };
 
     const defaultLatLng = () => [41.9028, 12.4964];
@@ -310,25 +273,20 @@
         const inputs = getCoordinateInputs(container);
         const lat = Number(inputs.lat?.value);
         const lng = Number(inputs.lng?.value);
-        if (Number.isFinite(lat) && Number.isFinite(lng)) {
-            return [lat, lng];
-        }
+        if (Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng];
         return defaultLatLng();
     };
 
     const setCoordinateMarker = (container, lat, lng, zoom = 13) => {
         const state = coordinateMaps.get(container);
         if (!state) return;
-
         const inputs = getCoordinateInputs(container);
         if (inputs.lat) inputs.lat.value = Number(lat).toFixed(7);
         if (inputs.lng) inputs.lng.value = Number(lng).toFixed(7);
 
         if (!state.marker) {
             state.marker = state.map.addMarker([lat, lng], {
-                icon: '📍',
-                draggable: true,
-                title: 'Posizione azienda',
+                icon: '📍', draggable: true, title: 'Posizione azienda',
                 onDragEnd: (position) => setCoordinateMarker(container, position.lat, position.lng, state.map.zoom),
             });
         } else {
@@ -342,32 +300,24 @@
     const initCoordinateMaps = () => {
         document.querySelectorAll('[data-coordinate-map]').forEach((container) => {
             if (coordinateMaps.has(container)) return;
-
             const map = new SimpleOsmMap(container, { center: readLatLng(container), zoom: 6 });
             coordinateMaps.set(container, { map, marker: null });
             map.on('click', (event) => setCoordinateMarker(container, event.latlng.lat, event.latlng.lng, map.zoom));
-
             const [lat, lng] = readLatLng(container);
             const inputs = getCoordinateInputs(container);
-            if (inputs.lat?.value && inputs.lng?.value) {
-                setCoordinateMarker(container, lat, lng);
-            }
+            if (inputs.lat?.value && inputs.lng?.value) setCoordinateMarker(container, lat, lng);
         });
     };
 
-    const refreshCoordinateMaps = () => {
-        coordinateMaps.forEach(({ map }) => setTimeout(() => map.render(), 80));
-    };
+    const refreshCoordinateMaps = () => { coordinateMaps.forEach(({ map }) => setTimeout(() => map.render(), 80)); };
 
     const bindCoordinateButtons = () => {
         document.addEventListener('click', (event) => {
             const button = event.target.closest('[data-set-marker]');
             if (!button) return;
-
             const form = button.closest('form');
             const mapContainer = form?.querySelector('[data-coordinate-map]');
             if (!mapContainer) return;
-
             initCoordinateMaps();
             refreshCoordinateMaps();
             const [lat, lng] = readLatLng(mapContainer);
@@ -385,7 +335,27 @@
 
     const treeMeta = (tree) => [tree.farm_name, tree.location, tree.crop_focus].filter(Boolean).join(' · ');
 
-    // ── Mappe Leaflet con cluster ─────────────────────────────────────────────
+    // ── QR Code ───────────────────────────────────────────────────────────────
+    const generateQR = (container, url) => {
+        container.innerHTML = '';
+        if (window.QRCode) {
+            new window.QRCode(container, { text: url, width: 200, height: 200, correctLevel: window.QRCode.CorrectLevel?.M });
+        }
+    };
+
+    const qrSection = (url, treeCode) => `
+        <div class="qr-section">
+            <p class="eyebrow">QR Code albero</p>
+            <button class="button ghost qr-toggle-btn" type="button" data-qr-url="${escapeHtml(url)}" data-qr-label="${escapeHtml(treeCode)}">
+                Mostra QR
+            </button>
+            <div class="qr-canvas-wrap" hidden>
+                <div class="qr-canvas"></div>
+                <a class="button ghost qr-download-btn" download="albero-${escapeHtml(treeCode)}.png">Scarica QR</a>
+            </div>
+        </div>`;
+
+    // ── Leaflet maps ──────────────────────────────────────────────────────────
     const makeLeafletMap = (el) => {
         if (!window.L) return null;
         const map = L.map(el);
@@ -401,15 +371,10 @@
     const renderAdoptableMap = (trees) => {
         const slot = root?.querySelector('[data-slot="adoptable-map"]');
         if (!slot) return;
-
         if (adoptableMap) { adoptableMap.remove(); adoptableMap = null; }
 
-        const mappedTrees = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
-
-        if (!mappedTrees.length) {
-            slot.innerHTML = '<div class="map-placeholder">◎<small>Nessuna coordinata disponibile</small></div>';
-            return;
-        }
+        const mapped = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
+        if (!mapped.length) { slot.innerHTML = '<div class="map-placeholder">◎<small>Nessuna coordinata disponibile</small></div>'; return; }
 
         slot.innerHTML = '<div class="leaflet-map"></div><p class="map-note">I pin usano le coordinate dell\'albero quando disponibili, altrimenti quelle dell\'azienda.</p>';
         adoptableMap = makeLeafletMap(slot.querySelector('.leaflet-map'));
@@ -417,8 +382,7 @@
 
         const cluster = makeCluster();
         const bounds = [];
-
-        mappedTrees.forEach((tree) => {
+        mapped.forEach((tree) => {
             const lat = Number(tree.map_latitude);
             const lng = Number(tree.map_longitude);
             bounds.push([lat, lng]);
@@ -426,13 +390,9 @@
                 .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`)
                 .addTo(cluster);
         });
-
         cluster.addTo(adoptableMap);
-        if (bounds.length === 1) {
-            adoptableMap.setView(bounds[0], 13);
-        } else {
-            adoptableMap.fitBounds(bounds, { maxZoom: 14, padding: [28, 28] });
-        }
+        if (bounds.length === 1) adoptableMap.setView(bounds[0], 13);
+        else adoptableMap.fitBounds(bounds, { maxZoom: 14, padding: [28, 28] });
     };
 
     const renderAdoptableTrees = (trees) => {
@@ -451,8 +411,13 @@
                         <small>${tree.map_latitude && tree.map_longitude ? `${escapeHtml(tree.map_latitude)}, ${escapeHtml(tree.map_longitude)} · coordinate ${escapeHtml(tree.coordinate_source)}` : 'Coordinate non ancora disponibili'}</small>
                     </a>
                     <div class="row-actions">
-                        <span class="badge">${escapeHtml(tree.code)}</span>
-                        <button class="button" type="button" data-request-adoption="${escapeHtml(tree.id)}" ${tree.request_status === 'pending' ? 'disabled' : ''}>${tree.request_status === 'pending' ? 'In attesa' : 'Richiedi adozione'}</button>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                            <span class="badge">${escapeHtml(tree.code)}</span>
+                            ${tree.adoption_count > 0 ? `<span class="adoption-count-badge">${escapeHtml(String(tree.adoption_count))} adozioni</span>` : ''}
+                            ${tree.has_rewards ? '<span class="reward-available-badge">🎁 Premio</span>' : ''}
+                        </div>
+                        <button class="button" type="button" data-request-adoption="${escapeHtml(String(tree.id))}" ${tree.request_status === 'pending' ? 'disabled' : ''}>${tree.request_status === 'pending' ? 'In attesa' : 'Richiedi adozione'}</button>
+                        <button class="button ghost" type="button" data-gift-tree="${escapeHtml(String(tree.id))}" data-gift-species="${escapeHtml(tree.species)}">Regala 🎁</button>
                     </div>
                 </article>`).join('')}</div>`;
 
@@ -463,8 +428,8 @@
                     slot.querySelectorAll('.catalog-row').forEach((row) => {
                         row.hidden = Boolean(q && !row.textContent.toLowerCase().includes(q));
                     });
-                    const visible = [...slot.querySelectorAll('.catalog-row:not([hidden])')].length;
                     let noRes = slot.querySelector('.catalog-no-results');
+                    const visible = [...slot.querySelectorAll('.catalog-row:not([hidden])')].length;
                     if (!visible && q) {
                         if (!noRes) {
                             noRes = document.createElement('p');
@@ -492,22 +457,42 @@
 
     const renderClientDashboard = (data) => {
         root.querySelector('[data-slot="stats"]').innerHTML = [
-            statCard('Alberi adottati', data.stats.adoptedTrees, 'Nel tuo portafoglio'),
-            statCard('Adozioni attive', data.stats.activeAdoptions, 'Attualmente attive'),
+            statCard('Alberi adottati', String(data.stats.adoptedTrees), 'Nel tuo portafoglio'),
+            statCard('Adozioni attive', String(data.stats.activeAdoptions), 'Attualmente attive'),
             statCard('Stima CO₂', `${data.stats.estimatedCarbonKg} kg`, 'Sequestro stimato'),
         ].join('');
+
+        // Milestone banner
+        const milestoneSlot = root.querySelector('[data-slot="milestones"]');
+        if (milestoneSlot && data.milestones?.length) {
+            milestoneSlot.innerHTML = `<div class="milestone-banner">
+                <p class="eyebrow">Traguardi in arrivo 🏆</p>
+                ${data.milestones.map((m) => `<div class="milestone-item">
+                    <span class="milestone-icon">🌳</span>
+                    <div>
+                        <strong>${escapeHtml(m.species)} (${escapeHtml(m.code)})</strong><br>
+                        <small>${m.days_away === 0 ? 'Oggi!' : `Tra ${escapeHtml(String(m.days_away))} giorno/i`} compie ${escapeHtml(m.period)} di adozione
+                            — <a href="${appUrl(`trees/${m.tree_id}/`)}">Vedi albero →</a>
+                        </small>
+                    </div>
+                </div>`).join('')}
+            </div>`;
+            milestoneSlot.hidden = false;
+        }
+
         root.querySelector('[data-slot="trees"]').innerHTML = data.trees.length ? data.trees.map((tree) => `
             <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
                 <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small></div>
                 <span class="badge">${escapeHtml(tree.code)}</span>
             </a>`).join('') : '<div class="card empty-state">Nessun albero adottato ancora.</div>';
+
         loadAdoptableTrees().catch(() => root.querySelector('[data-slot="adoptable-trees"]')?.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare gli alberi disponibili.</div>'));
     };
 
     const updateFarmOptions = (farms) => {
         document.querySelectorAll('[data-farm-options]').forEach((select) => {
             select.innerHTML = farms.length ? farms.map((farm) => `
-                <option value="${escapeHtml(farm.id)}">${escapeHtml(farm.name)} · ${escapeHtml(farm.location)}</option>
+                <option value="${escapeHtml(String(farm.id))}">${escapeHtml(farm.name)} · ${escapeHtml(farm.location)}</option>
             `).join('') : '<option value="">Crea prima un\'azienda</option>';
             select.disabled = !farms.length;
         });
@@ -516,43 +501,114 @@
     const renderAdoptionRequests = (requests) => {
         const slot = root.querySelector('[data-slot="adoption-requests"]');
         if (!slot) return;
-
         slot.innerHTML = requests.length ? requests.map((request) => `
             <article class="tree-row request-row">
                 <div>
                     <strong>${escapeHtml(request.species)} · ${escapeHtml(request.code)}</strong><br>
-                    <small>${escapeHtml(request.farm_name)} · richiesta da ${escapeHtml(request.adopter_name || request.adopter_email || `Utente #${request.adopter_user_id}`)} · ${escapeHtml(request.requested_at)}</small><br>
-                    <small>${escapeHtml([request.adopter_email, request.adopter_whatsapp ? `WhatsApp ${request.adopter_whatsapp}` : '', request.adopter_phone ? `Telefono ${request.adopter_phone}` : ''].filter(Boolean).join(' · '))}</small>
+                    <small>${escapeHtml(request.farm_name)} · da ${escapeHtml(request.adopter_name || request.adopter_email || `Utente #${request.adopter_user_id}`)} · ${escapeHtml(relativeTime(request.requested_at))}</small><br>
+                    <small>${escapeHtml([request.adopter_email, request.adopter_whatsapp ? `WhatsApp ${request.adopter_whatsapp}` : '', request.adopter_phone ? `Tel ${request.adopter_phone}` : ''].filter(Boolean).join(' · '))}</small>
                 </div>
                 <div class="row-actions">
-                    <button class="button" type="button" data-adoption-decision="accept" data-request-id="${escapeHtml(request.id)}">Accetta</button>
-                    <button class="button ghost" type="button" data-adoption-decision="reject" data-request-id="${escapeHtml(request.id)}">Rifiuta</button>
+                    <button class="button" type="button" data-adoption-decision="accept" data-request-id="${escapeHtml(String(request.id))}">Accetta</button>
+                    <button class="button ghost" type="button" data-adoption-decision="reject" data-request-id="${escapeHtml(String(request.id))}">Rifiuta</button>
                 </div>
             </article>`).join('') : '<div class="card empty-state">Nessuna richiesta di adozione in sospeso.</div>';
     };
 
+    const renderRewards = (rewards) => {
+        if (!rewards?.length) return '<div class="card empty-state">Nessun premio configurato ancora.</div>';
+        return `<div class="rewards-list">${rewards.map((r) => `
+            <div class="reward-card">
+                <div class="reward-icon">🎁</div>
+                <div class="reward-info">
+                    <strong>${escapeHtml(r.name)}</strong>
+                    <span class="reward-type-badge">${escapeHtml(rewardTypeLabel(r.reward_type))}</span>
+                    ${r.estimated_value ? `<small class="reward-value">Valore stimato: ${escapeHtml(r.estimated_value)}</small>` : ''}
+                    <p class="reward-desc">${escapeHtml(r.description)}</p>
+                </div>
+            </div>`).join('')}</div>`;
+    };
+
+    const renderRewardsManage = (rewards, farms) => {
+        const farmId = farms?.[0]?.id || '';
+        return `<div>
+            ${rewards?.length ? `<div class="rewards-list" style="margin-bottom:18px;">${rewards.map((r) => `
+                <div class="reward-card">
+                    <div class="reward-icon">🎁</div>
+                    <div class="reward-info" style="flex:1">
+                        <strong>${escapeHtml(r.name)}</strong>
+                        <span class="reward-type-badge">${escapeHtml(rewardTypeLabel(r.reward_type))}</span>
+                        ${r.estimated_value ? `<small class="reward-value">${escapeHtml(r.estimated_value)}</small>` : ''}
+                        <p class="reward-desc">${escapeHtml(r.description)}</p>
+                    </div>
+                    <button class="button ghost" type="button" data-delete-reward="${escapeHtml(String(r.id))}" style="flex-shrink:0;align-self:flex-start;">Rimuovi</button>
+                </div>`).join('')}</div>` : ''}
+            <form class="reward-form" data-add-reward-form>
+                <p class="eyebrow" style="margin:0 0 10px;">Aggiungi nuovo premio</p>
+                <label>Nome premio<input name="reward_name" required placeholder="es. 1 kg di olio extravergine"></label>
+                <label>Descrizione<textarea name="reward_description" required placeholder="Descrivi in dettaglio cosa riceverà l'adottante"></textarea></label>
+                <div class="form-grid-2">
+                    <label>Tipo
+                        <select name="reward_type">
+                            <option value="surprise">A sorpresa</option>
+                            <option value="physical">Prodotto fisico</option>
+                            <option value="digital">Digitale</option>
+                            <option value="experience">Esperienza</option>
+                        </select>
+                    </label>
+                    <label>Valore stimato<input name="estimated_value" placeholder="es. €25 oppure 'variabile'"></label>
+                </div>
+                <label>Linee guida (facoltativo)<textarea name="guidelines" placeholder="Suggerimento: descrivi cosa includerà il premio (es. 1 kg di olio extravergine, una visita in azienda, una videochiamata con l'agricoltore)"></textarea></label>
+                <input type="hidden" name="farm_id" value="${escapeHtml(String(farmId))}" data-reward-farm-id>
+                <button class="button" type="submit">Aggiungi premio</button>
+            </form>
+        </div>`;
+    };
+
     const renderFarmDashboard = (data) => {
         root.querySelector('[data-slot="stats"]').innerHTML = [
-            statCard('Aziende gestite', data.stats.farms, 'Aziende registrate'),
-            statCard('Alberi disponibili', data.stats.availableTrees, 'Pronti per adozione'),
-            statCard('Alberi adottati', data.stats.adoptedTrees, 'Sponsorizzati da clienti'),
+            statCard('Aziende gestite', String(data.stats.farms), 'Aziende registrate'),
+            statCard('Alberi disponibili', String(data.stats.availableTrees), 'Pronti per adozione'),
+            statCard('Alberi adottati', String(data.stats.adoptedTrees), 'Sponsorizzati da clienti'),
         ].join('');
+
         root.querySelector('[data-slot="farms"]').innerHTML = data.farms.length ? data.farms.map((farm) => `
             <div class="farm-row">
-                <div><strong><a href="${appUrl(`farms/${farm.id}/`)}">${escapeHtml(farm.name)}</a></strong><br><small>${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus)}${farm.latitude && farm.longitude ? ` · ${escapeHtml(farm.latitude)}, ${escapeHtml(farm.longitude)}` : ''}</small></div>
-                <span class="badge">${escapeHtml(farm.tree_count)} alberi · salute ${escapeHtml(farm.health_score)}</span>
-            </div>`).join('') : '<div class="card empty-state">Nessuna azienda registrata. Aggiungi prima un\'azienda prima di pubblicare alberi.</div>';
+                <div><strong><a href="${appUrl(`farms/${farm.id}/`)}">${escapeHtml(farm.name)}</a></strong> ${verifiedBadge(farm.is_verified)}<br>
+                <small>${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus)}${farm.latitude && farm.longitude ? ` · ${escapeHtml(farm.latitude)}, ${escapeHtml(farm.longitude)}` : ''}</small></div>
+                <span class="badge">${escapeHtml(String(farm.tree_count))} alberi · salute ${escapeHtml(String(farm.health_score))}</span>
+            </div>`).join('') : '<div class="card empty-state">Nessuna azienda. Aggiungine una prima di pubblicare alberi.</div>';
+
         root.querySelector('[data-slot="farm-trees"]').innerHTML = data.trees.length ? data.trees.map((tree) => `
-            <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
-                <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.planted_at || 'Data messa a dimora non ancora disponibile')}</small></div>
-                <span class="badge">${escapeHtml(tree.code)} · ${escapeHtml(statusLabel(tree.status))}</span>
-            </a>`).join('') : '<div class="card empty-state">Nessun albero pubblicato ancora. Usa "Aggiungi albero" per renderlo disponibile all\'adozione.</div>';
+            <div class="tree-row" style="justify-content:space-between;">
+                <a href="${appUrl(`trees/${tree.id}/`)}">
+                    <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.planted_at || 'Data non disponibile')}</small></div>
+                </a>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                    <span class="badge">${escapeHtml(tree.code)} · ${escapeHtml(statusLabel(tree.status))}</span>
+                    ${tree.adoption_count > 0 ? `<span class="adoption-count-badge">${escapeHtml(String(tree.adoption_count))} adoz.</span>` : ''}
+                    <button class="button ghost" type="button" data-show-qr="${escapeHtml(String(tree.id))}" data-qr-url="${escapeHtml(appUrl(`trees/${tree.id}/`))}" data-qr-label="${escapeHtml(tree.code)}" style="padding:6px 12px;font-size:.78rem;">QR</button>
+                </div>
+            </div>`).join('') : '<div class="card empty-state">Nessun albero pubblicato.</div>';
+
         renderAdoptionRequests(data.requests || []);
         updateFarmOptions(data.farms || []);
+
+        const rewardsSlot = root.querySelector('[data-slot="farm-rewards-manage"]');
+        if (rewardsSlot) {
+            rewardsSlot.innerHTML = renderRewardsManage(data.rewards || [], data.farms || []);
+        }
+
+        // Sync quick-update FAB farm selector
+        const fabFarmId = document.querySelector('[data-fab-farm-id]');
+        if (fabFarmId && data.farms?.length) {
+            fabFarmId.value = data.farms[0].id;
+        }
     };
 
     const renderTreeDetail = (data) => {
         const tree = data.tree;
+        const qrUrl = window.location.href;
         root.querySelector('[data-slot="tree"]').innerHTML = `
             <p class="eyebrow">${escapeHtml(tree.code)}</p>
             <h2>${escapeHtml(tree.species)}</h2>
@@ -562,14 +618,15 @@
                 ${statCard('CO₂', `${tree.carbon_estimate} kg`, 'Sequestro stimato')}
                 ${statCard('Messa a dimora', tree.planted_at || 'In attesa', 'Data di piantagione')}
             </div>
+            ${qrSection(qrUrl, tree.code)}
             <div class="share-section">
                 <p class="eyebrow">Condividi questo albero</p>
-                ${shareBar(window.location.href, `${tree.species} · ${tree.code}`)}
+                ${shareBar(qrUrl, `${tree.species} · ${tree.code}`)}
             </div>`;
         renderUpdates(data.updates || []);
     };
 
-    // ── Feed aggiornamenti stile Instagram ───────────────────────────────────
+    // ── Feed aggiornamenti stile Instagram ────────────────────────────────────
     const renderUpdates = (updates, append = false) => {
         const slot = root?.querySelector('[data-slot="updates"]');
         if (!slot) return;
@@ -585,10 +642,10 @@
                 : (update.farm_id ? appUrl(`farms/${update.farm_id}/`) : window.location.href);
             const author = update.farm_name || update.tree_code || 'Aggiornamento';
             const avatar = update.tree_id ? '🌳' : '🌿';
-            const vis = update.visibility || 'public';
+            const vis    = update.visibility || 'public';
 
             return `
-                <article class="insta-post">
+                <article class="insta-post" data-update-id="${escapeHtml(String(update.id))}">
                     <header class="insta-post-header">
                         <div class="insta-avatar">${avatar}</div>
                         <div class="insta-post-meta">
@@ -603,19 +660,17 @@
                         <p class="insta-caption">${escapeHtml(update.body)}</p>
                     </div>
                     <footer class="insta-footer">
+                        ${reactionBar(update)}
                         ${shareBar(shareUrl, update.title)}
                     </footer>
                 </article>`;
         }).join('');
 
-        if (append) {
-            slot.insertAdjacentHTML('beforeend', html);
-        } else {
-            slot.innerHTML = html || '<div class="card empty-state">Nessun aggiornamento pubblicato ancora.</div>';
-        }
+        if (append) slot.insertAdjacentHTML('beforeend', html);
+        else slot.innerHTML = html || '<div class="card empty-state">Nessun aggiornamento pubblicato ancora.</div>';
     };
 
-    // ── Lightbox ─────────────────────────────────────────────────────────────
+    // ── Lightbox ──────────────────────────────────────────────────────────────
     const initLightbox = () => {
         const overlay = document.createElement('div');
         overlay.className = 'lightbox-overlay';
@@ -625,9 +680,7 @@
         document.body.appendChild(overlay);
 
         const closeLightbox = () => overlay.classList.remove('is-open');
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay || e.target.classList.contains('lightbox-close')) closeLightbox();
-        });
+        overlay.addEventListener('click', (e) => { if (e.target === overlay || e.target.classList.contains('lightbox-close')) closeLightbox(); });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
         document.addEventListener('click', (e) => {
             const trigger = e.target.closest('.insta-media img, .photo-grid a');
@@ -642,6 +695,7 @@
     };
 
     // ── Adoption modal ────────────────────────────────────────────────────────
+    let adoptionModal = null;
     const createAdoptionModal = () => {
         const modal = document.createElement('div');
         modal.className = 'adoption-modal';
@@ -654,14 +708,11 @@
             <button class="button" type="button" data-close-adoption-modal>Ottimo!</button>
         </div>`;
         document.body.appendChild(modal);
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal || e.target.closest('[data-close-adoption-modal]')) modal.classList.remove('is-open');
-        });
+        modal.addEventListener('click', (e) => { if (e.target === modal || e.target.closest('[data-close-adoption-modal]')) modal.classList.remove('is-open'); });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.classList.remove('is-open'); });
         return modal;
     };
 
-    let adoptionModal = null;
     const showAdoptionModal = (species, farmInfo, code) => {
         if (!adoptionModal) adoptionModal = createAdoptionModal();
         adoptionModal.querySelector('.adoption-modal-body').innerHTML =
@@ -669,24 +720,76 @@
         adoptionModal.classList.add('is-open');
     };
 
-    // ── Validazione form ──────────────────────────────────────────────────────
+    // ── Gift modal ────────────────────────────────────────────────────────────
+    let giftModal = null;
+    const renderGiftModal = () => {
+        const modal = document.createElement('div');
+        modal.className = 'gift-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.innerHTML = `<div class="gift-modal-card">
+            <div class="adoption-modal-icon">🎁</div>
+            <h2>Regala un albero</h2>
+            <p class="adoption-modal-body" data-gift-species></p>
+            <form class="gift-form" data-gift-form>
+                <input type="hidden" data-gift-tree-id>
+                <label>Email destinatario *<input type="email" name="recipient_email" required placeholder="nome@esempio.it"></label>
+                <label>Messaggio (facoltativo)<textarea name="gift_message" rows="3" placeholder="Auguri! Ho adottato questo albero per te…"></textarea></label>
+                <p class="form-status" data-gift-status></p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="button" type="submit">Invia regalo</button>
+                    <button class="button ghost" type="button" data-close-gift-modal>Annulla</button>
+                </div>
+            </form>
+        </div>`;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('is-open'); });
+        modal.querySelector('[data-close-gift-modal]').addEventListener('click', () => modal.classList.remove('is-open'));
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.classList.remove('is-open'); });
+        return modal;
+    };
+
+    const showGiftModal = (treeId, species) => {
+        if (!giftModal) giftModal = renderGiftModal();
+        giftModal.querySelector('[data-gift-tree-id]').value = treeId;
+        giftModal.querySelector('[data-gift-species]').textContent = `Albero: ${species}`;
+        giftModal.querySelector('[data-gift-status]').textContent = '';
+        giftModal.querySelector('[data-gift-form]').reset();
+        giftModal.querySelector('[data-gift-tree-id]').value = treeId;
+        giftModal.classList.add('is-open');
+    };
+
+    // ── QR popover ────────────────────────────────────────────────────────────
+    let qrPopover = null;
+    const showQrPopover = (url, label) => {
+        if (!qrPopover) {
+            qrPopover = document.createElement('div');
+            qrPopover.className = 'qr-popover';
+            qrPopover.innerHTML = '<button class="lightbox-close" type="button" style="position:static;margin:0 0 10px auto;display:block;" aria-label="Chiudi">✕</button><div class="qr-canvas"></div><a class="button ghost qr-download-btn" download style="margin-top:10px;display:inline-block;">Scarica QR</a>';
+            qrPopover.addEventListener('click', (e) => { if (e.target === qrPopover || e.target.classList.contains('lightbox-close')) qrPopover.hidden = true; });
+            document.body.appendChild(qrPopover);
+        }
+        const canvas = qrPopover.querySelector('.qr-canvas');
+        canvas.innerHTML = '';
+        generateQR(canvas, url);
+        qrPopover.querySelector('.qr-download-btn').setAttribute('download', `albero-${label}.png`);
+        setTimeout(() => {
+            const c = canvas.querySelector('canvas');
+            if (c) qrPopover.querySelector('.qr-download-btn').href = c.toDataURL('image/png');
+        }, 300);
+        qrPopover.hidden = false;
+    };
+
+    // ── Form validation ────────────────────────────────────────────────────────
     const validateForm = (form) => {
         let valid = true;
         form.querySelectorAll('[required]').forEach((field) => {
             let errorEl = field.parentElement?.querySelector('.field-error');
-            if (!errorEl) {
-                errorEl = document.createElement('span');
-                errorEl.className = 'field-error';
-                field.after(errorEl);
-            }
+            if (!errorEl) { errorEl = document.createElement('span'); errorEl.className = 'field-error'; field.after(errorEl); }
             let msg = '';
-            if (!field.value.trim()) {
-                msg = 'Campo obbligatorio';
-            } else if (field.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value)) {
-                msg = 'Inserisci un\'email valida';
-            } else if (field.type === 'password' && field.value.length < 8) {
-                msg = 'Password di almeno 8 caratteri';
-            }
+            if (!field.value.trim()) msg = 'Campo obbligatorio';
+            else if (field.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value)) msg = 'Inserisci un\'email valida';
+            else if (field.type === 'password' && field.value.length < 8) msg = 'Password di almeno 8 caratteri';
             errorEl.textContent = msg;
             field.classList.toggle('is-invalid', Boolean(msg));
             if (msg) valid = false;
@@ -694,57 +797,41 @@
         return valid;
     };
 
-    // ── Mappa profilo azienda con cluster ────────────────────────────────────
+    // ── Farm profile map ──────────────────────────────────────────────────────
     const renderFarmProfileMap = (trees) => {
         const slot = root?.querySelector('[data-slot="farm-profile-map"]');
         if (!slot) return;
-
         if (farmProfileMap) { farmProfileMap.remove(); farmProfileMap = null; }
 
-        const mappedTrees = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
+        const mapped = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
+        if (!mapped.length) { slot.innerHTML = '<div class="map-placeholder">◎<small>Nessuna coordinata albero disponibile</small></div>'; return; }
 
-        if (!mappedTrees.length) {
-            slot.innerHTML = '<div class="map-placeholder">◎<small>Nessuna coordinata albero disponibile</small></div>';
-            return;
-        }
-
-        slot.innerHTML = '<div class="leaflet-map"></div><p class="map-note">Tutti gli alberi pubblicati sono visibili sulla mappa. Adottati e disponibili restano entrambi visibili in vetrina.</p>';
+        slot.innerHTML = '<div class="leaflet-map"></div><p class="map-note">Tutti gli alberi pubblicati sono visibili sulla mappa.</p>';
         farmProfileMap = makeLeafletMap(slot.querySelector('.leaflet-map'));
         if (!farmProfileMap) return;
 
         const cluster = makeCluster();
         const bounds = [];
-
-        mappedTrees.forEach((tree) => {
+        mapped.forEach((tree) => {
             const lat = Number(tree.map_latitude);
             const lng = Number(tree.map_longitude);
             bounds.push([lat, lng]);
             const icon = tree.status === 'adopted' ? '🌳' : '🌱';
             L.marker([lat, lng], {
-                icon: L.divIcon({
-                    className: 'leaflet-tree-icon',
-                    html: `<span style="font-size:1.3rem;line-height:1;display:block;text-align:center;">${icon}</span>`,
-                    iconSize: [28, 28],
-                    iconAnchor: [14, 28],
-                }),
-            })
-                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.code)} · ${escapeHtml(statusLabel(tree.status))}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`)
-                .addTo(cluster);
+                icon: L.divIcon({ className: 'leaflet-tree-icon', html: `<span style="font-size:1.3rem;line-height:1;display:block;text-align:center;">${icon}</span>`, iconSize: [28, 28], iconAnchor: [14, 28] }),
+            }).bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.code)} · ${escapeHtml(statusLabel(tree.status))}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`).addTo(cluster);
         });
 
         cluster.addTo(farmProfileMap);
-        if (bounds.length === 1) {
-            farmProfileMap.setView(bounds[0], 14);
-        } else {
-            farmProfileMap.fitBounds(bounds, { maxZoom: 15, padding: [28, 28] });
-        }
+        if (bounds.length === 1) farmProfileMap.setView(bounds[0], 14);
+        else farmProfileMap.fitBounds(bounds, { maxZoom: 15, padding: [28, 28] });
     };
 
     const contactButton = (href, label) => href ? `<a class="button ghost" href="${escapeHtml(href)}">${escapeHtml(label)}</a>` : '';
 
     const renderFarmProfile = (data) => {
         const farm = data.farm;
-        root.querySelector('[data-slot="farm-title"]').textContent = farm.name;
+        root.querySelector('[data-slot="farm-title"]').innerHTML = `${escapeHtml(farm.name)} ${verifiedBadge(farm.is_verified)}`;
         root.querySelector('[data-slot="farm-summary"]').innerHTML = `${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus || 'Colture miste')}<br>${escapeHtml(farm.description || 'Questa azienda usa il suo profilo come vetrina pubblica per alberi, foto e aggiornamenti dal campo.')}`;
         root.querySelector('[data-slot="farm-contacts"]').innerHTML = [
             contactButton(farm.contact_email ? `mailto:${farm.contact_email}` : '', 'Email'),
@@ -766,19 +853,25 @@
         if (shareSlot) shareSlot.innerHTML = shareBar(window.location.href, farm.name);
 
         root.querySelector('[data-slot="farm-profile-stats"]').innerHTML = [
-            statCard('Alberi', data.stats.trees, 'Tutti visibili in vetrina'),
-            statCard('Adottati', data.stats.adoptedTrees, 'Già sponsorizzati'),
-            statCard('Follower', data.stats.followers, 'Clienti che seguono gli aggiornamenti'),
+            statCard('Alberi', String(data.stats.trees), 'Tutti visibili in vetrina'),
+            statCard('Adottati', String(data.stats.adoptedTrees), 'Già sponsorizzati'),
+            statCard('Follower', String(data.stats.followers), 'Clienti che seguono gli aggiornamenti'),
         ].join('');
 
         root.querySelector('[data-slot="farm-profile-trees"]').innerHTML = data.trees.length ? data.trees.map((tree) => `
             <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
-                <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.code)} · ${escapeHtml(tree.planted_at || 'Data non disponibile')} · coordinate ${escapeHtml(tree.coordinate_source || 'azienda')}</small></div>
-                <span class="badge">${escapeHtml(statusLabel(tree.status))}${tree.adopter_name ? ` · ${escapeHtml(tree.adopter_name)}` : ''}</span>
+                <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.code)} · ${escapeHtml(tree.planted_at || 'Data non disponibile')} · coord. ${escapeHtml(tree.coordinate_source || 'azienda')}</small></div>
+                <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
+                    <span class="badge">${escapeHtml(statusLabel(tree.status))}${tree.adopter_name ? ` · ${escapeHtml(tree.adopter_name)}` : ''}</span>
+                    ${tree.adoption_count > 0 ? `<span class="adoption-count-badge">${escapeHtml(String(tree.adoption_count))} adozione/i</span>` : ''}
+                </div>
             </a>`).join('') : '<div class="card empty-state">Nessun albero pubblicato da questa azienda.</div>';
 
         root.querySelector('[data-slot="farm-photos"]').innerHTML = data.photos.length ? data.photos.slice(0, 6).map((url) => `
             <a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Foto azienda" loading="lazy"></a>`).join('') : '<div class="card empty-state">Nessuna foto ancora.</div>';
+
+        const rewardsSlot = root.querySelector('[data-slot="farm-rewards"]');
+        if (rewardsSlot) rewardsSlot.innerHTML = renderRewards(data.rewards || []);
 
         renderFarmProfileMap(data.trees || []);
         renderUpdates(data.updates || []);
@@ -786,8 +879,8 @@
 
     const renderers = {
         'client-dashboard': renderClientDashboard,
-        'farm-dashboard': renderFarmDashboard,
-        'tree-detail': renderTreeDetail,
+        'farm-dashboard':   renderFarmDashboard,
+        'tree-detail':      renderTreeDetail,
         'updates-feed': (data) => {
             feedOffset = data.next_offset ?? FEED_LIMIT;
             renderUpdates(data.updates || []);
@@ -820,12 +913,41 @@
         refreshCoordinateMaps();
     };
 
+    // ── Shared update submit logic ─────────────────────────────────────────────
+    const doSubmitUpdate = async (form, statusEl) => {
+        if (!validateForm(form)) return false;
+        const fileInput = form.querySelector('[data-photo-input]');
+
+        if (fileInput?.files?.length) {
+            if (statusEl) statusEl.textContent = 'Ottimizzazione foto e salvataggio…';
+            const uploadData = new FormData();
+            uploadData.append('photo', fileInput.files[0]);
+            const upload = await apiFetch('/media/photo', { method: 'POST', body: uploadData });
+            const mediaUrlInput = form.querySelector('[data-media-url]');
+            if (mediaUrlInput) mediaUrlInput.value = upload.url;
+            if (statusEl) statusEl.textContent = `Foto caricata (${Math.round(upload.size / 1024)} KB).`;
+        }
+
+        const payload = Object.fromEntries(new FormData(form).entries());
+        delete payload.photo;
+        await apiFetch('/updates', { method: 'POST', body: JSON.stringify(payload) });
+        return true;
+    };
+
     const bindDashboardActions = () => {
         if (!root) return;
 
         document.querySelector('[data-open-farm-form]')?.addEventListener('click', () => showPanel('[data-farm-form]'));
         document.querySelector('[data-open-tree-form]')?.addEventListener('click', () => showPanel('[data-tree-form]'));
         document.querySelector('[data-open-update-form]')?.addEventListener('click', () => showPanel('[data-update-form]'));
+
+        // Quick-update FAB
+        document.querySelector('[data-open-quick-update]')?.addEventListener('click', () => {
+            document.querySelector('.quick-update-drawer')?.classList.add('is-open');
+        });
+        document.querySelector('[data-close-quick-update]')?.addEventListener('click', () => {
+            document.querySelector('.quick-update-drawer')?.classList.remove('is-open');
+        });
 
         document.addEventListener('click', async (event) => {
             const copyBtn = event.target.closest('[data-copy-link]');
@@ -836,9 +958,33 @@
                     const orig = copyBtn.innerHTML;
                     copyBtn.textContent = '✓ Copiato!';
                     setTimeout(() => { copyBtn.innerHTML = orig; }, 2200);
-                } catch {
-                    prompt('Copia questo link:', url);
+                } catch { prompt('Copia questo link:', url); }
+                return;
+            }
+
+            // QR toggle on tree detail
+            const qrToggle = event.target.closest('[data-qr-url]');
+            if (qrToggle && !qrToggle.dataset.showQr) {
+                const wrap = qrToggle.closest('.qr-section')?.querySelector('.qr-canvas-wrap');
+                if (!wrap) return;
+                const isHidden = wrap.hidden;
+                wrap.hidden = false;
+                qrToggle.textContent = isHidden ? 'Nascondi QR' : 'Mostra QR';
+                if (isHidden) {
+                    const canvas = wrap.querySelector('.qr-canvas');
+                    generateQR(canvas, qrToggle.dataset.qrUrl);
+                    setTimeout(() => {
+                        const c = canvas.querySelector('canvas');
+                        if (c) wrap.querySelector('.qr-download-btn').href = c.toDataURL('image/png');
+                    }, 300);
                 }
+                return;
+            }
+
+            // QR popover on farm dashboard tree list
+            const qrBtn = event.target.closest('[data-show-qr]');
+            if (qrBtn) {
+                showQrPopover(qrBtn.dataset.qrUrl, qrBtn.dataset.qrLabel);
                 return;
             }
 
@@ -860,15 +1006,38 @@
                 return;
             }
 
+            // Reactions
+            const reactBtn = event.target.closest('[data-react]');
+            if (reactBtn) {
+                const updateId = reactBtn.dataset.react;
+                const reaction = reactBtn.dataset.reaction;
+                const article = reactBtn.closest('[data-update-id]');
+
+                // Optimistic update
+                const bar = reactBtn.closest('.reaction-bar');
+                const wasActive = reactBtn.classList.contains('is-active');
+                bar.querySelectorAll('.reaction-btn').forEach((b) => b.classList.remove('is-active'));
+                if (!wasActive) reactBtn.classList.add('is-active');
+
+                try {
+                    const res = await apiFetch(`/updates/${updateId}/react`, { method: 'POST', body: JSON.stringify({ reaction }) });
+                    // Update counts
+                    bar.querySelectorAll('.reaction-btn').forEach((b) => {
+                        const key = b.dataset.reaction;
+                        const countEl = b.querySelector('.reaction-count');
+                        if (countEl) countEl.textContent = res.counts[key] > 0 ? res.counts[key] : '';
+                        b.classList.toggle('is-active', res.my_reaction === key);
+                    });
+                } catch { /* revert */ if (wasActive) reactBtn.classList.add('is-active'); }
+                return;
+            }
+
             const requestButton = event.target.closest('[data-request-adoption]');
             if (requestButton) {
                 requestButton.disabled = true;
                 try {
                     await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: requestButton.dataset.requestAdoption }) });
-                } catch (err) {
-                    requestButton.disabled = false;
-                    return;
-                }
+                } catch { requestButton.disabled = false; return; }
                 const row = requestButton.closest('.catalog-row');
                 const species = row?.querySelector('strong')?.textContent?.trim() || '';
                 const farmInfo = row?.querySelector('small')?.textContent?.split('·')[0]?.trim() || '';
@@ -879,12 +1048,16 @@
                 return;
             }
 
+            // Gift button
+            const giftBtn = event.target.closest('[data-gift-tree]');
+            if (giftBtn) {
+                showGiftModal(giftBtn.dataset.giftTree, giftBtn.dataset.giftSpecies);
+                return;
+            }
+
             const followButton = event.target.closest('[data-follow-farm]');
             if (followButton) {
-                if (!window.AgriSaas.userId) {
-                    window.location.href = followButton.dataset.loginUrl || appUrl('');
-                    return;
-                }
+                if (!window.AgriSaas.userId) { window.location.href = followButton.dataset.loginUrl || appUrl(''); return; }
                 followButton.disabled = true;
                 const method = followButton.dataset.following === '1' ? 'DELETE' : 'POST';
                 await apiFetch(`/farms/${followButton.dataset.farmId}/follow`, { method, body: JSON.stringify({}) });
@@ -898,6 +1071,57 @@
                 decisionButton.disabled = true;
                 await apiFetch(`/adoption-requests/${decisionButton.dataset.requestId}/${decisionButton.dataset.adoptionDecision}`, { method: 'POST', body: JSON.stringify({}) });
                 loadRoot();
+                return;
+            }
+
+            // Delete reward
+            const deleteRewardBtn = event.target.closest('[data-delete-reward]');
+            if (deleteRewardBtn) {
+                if (!confirm('Rimuovere questo premio?')) return;
+                deleteRewardBtn.disabled = true;
+                await apiFetch(`/rewards/${deleteRewardBtn.dataset.deleteReward}`, { method: 'DELETE' });
+                loadRoot();
+                return;
+            }
+        });
+
+        // Gift form submit
+        document.addEventListener('submit', async (event) => {
+            const giftForm = event.target.closest('[data-gift-form]');
+            if (giftForm) {
+                event.preventDefault();
+                if (!validateForm(giftForm)) return;
+                const status = giftForm.querySelector('[data-gift-status]');
+                if (status) status.textContent = 'Invio in corso…';
+                const treeId = giftForm.querySelector('[data-gift-tree-id]').value;
+                const payload = Object.fromEntries(new FormData(giftForm).entries());
+                try {
+                    await apiFetch('/gift-adoption', { method: 'POST', body: JSON.stringify({ tree_id: treeId, recipient_email: payload.recipient_email, gift_message: payload.gift_message }) });
+                    if (status) status.textContent = 'Regalo inviato! Il destinatario riceverà un\'email.';
+                    giftForm.reset();
+                    setTimeout(() => giftModal?.classList.remove('is-open'), 2000);
+                } catch (err) {
+                    if (status) status.textContent = err.message;
+                }
+                return;
+            }
+
+            // Add reward form
+            const rewardForm = event.target.closest('[data-add-reward-form]');
+            if (rewardForm) {
+                event.preventDefault();
+                if (!validateForm(rewardForm)) return;
+                const payload = Object.fromEntries(new FormData(rewardForm).entries());
+                await apiFetch('/rewards', { method: 'POST', body: JSON.stringify({
+                    farm_id: payload.farm_id,
+                    name: payload.reward_name,
+                    description: payload.reward_description,
+                    reward_type: payload.reward_type,
+                    estimated_value: payload.estimated_value,
+                    guidelines: payload.guidelines,
+                }) });
+                loadRoot();
+                return;
             }
         });
 
@@ -922,25 +1146,26 @@
         document.querySelector('[data-agri-update-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
             const form = event.currentTarget;
-            if (!validateForm(form)) return;
-            const fileInput = form.querySelector('[data-photo-input]');
             const status = form.querySelector('[data-upload-status]');
-            const mediaUrl = form.querySelector('[data-media-url]');
+            try {
+                if (await doSubmitUpdate(form, status)) {
+                    form.reset();
+                    window.location.href = appUrl('updates/');
+                }
+            } catch (err) { if (status) status.textContent = err.message; }
+        });
 
-            if (fileInput?.files?.length) {
-                if (status) status.textContent = 'Ottimizzazione foto a 100 KB e salvataggio nella media library di WordPress…';
-                const uploadData = new FormData();
-                uploadData.append('photo', fileInput.files[0]);
-                const upload = await apiFetch('/media/photo', { method: 'POST', body: uploadData });
-                if (mediaUrl) mediaUrl.value = upload.url;
-                if (status) status.textContent = `Foto ottimizzata e caricata (${Math.round(upload.size / 1024)} KB).`;
-            }
-
-            const payload = Object.fromEntries(new FormData(form).entries());
-            delete payload.photo;
-            await apiFetch('/updates', { method: 'POST', body: JSON.stringify(payload) });
-            form.reset();
-            window.location.href = appUrl('updates/');
+        document.querySelector('[data-quick-update-form]')?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const status = form.querySelector('[data-upload-status]');
+            try {
+                if (await doSubmitUpdate(form, status)) {
+                    form.reset();
+                    document.querySelector('.quick-update-drawer')?.classList.remove('is-open');
+                    window.location.href = appUrl('updates/');
+                }
+            } catch (err) { if (status) status.textContent = err.message; }
         });
     };
 
@@ -951,9 +1176,7 @@
         document.querySelectorAll('[data-registration-tab]').forEach((tab) => {
             tab.addEventListener('click', () => {
                 const type = tab.dataset.registrationTab;
-                panels.forEach((panel) => {
-                    panel.hidden = panel.dataset.registrationPanel !== type;
-                });
+                panels.forEach((panel) => { panel.hidden = panel.dataset.registrationPanel !== type; });
                 document.querySelectorAll('[data-registration-tab]').forEach((button) => button.classList.toggle('ghost', button !== tab));
                 initCoordinateMaps();
                 refreshCoordinateMaps();
@@ -979,10 +1202,77 @@
         });
     };
 
+    // ── Web Push ──────────────────────────────────────────────────────────────
+    const urlBase64ToUint8Array = (base64String) => {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(base64);
+        const output = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+        return output;
+    };
+
+    const subscribePush = async (registration) => {
+        try {
+            const existing = await registration.pushManager.getSubscription();
+            const sub = existing || await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(window.AgriSaas.vapidPublicKey),
+            });
+            const key    = sub.getKey ? sub.getKey('p256dh') : null;
+            const authKey = sub.getKey ? sub.getKey('auth') : null;
+            if (!key || !authKey) return;
+            await apiFetch('/push/subscribe', {
+                method: 'POST',
+                body: JSON.stringify({
+                    endpoint: sub.endpoint,
+                    p256dh:   btoa(String.fromCharCode(...new Uint8Array(key))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''),
+                    auth:     btoa(String.fromCharCode(...new Uint8Array(authKey))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''),
+                }),
+            });
+        } catch { /* Push permission denied or not supported — silent */ }
+    };
+
+    const initPushNotifications = () => {
+        if (!window.AgriSaas.vapidPublicKey || !window.AgriSaas.userId || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+        const showBanner = () => {
+            if (Notification.permission !== 'default') return;
+            const banner = document.createElement('div');
+            banner.className = 'push-banner';
+            banner.innerHTML = `<span>🔔 Attiva le notifiche per aggiornamenti dal tuo albero</span>
+                <button class="button" type="button" data-enable-push>Attiva</button>
+                <button class="button ghost" type="button" data-dismiss-push>✕</button>`;
+            document.body.prepend(banner);
+
+            banner.querySelector('[data-dismiss-push]').addEventListener('click', () => banner.remove());
+            banner.querySelector('[data-enable-push]').addEventListener('click', async () => {
+                const permission = await Notification.requestPermission();
+                banner.remove();
+                if (permission === 'granted') {
+                    const reg = await navigator.serviceWorker.ready;
+                    subscribePush(reg);
+                }
+            });
+        };
+
+        navigator.serviceWorker.register(window.AgriSaas.swUrl)
+            .then((registration) => {
+                if (Notification.permission === 'granted') {
+                    subscribePush(registration);
+                } else {
+                    showBanner();
+                }
+            })
+            .catch(() => { /* SW registration failed — silent */ });
+    };
+
+    // ── Init ──────────────────────────────────────────────────────────────────
     bindCoordinateButtons();
     bindRegistration();
     bindDashboardActions();
     initCoordinateMaps();
     initLightbox();
+    initPushNotifications();
     loadRoot();
 }());

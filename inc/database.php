@@ -3,6 +3,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+define('AGRI_SAAS_DB_VERSION', '3');
+
+add_action('init', 'agri_saas_maybe_upgrade_db');
+function agri_saas_maybe_upgrade_db(): void
+{
+    if (get_option('agri_saas_db_version') !== AGRI_SAAS_DB_VERSION) {
+        agri_saas_install_tables();
+        update_option('agri_saas_db_version', AGRI_SAAS_DB_VERSION);
+    }
+}
+
 /**
  * Return all custom table names used by the application domain.
  */
@@ -11,11 +22,14 @@ function agri_saas_tables(): array
     global $wpdb;
 
     return [
-        'farms' => $wpdb->prefix . 'agri_farms',
-        'trees' => $wpdb->prefix . 'agri_trees',
-        'updates' => $wpdb->prefix . 'agri_updates',
-        'adoptions' => $wpdb->prefix . 'agri_adoptions',
-        'farm_followers' => $wpdb->prefix . 'agri_farm_followers',
+        'farms'              => $wpdb->prefix . 'agri_farms',
+        'trees'              => $wpdb->prefix . 'agri_trees',
+        'updates'            => $wpdb->prefix . 'agri_updates',
+        'adoptions'          => $wpdb->prefix . 'agri_adoptions',
+        'farm_followers'     => $wpdb->prefix . 'agri_farm_followers',
+        'update_reactions'   => $wpdb->prefix . 'agri_update_reactions',
+        'push_subscriptions' => $wpdb->prefix . 'agri_push_subscriptions',
+        'rewards'            => $wpdb->prefix . 'agri_rewards',
     ];
 }
 
@@ -43,6 +57,7 @@ function agri_saas_install_tables(): void
         contact_whatsapp VARCHAR(40) DEFAULT '',
         contact_phone VARCHAR(40) DEFAULT '',
         description TEXT DEFAULT NULL,
+        is_verified TINYINT UNSIGNED NOT NULL DEFAULT 0,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY  (id),
         KEY owner_user_id (owner_user_id)
@@ -105,9 +120,53 @@ function agri_saas_install_tables(): void
         requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         decided_at DATETIME DEFAULT NULL,
         status VARCHAR(40) NOT NULL DEFAULT 'pending',
+        is_gift TINYINT UNSIGNED NOT NULL DEFAULT 0,
+        gift_token VARCHAR(64) DEFAULT NULL,
+        gift_recipient_email VARCHAR(191) DEFAULT NULL,
+        gift_message TEXT DEFAULT NULL,
+        gift_claimed_at DATETIME DEFAULT NULL,
+        milestone_sent VARCHAR(191) NOT NULL DEFAULT '',
         PRIMARY KEY  (id),
         UNIQUE KEY tree_user (tree_id, adopter_user_id),
         KEY adopter_user_id (adopter_user_id),
-        KEY status (status)
+        KEY status (status),
+        KEY gift_token (gift_token)
+    ) $charset_collate;");
+
+    dbDelta("CREATE TABLE {$tables['update_reactions']} (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        update_id BIGINT UNSIGNED NOT NULL,
+        user_id BIGINT UNSIGNED NOT NULL,
+        reaction VARCHAR(20) NOT NULL DEFAULT 'heart',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY  (id),
+        UNIQUE KEY user_update (update_id, user_id),
+        KEY update_id (update_id)
+    ) $charset_collate;");
+
+    dbDelta("CREATE TABLE {$tables['push_subscriptions']} (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        user_id BIGINT UNSIGNED NOT NULL,
+        endpoint TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY  (id),
+        UNIQUE KEY user_endpoint (user_id, endpoint(191)),
+        KEY user_id (user_id)
+    ) $charset_collate;");
+
+    dbDelta("CREATE TABLE {$tables['rewards']} (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        farm_id BIGINT UNSIGNED NOT NULL,
+        name VARCHAR(191) NOT NULL,
+        description TEXT NOT NULL,
+        reward_type VARCHAR(40) NOT NULL DEFAULT 'surprise',
+        estimated_value VARCHAR(100) DEFAULT '',
+        guidelines TEXT DEFAULT NULL,
+        is_active TINYINT UNSIGNED NOT NULL DEFAULT 1,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY  (id),
+        KEY farm_id (farm_id)
     ) $charset_collate;");
 }
