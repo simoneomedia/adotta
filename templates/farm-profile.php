@@ -59,6 +59,15 @@ get_header();
             <?php agri_saas_stat_card(__('Follower', 'agri-saas'), '—', __('Persone che seguono gli aggiornamenti', 'agri-saas')); ?>
         </div>
 
+        <div class="card span-3" data-slot-card>
+            <div class="section-heading">
+                <h2><?php esc_html_e('Premi per gli adottanti', 'agri-saas'); ?></h2>
+            </div>
+            <div data-slot="farm-rewards">
+                <?php agri_saas_empty_state(__('Questa azienda non ha ancora configurato premi per le adozioni.', 'agri-saas')); ?>
+            </div>
+        </div>
+
         <article class="card span-3">
             <div class="section-heading">
                 <div>

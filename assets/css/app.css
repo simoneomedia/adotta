@@ -729,3 +729,274 @@ select.is-invalid:focus,
 textarea.is-invalid:focus {
     box-shadow: 0 0 0 3px rgba(229,57,53,.18);
 }
+
+/* ── QR code ─────────────────────────────────────────── */
+.qr-section { margin-top: 18px; }
+.qr-section summary { cursor: pointer; font-weight: 700; color: var(--accent); user-select: none; }
+.qr-canvas-wrap { margin: 14px 0 10px; display: flex; justify-content: center; }
+.qr-canvas-wrap canvas, .qr-canvas-wrap img { border-radius: 10px; }
+.qr-download-btn { display: inline-block; margin-top: 6px; }
+.qr-popover {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.14);
+    padding: 16px;
+    position: fixed;
+    z-index: 6000;
+    max-width: 240px;
+    text-align: center;
+}
+.qr-popover-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    position: absolute;
+    right: 10px;
+    top: 8px;
+}
+
+/* ── Gift modal ──────────────────────────────────────── */
+.gift-modal {
+    align-items: center;
+    background: rgba(0,0,0,.55);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    position: fixed;
+    z-index: 8000;
+}
+.gift-modal-card {
+    background: var(--surface);
+    border-radius: 20px;
+    box-shadow: 0 16px 56px rgba(0,0,0,.2);
+    max-width: 440px;
+    padding: 28px 26px 24px;
+    position: relative;
+    width: 92%;
+}
+.gift-modal-card h2 { margin: 0 0 6px; }
+.gift-modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.4rem;
+    position: absolute;
+    right: 14px;
+    top: 12px;
+}
+.gift-form { display: grid; gap: 13px; margin-top: 16px; }
+
+/* ── Push notification banner ────────────────────────── */
+.push-banner {
+    align-items: center;
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 12px;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+}
+.push-banner p { color: #1b5e20; font-size: .9rem; font-weight: 600; margin: 0; }
+.push-banner-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ── Reaction bar ────────────────────────────────────── */
+.reaction-bar {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+    flex: 1;
+}
+.reaction-btn {
+    align-items: center;
+    background: var(--surface-soft);
+    border: 1.5px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: .8rem;
+    gap: 4px;
+    padding: 4px 10px;
+    transition: background .15s, border-color .15s, transform .1s;
+}
+.reaction-btn:hover { background: var(--border); }
+.reaction-btn.is-active {
+    background: #fff3e0;
+    border-color: #ffb300;
+    color: #e65100;
+    font-weight: 700;
+}
+.reaction-btn:active { transform: scale(.92); }
+.reaction-count { font-weight: 700; }
+
+/* ── Milestone banner ────────────────────────────────── */
+.milestone-banner {
+    background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%);
+    border: 1.5px solid #ffe082;
+    border-radius: 16px;
+    margin-bottom: 18px;
+    padding: 18px 20px;
+}
+.milestone-banner h3 { color: #e65100; font-size: 1rem; margin: 0 0 10px; }
+.milestone-item {
+    align-items: center;
+    color: #5d4037;
+    display: flex;
+    font-size: .9rem;
+    gap: 10px;
+    padding: 6px 0;
+    border-top: 1px solid #ffe082;
+}
+.milestone-item:first-of-type { border-top: none; }
+.milestone-item-icon { font-size: 1.4rem; }
+
+/* ── Adoption count badge ────────────────────────────── */
+.adoption-count-badge {
+    background: #fff8e1;
+    border-radius: 999px;
+    color: #f57f17;
+    font-size: .72rem;
+    font-weight: 800;
+    padding: 3px 8px;
+}
+
+/* ── Reward available badge ──────────────────────────── */
+.reward-available-badge {
+    background: #fce4ec;
+    border-radius: 999px;
+    color: #880e4f;
+    font-size: .72rem;
+    font-weight: 800;
+    padding: 3px 8px;
+}
+
+/* ── Verified badge ──────────────────────────────────── */
+.verified-badge {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 999px;
+    color: #1b5e20;
+    font-size: .72rem;
+    font-weight: 800;
+    padding: 3px 10px;
+}
+
+/* ── FAB quick update ────────────────────────────────── */
+.fab-quick-update {
+    align-items: center;
+    background: var(--accent);
+    border: none;
+    border-radius: 50%;
+    bottom: 24px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.22);
+    color: #fff;
+    cursor: pointer;
+    display: none;
+    font-size: 1.8rem;
+    height: 56px;
+    justify-content: center;
+    position: fixed;
+    right: 20px;
+    width: 56px;
+    z-index: 200;
+    line-height: 1;
+}
+@media (max-width: 640px) {
+    .fab-quick-update { display: flex; }
+}
+
+/* ── Quick update drawer ─────────────────────────────── */
+.quick-update-drawer {
+    background: var(--surface);
+    border-radius: 22px 22px 0 0;
+    bottom: 0;
+    box-shadow: 0 -8px 40px rgba(0,0,0,.18);
+    display: flex;
+    flex-direction: column;
+    inset-inline: 0;
+    max-height: 90dvh;
+    overflow-y: auto;
+    padding: 0 20px 32px;
+    position: fixed;
+    transform: translateY(100%);
+    transition: transform .28s cubic-bezier(.22,.68,0,1.2);
+    z-index: 7000;
+}
+.quick-update-drawer.is-open { transform: translateY(0); }
+.quick-update-drawer-overlay {
+    background: rgba(0,0,0,.48);
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: fixed;
+    transition: opacity .25s;
+    z-index: 6999;
+}
+.quick-update-drawer-overlay.is-open { opacity: 1; pointer-events: auto; }
+.drawer-handle {
+    background: var(--border);
+    border-radius: 999px;
+    height: 4px;
+    margin: 10px auto 18px;
+    width: 40px;
+}
+.drawer-header {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+.drawer-header h3 { font-size: 1.1rem; margin: 0; }
+.drawer-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.3rem;
+    line-height: 1;
+}
+.quick-update-form { display: grid; gap: 14px; }
+
+/* ── Rewards ─────────────────────────────────────────── */
+.rewards-list { display: grid; gap: 14px; }
+.reward-card {
+    align-items: flex-start;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    display: flex;
+    gap: 14px;
+    padding: 16px;
+}
+.reward-icon { font-size: 2rem; flex-shrink: 0; }
+.reward-info { flex: 1; min-width: 0; }
+.reward-info h4 { font-size: 1rem; margin: 0 0 4px; }
+.reward-desc { color: var(--muted); font-size: .88rem; margin: 0 0 8px; }
+.reward-value { color: var(--muted); font-size: .8rem; font-style: italic; }
+.reward-type-badge {
+    background: #fce4ec;
+    border-radius: 999px;
+    color: #880e4f;
+    display: inline-block;
+    font-size: .68rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+    padding: 2px 9px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.reward-form { display: grid; gap: 12px; }
+.reward-manage-item {
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    padding: 10px 0;
+}
+.reward-manage-item:last-child { border-bottom: none; }
+.reward-manage-info { flex: 1; min-width: 0; }
+.reward-manage-name { font-weight: 700; font-size: .95rem; }
+.reward-manage-actions { display: flex; gap: 6px; flex-shrink: 0; }

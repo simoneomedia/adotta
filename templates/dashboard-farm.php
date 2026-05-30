@@ -118,6 +118,44 @@ agri_saas_render_shell(__('Dashboard Azienda', 'agri-saas'), function (): void {
                 <button class="button" type="submit"><?php esc_html_e('Pubblica aggiornamento', 'agri-saas'); ?></button>
             </form>
         </aside>
+
+        <article class="card span-3">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow"><?php esc_html_e('Premi per adozione', 'agri-saas'); ?></p>
+                    <h2><?php esc_html_e('Gestisci premi', 'agri-saas'); ?></h2>
+                </div>
+            </div>
+            <div data-slot="farm-rewards-manage">
+                <?php agri_saas_empty_state(__('I premi per gli adottanti appariranno qui dopo che li avrai aggiunti.', 'agri-saas')); ?>
+            </div>
+        </article>
     </section>
+
+    <!-- FAB quick update (mobile only) -->
+    <button class="fab-quick-update" type="button" data-open-quick-update aria-label="<?php esc_attr_e('Pubblica aggiornamento rapido', 'agri-saas'); ?>">+</button>
+
+    <!-- Quick update drawer overlay -->
+    <div class="quick-update-drawer-overlay" data-quick-update-overlay></div>
+
+    <!-- Quick update drawer -->
+    <div class="quick-update-drawer" data-quick-update-drawer>
+        <div class="drawer-handle"></div>
+        <div class="drawer-header">
+            <h3><?php esc_html_e('Aggiornamento rapido', 'agri-saas'); ?></h3>
+            <button class="drawer-close" type="button" data-close-quick-update aria-label="<?php esc_attr_e('Chiudi', 'agri-saas'); ?>">✕</button>
+        </div>
+        <form class="quick-update-form" data-quick-update-form>
+            <label><?php esc_html_e('Foto', 'agri-saas'); ?><input name="photo" type="file" accept="image/*" capture="environment" data-photo-input></label>
+            <input name="media_url" type="hidden" data-media-url>
+            <p class="map-note" data-upload-status></p>
+            <label><?php esc_html_e('Titolo', 'agri-saas'); ?><input name="title" required></label>
+            <label><?php esc_html_e('Messaggio', 'agri-saas'); ?><textarea name="body" required rows="3"></textarea></label>
+            <input name="farm_id" type="hidden" data-fab-farm-id>
+            <input name="visibility" type="hidden" value="public">
+            <button class="button" type="submit"><?php esc_html_e('Pubblica ora', 'agri-saas'); ?></button>
+            <p class="map-note" data-quick-update-status></p>
+        </form>
+    </div>
     <?php
 });
