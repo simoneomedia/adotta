@@ -3,6 +3,24 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Serve the service worker via WordPress so we can add the Service-Worker-Allowed: / header,
+// which is required for the SW to control pages outside its directory.
+add_action('init', 'agri_saas_serve_sw', 1);
+function agri_saas_serve_sw(): void
+{
+    if (!isset($_GET['agri-sw']) || headers_sent()) {
+        return;
+    }
+    header('Content-Type: application/javascript; charset=utf-8');
+    header('Service-Worker-Allowed: /');
+    header('Cache-Control: no-store, max-age=0');
+    $sw_path = AGRI_SAAS_PATH . '/assets/js/sw.js';
+    if (file_exists($sw_path)) {
+        readfile($sw_path); // phpcs:ignore WordPress.WP.AlternativeFunctions
+    }
+    exit;
+}
+
 add_action('after_setup_theme', 'agri_saas_theme_setup');
 function agri_saas_theme_setup(): void
 {
@@ -36,7 +54,7 @@ function agri_saas_enqueue_assets(): void
         'homeUrl'        => esc_url_raw(home_url('/')),
         'vapidPublicKey' => $push_enabled ? $vapid_keys['public'] : '',
         'pushEnabled'    => $push_enabled,
-        'swUrl'          => esc_url_raw(AGRI_SAAS_URI . '/assets/js/sw.js'),
+        'swUrl'          => esc_url_raw(home_url('/?agri-sw=1')),
     ]);
 }
 

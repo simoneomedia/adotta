@@ -219,6 +219,7 @@
     const visibilityLabel = (v) => ({ public: 'Pubblico', followers: 'Follower', adopters: 'Adottanti', tree_adopter: 'Adottante' }[v] || 'Pubblico');
     const statusLabel = (s) => ({ available: 'Disponibile', adopted: 'Adottato', maintenance: 'In manutenzione' }[s] || s || '');
     const rewardTypeLabel = (t) => ({ physical: 'Prodotto fisico', digital: 'Digitale', experience: 'Esperienza', surprise: 'A sorpresa' }[t] || t || '');
+    const whenReceivedLabel = (w) => ({ immediate: 'All\'adozione', '6m': 'Dopo 6 mesi', '1y': 'Dopo 1 anno', harvest: 'Al raccolto', annually: 'Ogni anno' }[w] || 'All\'adozione');
 
     const verifiedBadge = (isVerified) => isVerified
         ? '<span class="verified-badge" title="Agricoltore verificato">✓ Verificato</span>'
@@ -455,12 +456,17 @@
         renderAdoptableTrees(data.trees || []);
     };
 
+    const setSlot = (selector, html) => {
+        const el = root?.querySelector(selector);
+        if (el) el.innerHTML = html;
+    };
+
     const renderClientDashboard = (data) => {
-        root.querySelector('[data-slot="stats"]').innerHTML = [
+        setSlot('[data-slot="stats"]', [
             statCard('Alberi adottati', String(data.stats.adoptedTrees), 'Nel tuo portafoglio'),
             statCard('Adozioni attive', String(data.stats.activeAdoptions), 'Attualmente attive'),
             statCard('Stima CO₂', `${data.stats.estimatedCarbonKg} kg`, 'Sequestro stimato'),
-        ].join('');
+        ].join(''));
 
         // Milestone banner
         const milestoneSlot = root.querySelector('[data-slot="milestones"]');
@@ -480,11 +486,11 @@
             milestoneSlot.hidden = false;
         }
 
-        root.querySelector('[data-slot="trees"]').innerHTML = data.trees.length ? data.trees.map((tree) => `
+        setSlot('[data-slot="trees"]', data.trees.length ? data.trees.map((tree) => `
             <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
                 <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small></div>
                 <span class="badge">${escapeHtml(tree.code)}</span>
-            </a>`).join('') : '<div class="card empty-state">Nessun albero adottato ancora.</div>';
+            </a>`).join('') : '<div class="card empty-state">Nessun albero adottato ancora.</div>');
 
         loadAdoptableTrees().catch(() => root.querySelector('[data-slot="adoptable-trees"]')?.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare gli alberi disponibili.</div>'));
     };
@@ -516,13 +522,15 @@
     };
 
     const renderRewards = (rewards) => {
-        if (!rewards?.length) return '<div class="card empty-state">Nessun premio configurato ancora.</div>';
-        return `<div class="rewards-list">${rewards.map((r) => `
+        if (!rewards?.length) return '<div class="card empty-state">Nessun premio incluso in questa adozione.</div>';
+        return `<p style="color:var(--muted);font-size:.9rem;margin:0 0 14px;">Adottando un albero di questa azienda riceverai:</p>
+        <div class="rewards-list">${rewards.map((r) => `
             <div class="reward-card">
                 <div class="reward-icon">🎁</div>
                 <div class="reward-info">
                     <strong>${escapeHtml(r.name)}</strong>
                     <span class="reward-type-badge">${escapeHtml(rewardTypeLabel(r.reward_type))}</span>
+                    <span class="reward-when-badge">⏰ ${escapeHtml(whenReceivedLabel(r.when_received))}</span>
                     ${r.estimated_value ? `<small class="reward-value">Valore stimato: ${escapeHtml(r.estimated_value)}</small>` : ''}
                     <p class="reward-desc">${escapeHtml(r.description)}</p>
                 </div>
@@ -556,8 +564,17 @@
                             <option value="experience">Esperienza</option>
                         </select>
                     </label>
-                    <label>Valore stimato<input name="estimated_value" placeholder="es. €25 oppure 'variabile'"></label>
+                    <label>Quando lo riceve
+                        <select name="when_received">
+                            <option value="immediate">All'adozione</option>
+                            <option value="harvest">Al raccolto</option>
+                            <option value="6m">Dopo 6 mesi</option>
+                            <option value="1y">Dopo 1 anno</option>
+                            <option value="annually">Ogni anno</option>
+                        </select>
+                    </label>
                 </div>
+                <label>Valore stimato<input name="estimated_value" placeholder="es. €25 oppure 'variabile'"></label>
                 <label>Linee guida (facoltativo)<textarea name="guidelines" placeholder="Suggerimento: descrivi cosa includerà il premio (es. 1 kg di olio extravergine, una visita in azienda, una videochiamata con l'agricoltore)"></textarea></label>
                 <input type="hidden" name="farm_id" value="${escapeHtml(String(farmId))}" data-reward-farm-id>
                 <button class="button" type="submit">Aggiungi premio</button>
@@ -566,20 +583,20 @@
     };
 
     const renderFarmDashboard = (data) => {
-        root.querySelector('[data-slot="stats"]').innerHTML = [
+        setSlot('[data-slot="stats"]', [
             statCard('Aziende gestite', String(data.stats.farms), 'Aziende registrate'),
             statCard('Alberi disponibili', String(data.stats.availableTrees), 'Pronti per adozione'),
             statCard('Alberi adottati', String(data.stats.adoptedTrees), 'Sponsorizzati da clienti'),
-        ].join('');
+        ].join(''));
 
-        root.querySelector('[data-slot="farms"]').innerHTML = data.farms.length ? data.farms.map((farm) => `
+        setSlot('[data-slot="farms"]', data.farms.length ? data.farms.map((farm) => `
             <div class="farm-row">
                 <div><strong><a href="${appUrl(`farms/${farm.id}/`)}">${escapeHtml(farm.name)}</a></strong> ${verifiedBadge(farm.is_verified)}<br>
                 <small>${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus)}${farm.latitude && farm.longitude ? ` · ${escapeHtml(farm.latitude)}, ${escapeHtml(farm.longitude)}` : ''}</small></div>
                 <span class="badge">${escapeHtml(String(farm.tree_count))} alberi · salute ${escapeHtml(String(farm.health_score))}</span>
-            </div>`).join('') : '<div class="card empty-state">Nessuna azienda. Aggiungine una prima di pubblicare alberi.</div>';
+            </div>`).join('') : '<div class="card empty-state">Nessuna azienda. Aggiungine una prima di pubblicare alberi.</div>');
 
-        root.querySelector('[data-slot="farm-trees"]').innerHTML = data.trees.length ? data.trees.map((tree) => `
+        setSlot('[data-slot="farm-trees"]', data.trees.length ? data.trees.map((tree) => `
             <div class="tree-row" style="justify-content:space-between;">
                 <a href="${appUrl(`trees/${tree.id}/`)}">
                     <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.planted_at || 'Data non disponibile')}</small></div>
@@ -589,7 +606,7 @@
                     ${tree.adoption_count > 0 ? `<span class="adoption-count-badge">${escapeHtml(String(tree.adoption_count))} adoz.</span>` : ''}
                     <button class="button ghost" type="button" data-show-qr="${escapeHtml(String(tree.id))}" data-qr-url="${escapeHtml(appUrl(`trees/${tree.id}/`))}" data-qr-label="${escapeHtml(tree.code)}" style="padding:6px 12px;font-size:.78rem;">QR</button>
                 </div>
-            </div>`).join('') : '<div class="card empty-state">Nessun albero pubblicato.</div>';
+            </div>`).join('') : '<div class="card empty-state">Nessun albero pubblicato.</div>');
 
         renderAdoptionRequests(data.requests || []);
         updateFarmOptions(data.farms || []);
@@ -751,7 +768,6 @@
 
     const showGiftModal = (treeId, species) => {
         if (!giftModal) giftModal = renderGiftModal();
-        giftModal.querySelector('[data-gift-tree-id]').value = treeId;
         giftModal.querySelector('[data-gift-species]').textContent = `Albero: ${species}`;
         giftModal.querySelector('[data-gift-status]').textContent = '';
         giftModal.querySelector('[data-gift-form]').reset();
@@ -773,10 +789,9 @@
         canvas.innerHTML = '';
         generateQR(canvas, url);
         qrPopover.querySelector('.qr-download-btn').setAttribute('download', `albero-${label}.png`);
-        setTimeout(() => {
-            const c = canvas.querySelector('canvas');
-            if (c) qrPopover.querySelector('.qr-download-btn').href = c.toDataURL('image/png');
-        }, 300);
+        // QRCode renders synchronously; read the canvas immediately after generateQR.
+        const qrCanvas = canvas.querySelector('canvas');
+        if (qrCanvas) qrPopover.querySelector('.qr-download-btn').href = qrCanvas.toDataURL('image/png');
         qrPopover.hidden = false;
     };
 
@@ -973,10 +988,8 @@
                 if (isHidden) {
                     const canvas = wrap.querySelector('.qr-canvas');
                     generateQR(canvas, qrToggle.dataset.qrUrl);
-                    setTimeout(() => {
-                        const c = canvas.querySelector('canvas');
-                        if (c) wrap.querySelector('.qr-download-btn').href = c.toDataURL('image/png');
-                    }, 300);
+                    const qrCanvas = canvas.querySelector('canvas');
+                    if (qrCanvas) wrap.querySelector('.qr-download-btn').href = qrCanvas.toDataURL('image/png');
                 }
                 return;
             }
@@ -1069,8 +1082,13 @@
             const decisionButton = event.target.closest('[data-adoption-decision]');
             if (decisionButton) {
                 decisionButton.disabled = true;
-                await apiFetch(`/adoption-requests/${decisionButton.dataset.requestId}/${decisionButton.dataset.adoptionDecision}`, { method: 'POST', body: JSON.stringify({}) });
-                loadRoot();
+                try {
+                    await apiFetch(`/adoption-requests/${decisionButton.dataset.requestId}/${decisionButton.dataset.adoptionDecision}`, { method: 'POST', body: JSON.stringify({}) });
+                    loadRoot();
+                } catch (err) {
+                    decisionButton.disabled = false;
+                    alert(err.message || 'Errore durante l\'operazione. Riprova.');
+                }
                 return;
             }
 
@@ -1113,12 +1131,13 @@
                 if (!validateForm(rewardForm)) return;
                 const payload = Object.fromEntries(new FormData(rewardForm).entries());
                 await apiFetch('/rewards', { method: 'POST', body: JSON.stringify({
-                    farm_id: payload.farm_id,
-                    name: payload.reward_name,
-                    description: payload.reward_description,
-                    reward_type: payload.reward_type,
+                    farm_id:         payload.farm_id,
+                    name:            payload.reward_name,
+                    description:     payload.reward_description,
+                    reward_type:     payload.reward_type,
+                    when_received:   payload.when_received,
                     estimated_value: payload.estimated_value,
-                    guidelines: payload.guidelines,
+                    guidelines:      payload.guidelines,
                 }) });
                 loadRoot();
                 return;
@@ -1267,6 +1286,30 @@
             .catch(() => { /* SW registration failed — silent */ });
     };
 
+    // ── Claim gift ────────────────────────────────────────────────────────────
+    const initClaimGift = () => {
+        const claimBtn = document.querySelector('[data-claim-gift]');
+        if (!claimBtn) return;
+        const section = claimBtn.closest('[data-gift-claim-section]');
+        const token = section?.dataset.giftToken;
+        if (!token) return;
+
+        claimBtn.addEventListener('click', async () => {
+            claimBtn.disabled = true;
+            const statusEl = section.querySelector('[data-claim-status]');
+            if (statusEl) statusEl.textContent = 'Riscatto in corso…';
+            try {
+                const res = await apiFetch('/claim-gift', { method: 'POST', body: JSON.stringify({ token }) });
+                if (statusEl) statusEl.textContent = `🌳 Adozione riscattata! ${escapeHtml(res.species)} (${escapeHtml(res.code)}) presso ${escapeHtml(res.farm_name)}.`;
+                claimBtn.textContent = '✓ Riscattato!';
+                setTimeout(() => { window.location.href = appUrl('dashboard/'); }, 2200);
+            } catch (err) {
+                claimBtn.disabled = false;
+                if (statusEl) statusEl.textContent = err.message || 'Errore. Riprova.';
+            }
+        });
+    };
+
     // ── Init ──────────────────────────────────────────────────────────────────
     bindCoordinateButtons();
     bindRegistration();
@@ -1274,5 +1317,6 @@
     initCoordinateMaps();
     initLightbox();
     initPushNotifications();
+    initClaimGift();
     loadRoot();
 }());

@@ -1000,3 +1000,16 @@ textarea.is-invalid:focus {
 .reward-manage-info { flex: 1; min-width: 0; }
 .reward-manage-name { font-weight: 700; font-size: .95rem; }
 .reward-manage-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* ── Reward when-received badge ──────────────────────── */
+.reward-when-badge {
+    background: #e8f5e9;
+    border-radius: 999px;
+    color: #1b5e20;
+    display: inline-block;
+    font-size: .68rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    margin-left: 4px;
+    padding: 2px 9px;
+}
