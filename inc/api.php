@@ -749,9 +749,10 @@ function agri_saas_api_adoptable_trees(WP_REST_Request $request): WP_REST_Respon
                 COALESCE(t.longitude, f.longitude) AS map_longitude,
                 CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN 'tree' ELSE 'farm' END AS coordinate_source,
                 f.id AS farm_id,
-                f.name AS farm_name, f.location, f.crop_focus,
+                f.name AS farm_name, f.location, f.crop_focus, f.is_verified,
                 (SELECT COUNT(*) FROM {$tables['adoptions']} a2 WHERE a2.tree_id = t.id AND a2.status = 'active') AS adoption_count,
                 EXISTS(SELECT 1 FROM {$tables['rewards']} rw WHERE rw.farm_id = f.id AND rw.is_active = 1) AS has_rewards,
+                (SELECT media_url FROM {$tables['updates']} u WHERE u.farm_id = f.id AND u.media_url != '' ORDER BY u.created_at DESC LIMIT 1) AS farm_photo,
                 own_request.status AS request_status
          FROM {$tables['trees']} t
          INNER JOIN {$tables['farms']} f ON f.id = t.farm_id

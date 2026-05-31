@@ -369,31 +369,133 @@
 
     const makeCluster = () => (window.L?.markerClusterGroup ? L.markerClusterGroup() : L.featureGroup());
 
+    const speciesEmoji = (species) => {
+        const s = (species || '').toLowerCase();
+        if (s.includes('olivo') || s.includes('olive')) return '🫒';
+        if (s.includes('arancio') || s.includes('orange')) return '🍊';
+        if (s.includes('limone') || s.includes('lemon')) return '🍋';
+        if (s.includes('fico') || s.includes('fig')) return '🍈';
+        if (s.includes('melo') || s.includes('apple') || s.includes('mela')) return '🍎';
+        if (s.includes('pero') || s.includes('pear') || s.includes('pera')) return '🍐';
+        if (s.includes('ciliegio') || s.includes('cherry')) return '🍒';
+        if (s.includes('pesco') || s.includes('peach')) return '🍑';
+        if (s.includes('noce') || s.includes('walnut')) return '🥜';
+        if (s.includes('mandorlo') || s.includes('almond')) return '🌰';
+        if (s.includes('vite') || s.includes('uva') || s.includes('grape')) return '🍇';
+        if (s.includes('ulivo')) return '🫒';
+        return '🌳';
+    };
+
+    const treeCardHtml = (tree) => {
+        const emoji = speciesEmoji(tree.species);
+        const isPending = tree.request_status === 'pending';
+        const imgStyle = tree.farm_photo
+            ? `background-image:url('${escapeHtml(tree.farm_photo)}')`
+            : `background:linear-gradient(135deg,#c8e6c9 0%,#a5d6a7 100%)`;
+        return `<article class="tree-card" data-tree-id="${escapeHtml(String(tree.id))}" data-lat="${escapeHtml(String(tree.map_latitude || ''))}" data-lng="${escapeHtml(String(tree.map_longitude || ''))}">
+            <a class="tree-card-link" href="${appUrl(`trees/${tree.id}/`)}">
+                <div class="tree-card-img" style="${imgStyle}">
+                    <div class="tree-card-img-overlay">
+                        <span class="tree-species-emoji-large" aria-hidden="true">${emoji}</span>
+                    </div>
+                </div>
+                <div class="tree-card-body">
+                    <div class="tree-card-header">
+                        <span class="tree-species-name">${escapeHtml(tree.species)}</span>
+                        <span class="tree-card-code">${escapeHtml(tree.code)}</span>
+                    </div>
+                    <div class="tree-card-farm">🌿 ${escapeHtml(tree.farm_name)}${tree.location ? ` · ${escapeHtml(tree.location)}` : ''}</div>
+                    <div class="tree-card-badges">
+                        ${Number(tree.adoption_count) > 0 ? `<span class="adoption-count-badge">${escapeHtml(String(tree.adoption_count))} adozioni</span>` : ''}
+                        ${Number(tree.has_rewards) ? '<span class="reward-available-badge">🎁 Premio</span>' : ''}
+                        ${Number(tree.is_verified) ? '<span class="verified-badge">✓ Verificato</span>' : ''}
+                    </div>
+                </div>
+            </a>
+            <div class="tree-card-actions">
+                <button class="button${isPending ? ' ghost' : ''}" type="button" data-request-adoption="${escapeHtml(String(tree.id))}"${isPending ? ' disabled' : ''}>${isPending ? 'In attesa…' : 'Richiedi adozione'}</button>
+                <button class="button ghost tree-card-gift-btn" type="button" data-gift-tree="${escapeHtml(String(tree.id))}" data-gift-species="${escapeHtml(tree.species)}" title="Regala questo albero" aria-label="Regala ${escapeHtml(tree.species)}">🎁</button>
+            </div>
+        </article>`;
+    };
+
+    let catalogMarkerMap = new Map();
+
     const renderAdoptableMap = (trees) => {
         const slot = root?.querySelector('[data-slot="adoptable-map"]');
         if (!slot) return;
         if (adoptableMap) { adoptableMap.remove(); adoptableMap = null; }
+        catalogMarkerMap = new Map();
 
         const mapped = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
-        if (!mapped.length) { slot.innerHTML = '<div class="map-placeholder">◎<small>Nessuna coordinata disponibile</small></div>'; return; }
+        if (!mapped.length) {
+            slot.innerHTML = '<div class="map-placeholder">◎<small>Nessuna coordinata disponibile</small></div>';
+            return;
+        }
 
-        slot.innerHTML = '<div class="leaflet-map"></div><p class="map-note">I pin usano le coordinate dell\'albero quando disponibili, altrimenti quelle dell\'azienda.</p>';
-        adoptableMap = makeLeafletMap(slot.querySelector('.leaflet-map'));
+        adoptableMap = makeLeafletMap(slot);
         if (!adoptableMap) return;
 
         const cluster = makeCluster();
         const bounds = [];
+
         mapped.forEach((tree) => {
             const lat = Number(tree.map_latitude);
             const lng = Number(tree.map_longitude);
             bounds.push([lat, lng]);
-            L.marker([lat, lng])
-                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`)
-                .addTo(cluster);
+            const marker = L.marker([lat, lng])
+                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`);
+
+            marker.on('click', () => {
+                const listPanel = root?.querySelector('[data-slot="adoptable-trees"]');
+                listPanel?.querySelectorAll('.tree-card').forEach((c) => c.classList.remove('is-highlighted'));
+                const card = listPanel?.querySelector(`[data-tree-id="${tree.id}"]`);
+                if (card) {
+                    card.classList.add('is-highlighted');
+                    const body = root?.querySelector('.catalog-body');
+                    if (body && window.innerWidth <= 768) {
+                        body.dataset.catalogView = 'lista';
+                        root?.querySelectorAll('[data-view-toggle]').forEach((b) => b.classList.toggle('is-active', b.dataset.viewToggle === 'lista'));
+                        setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+                    } else {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }
+            });
+
+            marker.addTo(cluster);
+            catalogMarkerMap.set(String(tree.id), marker);
         });
+
         cluster.addTo(adoptableMap);
         if (bounds.length === 1) adoptableMap.setView(bounds[0], 13);
         else adoptableMap.fitBounds(bounds, { maxZoom: 14, padding: [28, 28] });
+
+        // Card hover → pan map
+        const listPanel = root?.querySelector('[data-slot="adoptable-trees"]');
+        if (listPanel) {
+            listPanel.addEventListener('mouseover', (e) => {
+                const card = e.target.closest('[data-tree-id]');
+                if (!card || !adoptableMap) return;
+                const marker = catalogMarkerMap.get(card.dataset.treeId);
+                if (marker) adoptableMap.panTo(marker.getLatLng(), { animate: true, duration: 0.4 });
+            }, { passive: true });
+        }
+    };
+
+    const initViewToggle = () => {
+        const body = root?.querySelector('.catalog-body');
+        if (!body) return;
+        root?.querySelectorAll('[data-view-toggle]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.viewToggle;
+                body.dataset.catalogView = view;
+                root?.querySelectorAll('[data-view-toggle]').forEach((b) => b.classList.toggle('is-active', b.dataset.viewToggle === view));
+                if (view === 'mappa' && adoptableMap) {
+                    setTimeout(() => adoptableMap.invalidateSize(), 60);
+                }
+            });
+        });
     };
 
     const renderAdoptableTrees = (trees) => {
@@ -401,52 +503,27 @@
         if (!slot) return;
 
         if (trees.length) {
-            slot.innerHTML = `<div class="catalog-search-wrap">
-                <input type="search" class="catalog-search-input" placeholder="Cerca specie, azienda, luogo…" data-tree-search aria-label="Cerca alberi">
-            </div>
-            <div class="catalog-rows">${trees.map((tree) => `
-                <article class="tree-row catalog-row">
-                    <a href="${appUrl(`trees/${tree.id}/`)}">
-                        <strong>${escapeHtml(tree.species)}</strong><br>
-                        <small>${escapeHtml(treeMeta(tree))}</small><br>
-                        <small>${tree.map_latitude && tree.map_longitude ? `${escapeHtml(tree.map_latitude)}, ${escapeHtml(tree.map_longitude)} · coordinate ${escapeHtml(tree.coordinate_source)}` : 'Coordinate non ancora disponibili'}</small>
-                    </a>
-                    <div class="row-actions">
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
-                            <span class="badge">${escapeHtml(tree.code)}</span>
-                            ${tree.adoption_count > 0 ? `<span class="adoption-count-badge">${escapeHtml(String(tree.adoption_count))} adozioni</span>` : ''}
-                            ${tree.has_rewards ? '<span class="reward-available-badge">🎁 Premio</span>' : ''}
-                        </div>
-                        <button class="button" type="button" data-request-adoption="${escapeHtml(String(tree.id))}" ${tree.request_status === 'pending' ? 'disabled' : ''}>${tree.request_status === 'pending' ? 'In attesa' : 'Richiedi adozione'}</button>
-                        <button class="button ghost" type="button" data-gift-tree="${escapeHtml(String(tree.id))}" data-gift-species="${escapeHtml(tree.species)}">Regala 🎁</button>
-                    </div>
-                </article>`).join('')}</div>`;
-
-            const searchInput = slot.querySelector('[data-tree-search]');
-            if (searchInput) {
-                searchInput.addEventListener('input', () => {
-                    const q = searchInput.value.toLowerCase().trim();
-                    slot.querySelectorAll('.catalog-row').forEach((row) => {
-                        row.hidden = Boolean(q && !row.textContent.toLowerCase().includes(q));
-                    });
-                    let noRes = slot.querySelector('.catalog-no-results');
-                    const visible = [...slot.querySelectorAll('.catalog-row:not([hidden])')].length;
-                    if (!visible && q) {
-                        if (!noRes) {
-                            noRes = document.createElement('p');
-                            noRes.className = 'catalog-no-results';
-                            noRes.textContent = 'Nessun albero corrisponde alla ricerca.';
-                            slot.querySelector('.catalog-rows')?.appendChild(noRes);
-                        }
-                    } else if (noRes) {
-                        noRes.remove();
-                    }
-                });
-            }
+            slot.innerHTML = trees.map(treeCardHtml).join('');
         } else {
             slot.innerHTML = '<div class="card empty-state">Nessun albero disponibile per l\'adozione al momento.</div>';
         }
 
+        // Search filter (topbar input wired here since it lives outside slot)
+        const searchInput = root?.querySelector('[data-tree-search]');
+        if (searchInput) {
+            const doFilter = () => {
+                const q = searchInput.value.toLowerCase().trim();
+                slot.querySelectorAll('.tree-card').forEach((card) => {
+                    card.hidden = Boolean(q && !card.textContent.toLowerCase().includes(q));
+                });
+            };
+            // Avoid double-binding if called again
+            searchInput.removeEventListener('input', searchInput._filterFn);
+            searchInput._filterFn = doFilter;
+            searchInput.addEventListener('input', doFilter);
+        }
+
+        initViewToggle();
         renderAdoptableMap(trees);
     };
 

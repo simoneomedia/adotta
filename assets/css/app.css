@@ -683,29 +683,222 @@ textarea { min-height: 120px; resize: vertical; }
 .adoption-modal-card h2 { margin: 0 0 14px; }
 .adoption-modal-body { color: var(--muted); line-height: 1.6; margin: 0 0 24px; }
 
-/* ── Catalog search ──────────────────────────────────── */
-.catalog-search-wrap {
-    margin-bottom: 14px;
-    position: relative;
+/* ── Airbnb-style catalog ─────────────────────────────── */
+.catalog-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
 }
-.catalog-search-input {
+
+/* Topbar */
+.catalog-topbar {
+    align-items: center;
     background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    padding: 10px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 120;
+}
+.catalog-search-field {
+    align-items: center;
+    background: var(--bg);
     border: 1.5px solid var(--border);
     border-radius: 999px;
-    padding: 11px 16px 11px 40px;
+    cursor: text;
+    display: flex;
+    flex: 1;
+    gap: 8px;
+    min-width: 0;
+    padding: 9px 16px;
+    transition: border-color .15s;
+}
+.catalog-search-field:focus-within { border-color: var(--brand); }
+.catalog-search-icon { flex-shrink: 0; font-size: .9rem; }
+.catalog-search-input {
+    background: none;
+    border: none;
+    color: var(--text);
+    flex: 1;
+    font-size: .92rem;
+    min-width: 0;
+    outline: none;
+}
+.catalog-search-input::placeholder { color: var(--muted); }
+
+/* View toggle pill */
+.catalog-view-toggle {
+    border: 1.5px solid var(--border);
+    border-radius: 999px;
+    display: flex;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.view-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: .82rem;
+    font-weight: 600;
+    padding: 7px 14px;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
+}
+.view-toggle-btn.is-active {
+    background: var(--brand);
+    color: #fff;
+}
+
+/* Split body */
+.catalog-body {
+    display: grid;
+    flex: 1;
+    grid-template-columns: 55% 45%;
+}
+.catalog-list-panel {
+    display: grid;
+    align-content: start;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    padding: 20px;
+}
+.catalog-map-panel {
+    height: calc(100vh - 57px); /* viewport minus topbar */
+    position: sticky;
+    top: 57px;
+}
+.catalog-map-panel .leaflet-map,
+.catalog-map-panel [data-slot="adoptable-map"] {
+    height: 100%;
     width: 100%;
 }
-.catalog-search-wrap::before {
-    content: '🔍';
-    font-size: .9rem;
-    left: 14px;
-    pointer-events: none;
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
+
+/* Tree cards */
+.tree-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    transition: box-shadow .2s, transform .15s, border-color .15s;
 }
-.catalog-no-results { color: var(--muted); font-size: .9rem; padding: 8px 0; }
-.catalog-rows { display: grid; gap: 12px; }
+.tree-card:hover {
+    box-shadow: 0 8px 32px rgba(28,61,39,.13);
+    transform: translateY(-3px);
+}
+.tree-card.is-highlighted {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(47,125,50,.22), 0 8px 32px rgba(28,61,39,.1);
+}
+.tree-card-link {
+    color: inherit;
+    display: block;
+    text-decoration: none;
+}
+.tree-card-img {
+    background-position: center;
+    background-size: cover;
+    height: 150px;
+    position: relative;
+}
+.tree-card-img-overlay {
+    align-items: flex-end;
+    background: linear-gradient(to top, rgba(17,40,22,.55) 0%, transparent 55%);
+    bottom: 0;
+    display: flex;
+    left: 0;
+    padding: 10px 12px;
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+.tree-species-emoji-large { font-size: 2.2rem; line-height: 1; }
+.tree-card-body { padding: 12px 14px 10px; }
+.tree-card-header {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+.tree-species-name { font-size: .97rem; font-weight: 700; }
+.tree-card-code {
+    background: var(--surface-soft);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: .7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+.tree-card-farm { color: var(--muted); font-size: .82rem; margin-bottom: 8px; }
+.tree-card-badges { display: flex; flex-wrap: wrap; gap: 5px; min-height: 20px; }
+.tree-card-actions {
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px 12px;
+}
+.tree-card-actions .button { flex: 1; font-size: .83rem; padding: 9px 10px; }
+.tree-card-gift-btn { flex: 0 0 auto !important; padding: 9px 13px !important; }
+
+/* Loading skeleton */
+.catalog-loading {
+    grid-column: 1 / -1;
+    padding: 40px 0;
+    text-align: center;
+}
+.catalog-loading-inner { color: var(--muted); font-size: .92rem; }
+
+/* No-results inside list panel */
+.catalog-no-results { color: var(--muted); font-size: .9rem; grid-column: 1 / -1; padding: 8px 0; }
+
+/* My adoptions section */
+.my-adoptions-section {
+    background: var(--bg);
+    border-top: 2px solid var(--border);
+    margin-top: 40px;
+    padding: 32px 0 48px;
+}
+.my-adoptions-inner { max-width: 900px; margin: 0 auto; padding: 0 20px; }
+.my-adoptions-inner .section-heading { margin: 22px 0 14px; }
+
+/* Mobile overrides */
+@media (max-width: 768px) {
+    .catalog-topbar { top: 56px; } /* below mobile app-header */
+    .catalog-body { display: block; }
+    .catalog-list-panel {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        padding: 14px 14px 100px;
+    }
+    .catalog-map-panel {
+        bottom: 56px; /* above bottom nav */
+        display: none;
+        height: auto;
+        inset: 56px 0 56px;
+        position: fixed;
+        top: 56px;
+        z-index: 110;
+    }
+    .catalog-view-toggle { display: flex; }
+    .catalog-body[data-catalog-view="mappa"] .catalog-list-panel { display: none; }
+    .catalog-body[data-catalog-view="mappa"] .catalog-map-panel { display: block; }
+    .catalog-body[data-catalog-view="mappa"] + * { display: none; } /* hide my-adoptions in map mode */
+    .tree-card-actions { flex-wrap: wrap; }
+    .tree-card-actions .button { font-size: .8rem; }
+    .my-adoptions-section { margin-top: 24px; }
+}
+
+/* On desktop: always show both panels, hide toggle; remove app-main padding */
+@media (min-width: 769px) {
+    .catalog-view-toggle { display: none; }
+    .catalog-list-panel { max-height: none; overflow: visible; }
+    /* Bleed catalog to edges of app-main */
+    .app-main:has(.catalog-shell) { padding: 0; }
+}
 
 /* ── Load more button ────────────────────────────────── */
 .load-more-btn { display: block; margin: 18px auto 0; }
