@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AGRI_SAAS_DB_VERSION', '3');
+define('AGRI_SAAS_DB_VERSION', '4');
 
 add_action('init', 'agri_saas_maybe_upgrade_db');
 function agri_saas_maybe_upgrade_db(): void
@@ -162,6 +162,7 @@ function agri_saas_install_tables(): void
         name VARCHAR(191) NOT NULL,
         description TEXT NOT NULL,
         reward_type VARCHAR(40) NOT NULL DEFAULT 'surprise',
+        when_received VARCHAR(40) NOT NULL DEFAULT 'immediate',
         estimated_value VARCHAR(100) DEFAULT '',
         guidelines TEXT DEFAULT NULL,
         is_active TINYINT UNSIGNED NOT NULL DEFAULT 1,

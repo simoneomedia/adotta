@@ -11,6 +11,7 @@ function agri_saas_register_routes(): void
     add_rewrite_rule('^farm-dashboard/?$', 'index.php?agri_saas_route=farm-dashboard', 'top');
     add_rewrite_rule('^trees/([0-9]+)/?$', 'index.php?agri_saas_route=tree-detail&tree_id=$matches[1]', 'top');
     add_rewrite_rule('^updates/?$', 'index.php?agri_saas_route=updates', 'top');
+    add_rewrite_rule('^claim-gift/?$', 'index.php?agri_saas_route=claim-gift', 'top');
 }
 
 add_filter('query_vars', 'agri_saas_query_vars');
@@ -30,16 +31,17 @@ function agri_saas_template_router(string $template): string
         return $template;
     }
 
-    if ($route !== 'farm-profile') {
+    if (!in_array($route, ['farm-profile', 'claim-gift'], true)) {
         agri_saas_require_login();
     }
 
     $routes = [
-        'dashboard' => AGRI_SAAS_PATH . '/templates/dashboard-client.php',
+        'dashboard'   => AGRI_SAAS_PATH . '/templates/dashboard-client.php',
         'farm-dashboard' => AGRI_SAAS_PATH . '/templates/dashboard-farm.php',
         'farm-profile' => AGRI_SAAS_PATH . '/templates/farm-profile.php',
         'tree-detail' => AGRI_SAAS_PATH . '/templates/tree-detail.php',
-        'updates' => AGRI_SAAS_PATH . '/templates/updates.php',
+        'updates'     => AGRI_SAAS_PATH . '/templates/updates.php',
+        'claim-gift'  => AGRI_SAAS_PATH . '/templates/claim-gift.php',
     ];
 
     if (isset($routes[$route]) && file_exists($routes[$route])) {
