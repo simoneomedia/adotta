@@ -35,6 +35,17 @@ function agri_saas_template_router(string $template): string
         agri_saas_require_login();
     }
 
+    // Farm dashboard is restricted to farm managers and admins only
+    if ($route === 'farm-dashboard') {
+        $current_user = wp_get_current_user();
+        $has_access   = in_array('farm_manager', (array) $current_user->roles, true)
+                        || current_user_can('manage_options');
+        if (!$has_access) {
+            wp_safe_redirect(home_url('/dashboard/'));
+            exit;
+        }
+    }
+
     $routes = [
         'dashboard'   => AGRI_SAAS_PATH . '/templates/dashboard-client.php',
         'farm-dashboard' => AGRI_SAAS_PATH . '/templates/dashboard-farm.php',
