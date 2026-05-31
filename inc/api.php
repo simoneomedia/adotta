@@ -751,7 +751,9 @@ function agri_saas_api_adoptable_trees(WP_REST_Request $request): WP_REST_Respon
                 f.id AS farm_id,
                 f.name AS farm_name, f.location, f.crop_focus, f.is_verified,
                 (SELECT COUNT(*) FROM {$tables['adoptions']} a2 WHERE a2.tree_id = t.id AND a2.status = 'active') AS adoption_count,
-                EXISTS(SELECT 1 FROM {$tables['rewards']} rw WHERE rw.farm_id = f.id AND rw.is_active = 1) AS has_rewards,
+                EXISTS(SELECT 1 FROM {$tables['tree_rewards']} trw
+                       INNER JOIN {$tables['rewards']} rw ON rw.id = trw.reward_id
+                       WHERE trw.tree_id = t.id AND rw.is_active = 1) AS has_rewards,
                 (SELECT media_url FROM {$tables['updates']} u WHERE u.farm_id = f.id AND u.media_url != '' ORDER BY u.created_at DESC LIMIT 1) AS farm_photo,
                 own_request.status AS request_status
          FROM {$tables['trees']} t
@@ -1106,8 +1108,32 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
         return new WP_Error('agri_saas_tree_failed', __('Unable to create tree. Check that the code is unique.', 'agri-saas'), ['status' => 500]);
     }
 
+    $tree_id = (int) $wpdb->insert_id;
+
+    // Validate and assign required rewards
+    $raw_ids = $request->get_param('reward_ids') ?: [];
+    $reward_ids_clean = array_filter(array_map('absint', is_array($raw_ids) ? $raw_ids : json_decode($raw_ids, true) ?: []));
+
+    if (empty($reward_ids_clean)) {
+        return new WP_Error('agri_saas_rewards_required', __('Seleziona almeno un premio per questo albero.', 'agri-saas'), ['status' => 400]);
+    }
+
+    $placeholders = implode(',', array_fill(0, count($reward_ids_clean), '%d'));
+    $valid_count = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM {$tables['rewards']} WHERE id IN ({$placeholders}) AND farm_id = %d AND is_active = 1",
+        array_merge($reward_ids_clean, [$farm_id])
+    ));
+
+    if ($valid_count !== count($reward_ids_clean)) {
+        return new WP_Error('agri_saas_reward_invalid', __('Premio non valido o non attivo.', 'agri-saas'), ['status' => 400]);
+    }
+
+    foreach ($reward_ids_clean as $rid) {
+        $wpdb->replace($tables['tree_rewards'], ['tree_id' => $tree_id, 'reward_id' => $rid], ['%d', '%d']);
+    }
+
     agri_saas_invalidate_farm_cache($farm_id);
-    return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
+    return rest_ensure_response(['id' => $tree_id]);
 }
 
 function agri_saas_api_tree_detail(WP_REST_Request $request): WP_REST_Response|WP_Error
@@ -1118,7 +1144,13 @@ function agri_saas_api_tree_detail(WP_REST_Request $request): WP_REST_Response|W
     $user_id = get_current_user_id();
 
     $tree = $wpdb->get_row($wpdb->prepare(
-        "SELECT t.*, f.name AS farm_name, f.location, f.crop_focus
+        "SELECT t.*,
+               f.id AS farm_id, f.name AS farm_name, f.location, f.crop_focus,
+               f.description AS farm_description, f.is_verified, f.acreage,
+               f.latitude AS farm_latitude, f.longitude AS farm_longitude,
+               (SELECT media_url FROM {$tables['updates']} u2
+                WHERE u2.farm_id = f.id AND u2.media_url != ''
+                ORDER BY u2.created_at DESC LIMIT 1) AS farm_photo
          FROM {$tables['trees']} t
          LEFT JOIN {$tables['farms']} f ON f.id = t.farm_id
          WHERE t.id = %d",
@@ -1128,6 +1160,14 @@ function agri_saas_api_tree_detail(WP_REST_Request $request): WP_REST_Response|W
     if (!$tree) {
         return new WP_Error('agri_saas_tree_not_found', __('Tree not found.', 'agri-saas'), ['status' => 404]);
     }
+
+    $rewards = $wpdb->get_results($wpdb->prepare(
+        "SELECT r.* FROM {$tables['rewards']} r
+         INNER JOIN {$tables['tree_rewards']} tr ON tr.reward_id = r.id
+         WHERE tr.tree_id = %d AND r.is_active = 1
+         ORDER BY r.created_at ASC",
+        $tree_id
+    ), ARRAY_A);
 
     $updates = $wpdb->get_results($wpdb->prepare(
         "SELECT u.id, u.farm_id, u.tree_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
@@ -1144,7 +1184,7 @@ function agri_saas_api_tree_detail(WP_REST_Request $request): WP_REST_Response|W
     $visible = agri_saas_filter_visible_updates($updates ?: [], $user_id);
     $visible = agri_saas_attach_reactions($visible, $user_id);
 
-    return rest_ensure_response(['tree' => $tree, 'updates' => $visible]);
+    return rest_ensure_response(['tree' => $tree, 'updates' => $visible, 'rewards' => $rewards ?: []]);
 }
 
 

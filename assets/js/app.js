@@ -702,21 +702,68 @@
 
     const renderTreeDetail = (data) => {
         const tree = data.tree;
+        const rewards = data.rewards || [];
         const qrUrl = window.location.href;
-        root.querySelector('[data-slot="tree"]').innerHTML = `
+
+        // Hero: farm photo or gradient
+        const heroStyle = tree.farm_photo
+            ? `background-image:url('${escapeHtml(tree.farm_photo)}')`
+            : `background:linear-gradient(135deg,#c8e6c9 0%,#a5d6a7 100%)`;
+
+        setSlot('[data-slot="tree-hero"]', `
+            <div class="tree-hero-img" style="${heroStyle}">
+                <div class="tree-hero-overlay">
+                    <span class="tree-hero-emoji">${speciesEmoji(tree.species)}</span>
+                </div>
+            </div>`);
+
+        setSlot('[data-slot="tree"]', `
             <p class="eyebrow">${escapeHtml(tree.code)}</p>
-            <h2>${escapeHtml(tree.species)}</h2>
-            <p>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)} · ${escapeHtml(tree.crop_focus)}</p>
+            <h1 class="tree-detail-title">${escapeHtml(tree.species)}</h1>
             <div class="stats-grid">
                 ${statCard('Stato', statusLabel(tree.status), 'Ciclo di vita attuale')}
                 ${statCard('CO₂', `${tree.carbon_estimate} kg`, 'Sequestro stimato')}
                 ${statCard('Messa a dimora', tree.planted_at || 'In attesa', 'Data di piantagione')}
             </div>
+            ${rewards.length ? `<div class="tree-detail-rewards">
+                <p class="eyebrow">Premi inclusi in questa adozione</p>
+                ${renderRewards(rewards)}
+            </div>` : ''}
             ${qrSection(qrUrl, tree.code)}
             <div class="share-section">
                 <p class="eyebrow">Condividi questo albero</p>
-                ${shareBar(qrUrl, `${tree.species} · ${tree.code}`)}
-            </div>`;
+                ${shareBar(qrUrl, \`\${tree.species} · \${tree.code}\`)}
+            </div>`);
+
+        // Farm info card
+        setSlot('[data-slot="tree-farm"]', `
+            <a class="tree-farm-link" href="${appUrl(`farms/${tree.farm_id}/`)}">
+                <strong>${escapeHtml(tree.farm_name)}</strong> ${verifiedBadge(Number(tree.is_verified))}
+            </a>
+            <p class="tree-farm-location">📍 ${escapeHtml(tree.location)}${tree.crop_focus ? ` · ${escapeHtml(tree.crop_focus)}` : ''}</p>
+            ${tree.farm_description ? `<p class="tree-farm-desc">${escapeHtml(tree.farm_description)}</p>` : ''}
+            <a class="button ghost" style="margin-top:10px;" href="${appUrl(`farms/${tree.farm_id}/`)}">Visita profilo azienda →</a>`);
+
+        // Map
+        const mapSlot = root?.querySelector('[data-slot="tree-map"]');
+        if (mapSlot) {
+            const lat = Number(tree.latitude || tree.farm_latitude);
+            const lng = Number(tree.longitude || tree.farm_longitude);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                const leafletEl = mapSlot.querySelector('.leaflet-map') || mapSlot;
+                const map = makeLeafletMap(leafletEl);
+                if (map) {
+                    map.setView([lat, lng], 14);
+                    L.marker([lat, lng])
+                        .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}`)
+                        .addTo(map)
+                        .openPopup();
+                }
+            } else {
+                mapSlot.innerHTML = '<div class="map-placeholder">◎<small>Coordinate non disponibili</small></div>';
+            }
+        }
+
         renderUpdates(data.updates || []);
     };
 
@@ -1030,7 +1077,10 @@
         if (!root) return;
 
         document.querySelector('[data-open-farm-form]')?.addEventListener('click', () => showPanel('[data-farm-form]'));
-        document.querySelector('[data-open-tree-form]')?.addEventListener('click', () => showPanel('[data-tree-form]'));
+        document.querySelector('[data-open-tree-form]')?.addEventListener('click', () => {
+            showPanel('[data-tree-form]');
+            loadTreeFormRewards();
+        });
         document.querySelector('[data-open-update-form]')?.addEventListener('click', () => showPanel('[data-update-form]'));
 
         // Quick-update FAB
