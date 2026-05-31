@@ -1076,6 +1076,30 @@
     const bindDashboardActions = () => {
         if (!root) return;
 
+        // Reward picker for tree form
+        const loadTreeFormRewards = async () => {
+            const farmSelect = document.querySelector('[data-agri-tree-form] [name="farm_id"]');
+            const pickerList = document.querySelector('[data-reward-picker-list]');
+            if (!farmSelect || !pickerList) return;
+            const farmId = farmSelect.value;
+            if (!farmId) { pickerList.innerHTML = '<p class="muted-note">Seleziona prima un\'azienda per vedere i premi disponibili.</p>'; return; }
+            pickerList.innerHTML = '<p class="muted-note">Caricamento premi…</p>';
+            try {
+                const data = await apiFetch(`/farms/${farmId}/rewards`);
+                const rewards = data.rewards || [];
+                if (rewards.length) {
+                    pickerList.innerHTML = rewards.map((r) => `
+                        <label class="reward-picker-item">
+                            <input type="checkbox" name="reward_ids[]" value="${escapeHtml(String(r.id))}">
+                            <span><strong>${escapeHtml(r.name)}</strong> <span class="reward-when-badge">${escapeHtml(whenReceivedLabel(r.when_received))}</span><br><small>${escapeHtml(r.description)}</small></span>
+                        </label>`).join('');
+                } else {
+                    pickerList.innerHTML = '<p class="muted-note">Nessun premio disponibile per questa azienda. Creane uno qui sotto.</p>';
+                    document.querySelector('[data-inline-reward-creator]')?.setAttribute('open', '');
+                }
+            } catch { pickerList.innerHTML = '<p class="muted-note">Impossibile caricare i premi.</p>'; }
+        };
+
         document.querySelector('[data-open-farm-form]')?.addEventListener('click', () => showPanel('[data-farm-form]'));
         document.querySelector('[data-open-tree-form]')?.addEventListener('click', () => {
             showPanel('[data-tree-form]');
@@ -1280,11 +1304,52 @@
             window.location.reload();
         });
 
+        document.querySelector('[data-agri-tree-form] [name="farm_id"]')?.addEventListener('change', loadTreeFormRewards);
+
+        document.querySelector('[data-save-inline-reward]')?.addEventListener('click', async () => {
+            const farmSelect = document.querySelector('[data-agri-tree-form] [name="farm_id"]');
+            const nameEl     = document.querySelector('[data-new-reward-name]');
+            const descEl     = document.querySelector('[data-new-reward-description]');
+            const typeEl     = document.querySelector('[data-new-reward-type]');
+            const whenEl     = document.querySelector('[data-new-reward-when]');
+            const statusEl   = document.querySelector('[data-inline-reward-status]');
+            if (!nameEl?.value.trim()) { if (statusEl) statusEl.textContent = 'Il nome del premio è obbligatorio.'; return; }
+            if (statusEl) statusEl.textContent = 'Salvataggio…';
+            try {
+                const r = await apiFetch('/rewards', { method: 'POST', body: JSON.stringify({
+                    farm_id:      farmSelect?.value || '',
+                    name:         nameEl.value.trim(),
+                    description:  descEl?.value.trim() || '',
+                    reward_type:  typeEl?.value || 'surprise',
+                    when_received: whenEl?.value || 'immediate',
+                })});
+                // Reload reward list and auto-check the new one
+                await loadTreeFormRewards();
+                const newCheckbox = document.querySelector(`[data-reward-picker-list] input[value="${r.id}"]`);
+                if (newCheckbox) newCheckbox.checked = true;
+                if (nameEl) nameEl.value = '';
+                if (descEl) descEl.value = '';
+                if (statusEl) statusEl.textContent = 'Premio aggiunto ✓';
+                document.querySelector('[data-inline-reward-creator]')?.removeAttribute('open');
+            } catch (err) { if (statusEl) statusEl.textContent = err.message; }
+        });
+
         document.querySelector('[data-agri-tree-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
             const form = event.currentTarget;
             if (!validateForm(form)) return;
+
+            const selectedRewards = [...form.querySelectorAll('[name="reward_ids[]"]:checked')].map((cb) => Number(cb.value));
+            const rewardError = form.querySelector('[data-reward-required-error]');
+            if (!selectedRewards.length) {
+                if (rewardError) rewardError.hidden = false;
+                return;
+            }
+            if (rewardError) rewardError.hidden = true;
+
             const payload = Object.fromEntries(new FormData(form).entries());
+            delete payload['reward_ids[]'];
+            payload.reward_ids = selectedRewards;
             await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
             window.location.reload();
         });

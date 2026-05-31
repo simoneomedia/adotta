@@ -1470,3 +1470,88 @@ textarea.is-invalid:focus {
     .reg-type-grid { grid-template-columns: 1fr; }
     .form-grid-2 { grid-template-columns: 1fr; }
 }
+
+/* ── Tree detail page ─────────────────────────────────── */
+.tree-detail-shell { display: flex; flex-direction: column; }
+
+.tree-hero-wrap { height: 260px; overflow: hidden; position: relative; }
+.tree-hero-img {
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+.tree-hero-overlay {
+    align-items: flex-end;
+    background: linear-gradient(to top, rgba(17,40,22,.55) 0%, transparent 55%);
+    bottom: 0; left: 0; right: 0; top: 0;
+    display: flex;
+    padding: 20px 24px;
+    position: absolute;
+}
+.tree-hero-emoji { font-size: 3.5rem; line-height: 1; }
+
+.tree-detail-body {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr 320px;
+    padding: 24px;
+    align-items: start;
+}
+.tree-detail-main { display: flex; flex-direction: column; gap: 20px; }
+.tree-detail-sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 60px; }
+
+.tree-farm-card { }
+.tree-farm-link { font-size: 1.05rem; font-weight: 700; display: block; margin-bottom: 4px; }
+.tree-farm-location { color: var(--muted); font-size: .9rem; margin: 0 0 6px; }
+.tree-farm-desc { color: var(--muted); font-size: .87rem; line-height: 1.5; margin: 6px 0 0; }
+
+.tree-map-card { padding: 16px; }
+.tree-detail-map { height: 220px; border-radius: 12px; overflow: hidden; }
+
+.tree-detail-updates {
+    border-top: 1px solid var(--border);
+    margin: 0 24px 48px;
+    padding-top: 24px;
+}
+.tree-detail-updates .section-heading { margin-bottom: 16px; }
+
+.tree-detail-title { margin: 4px 0 18px; font-size: 1.6rem; }
+.tree-detail-rewards { margin-top: 18px; }
+.tree-detail-rewards .eyebrow { margin-bottom: 10px; }
+
+/* Reward picker in tree form */
+.tree-form-rewards { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 14px; }
+.tree-form-rewards .eyebrow { margin: 0 0 4px; }
+.form-help-text { color: var(--muted); font-size: .85rem; margin: 0 0 12px; }
+.reward-picker-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.reward-picker-item {
+    align-items: flex-start;
+    background: var(--surface-soft);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    transition: border-color .15s;
+}
+.reward-picker-item:has(input:checked) { border-color: var(--brand); background: #f1f8e9; }
+.reward-picker-item input[type="checkbox"] { margin-top: 2px; accent-color: var(--brand); flex-shrink: 0; }
+.reward-picker-item strong { font-size: .92rem; }
+.reward-picker-item small { color: var(--muted); font-size: .8rem; }
+.muted-note { color: var(--muted); font-size: .85rem; margin: 0; }
+.inline-reward-creator { margin-top: 10px; }
+.inline-reward-creator summary { cursor: pointer; color: var(--brand); font-size: .9rem; font-weight: 600; user-select: none; padding: 4px 0; }
+.inline-reward-form { border: 1.5px solid var(--border); border-radius: 14px; display: grid; gap: 10px; margin-top: 10px; padding: 14px; }
+
+/* Mobile overrides for tree detail */
+@media (max-width: 768px) {
+    .tree-detail-body {
+        grid-template-columns: 1fr;
+        padding: 14px 14px 80px;
+    }
+    .tree-detail-sidebar { position: static; }
+    .tree-detail-updates { margin: 0 14px 80px; }
+    .tree-hero-wrap { height: 200px; }
+}

@@ -38,22 +38,49 @@ add_action('wp_head', function () use ($tree_id): void {
 
 agri_saas_render_shell(sprintf(__('Albero #%d', 'agri-saas'), $tree_id), function () use ($tree_id): void {
     ?>
-    <section class="dashboard-grid" data-agri-endpoint="/trees/<?php echo esc_attr($tree_id); ?>" data-render="tree-detail">
-        <article class="card span-2" data-slot="tree">
-            <p class="eyebrow"><?php esc_html_e('Profilo albero', 'agri-saas'); ?></p>
-            <h2><?php esc_html_e('Caricamento dettagli albero…', 'agri-saas'); ?></h2>
-        </article>
-        <aside class="card map-card">
-            <p class="eyebrow"><?php esc_html_e('Posizione', 'agri-saas'); ?></p>
-            <div class="map-placeholder">◎</div>
-            <p><?php esc_html_e('Le coordinate e il contesto dell\'azienda sono forniti dall\'API alberi.', 'agri-saas'); ?></p>
-        </aside>
-        <article class="card span-3">
-            <div class="section-heading"><h2><?php esc_html_e('Aggiornamenti albero', 'agri-saas'); ?></h2></div>
+    <div data-agri-endpoint="/trees/<?php echo esc_attr($tree_id); ?>" data-render="tree-detail" class="tree-detail-shell">
+
+        <!-- Hero image (filled by JS) -->
+        <div data-slot="tree-hero" class="tree-hero-wrap"></div>
+
+        <div class="tree-detail-body">
+
+            <!-- Left: tree info -->
+            <div class="tree-detail-main">
+                <article class="card" data-slot="tree">
+                    <p class="eyebrow"><?php esc_html_e('Profilo albero', 'agri-saas'); ?></p>
+                    <h1><?php esc_html_e('Caricamento…', 'agri-saas'); ?></h1>
+                </article>
+            </div>
+
+            <!-- Right: farm card + map -->
+            <aside class="tree-detail-sidebar">
+                <div class="card tree-farm-card">
+                    <p class="eyebrow"><?php esc_html_e('Azienda', 'agri-saas'); ?></p>
+                    <div data-slot="tree-farm">
+                        <p class="muted-note"><?php esc_html_e('Caricamento azienda…', 'agri-saas'); ?></p>
+                    </div>
+                </div>
+                <div class="card tree-map-card">
+                    <p class="eyebrow"><?php esc_html_e('Posizione', 'agri-saas'); ?></p>
+                    <div data-slot="tree-map">
+                        <div class="leaflet-map tree-detail-map" aria-label="<?php esc_attr_e('Posizione albero', 'agri-saas'); ?>"></div>
+                    </div>
+                </div>
+            </aside>
+
+        </div>
+
+        <!-- Updates full-width -->
+        <section class="tree-detail-updates">
+            <div class="section-heading">
+                <h2><?php esc_html_e('Aggiornamenti albero', 'agri-saas'); ?></h2>
+            </div>
             <div class="timeline" data-slot="updates">
                 <?php agri_saas_empty_state(__('Gli aggiornamenti specifici dell\'albero appariranno qui.', 'agri-saas')); ?>
             </div>
-        </article>
-    </section>
+        </section>
+
+    </div>
     <?php
 });
