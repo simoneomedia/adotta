@@ -31,10 +31,11 @@ agri_saas_render_shell(__('Scopri', 'agri-saas'), function (): void {
         <!-- Split catalog body -->
         <div class="catalog-body" data-catalog-view="lista">
             <div class="catalog-list-panel" data-slot="adoptable-trees">
-                <div class="catalog-loading">
-                    <div class="catalog-loading-inner">
-                        <span><?php esc_html_e('Caricamento alberi…', 'agri-saas'); ?></span>
-                    </div>
+                <div class="catalog-skeletons">
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
                 </div>
             </div>
             <div class="catalog-map-panel">

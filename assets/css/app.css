@@ -954,12 +954,13 @@ textarea.is-invalid:focus {
 .gift-modal {
     align-items: center;
     background: rgba(0,0,0,.55);
-    display: flex;
+    display: none;
     inset: 0;
     justify-content: center;
     position: fixed;
     z-index: 8000;
 }
+.gift-modal.is-open { display: flex; }
 .gift-modal-card {
     background: var(--surface);
     border-radius: 20px;
@@ -1555,3 +1556,223 @@ textarea.is-invalid:focus {
     .tree-detail-updates { margin: 0 14px 80px; }
     .tree-hero-wrap { height: 200px; }
 }
+
+/* ── Toast notifications ──────────────────────────────── */
+#toast-container {
+    bottom: 90px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    position: fixed;
+    right: 20px;
+    z-index: 9999;
+}
+@media (min-width: 769px) {
+    #toast-container { bottom: 24px; }
+}
+.toast {
+    align-items: center;
+    background: #1a3a22;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.22);
+    color: #fff;
+    display: flex;
+    font-size: .9rem;
+    font-weight: 600;
+    gap: 10px;
+    max-width: 340px;
+    opacity: 0;
+    padding: 14px 18px;
+    pointer-events: auto;
+    transform: translateX(20px);
+    transition: opacity .3s, transform .3s;
+}
+.toast.is-visible { opacity: 1; transform: translateX(0); }
+.toast-success { background: #1b5e20; }
+.toast-error   { background: #b71c1c; }
+.toast-info    { background: #1a3a22; }
+.toast-icon { font-size: 1rem; flex-shrink: 0; }
+.toast-msg { flex: 1; }
+
+/* ── Button spinner ───────────────────────────────────── */
+.btn-spinner {
+    border: 2.5px solid rgba(255,255,255,.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    display: inline-block;
+    height: 16px;
+    width: 16px;
+    animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.button.is-loading { cursor: wait; opacity: .8; }
+
+/* ── Adoption modal (polished) ────────────────────────── */
+.adoption-modal-visual {
+    background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+    border-radius: 20px;
+    display: grid;
+    margin: -36px -32px 24px;
+    min-height: 140px;
+    place-items: center;
+}
+.adoption-modal-emoji { font-size: 4rem; display: block; }
+.adoption-modal-title { font-size: 1.5rem; margin: 0 0 6px; }
+.adoption-modal-subtitle { color: var(--muted); margin: 0 0 16px; }
+.adoption-modal-body { color: var(--text); line-height: 1.6; margin: 0 0 20px; }
+.adoption-modal-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.adoption-step { align-items: center; display: flex; gap: 12px; font-size: .88rem; color: var(--muted); }
+.adoption-step-num {
+    align-items: center;
+    background: var(--brand);
+    border-radius: 50%;
+    color: #fff;
+    display: flex;
+    flex-shrink: 0;
+    font-size: .75rem;
+    font-weight: 800;
+    height: 24px;
+    justify-content: center;
+    width: 24px;
+}
+.adoption-modal-cta { width: 100%; justify-content: center; padding: 14px; font-size: 1rem; }
+
+/* ── Gift modal (polished) ────────────────────────────── */
+.modal-close-x {
+    background: var(--surface-soft);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    height: 32px;
+    line-height: 1;
+    position: absolute;
+    right: 14px;
+    top: 14px;
+    width: 32px;
+}
+.modal-close-x:hover { background: var(--border); }
+.gift-modal-header {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+.gift-modal-emoji { font-size: 2.8rem; line-height: 1; flex-shrink: 0; }
+.gift-modal-title { font-size: 1.3rem; margin: 0 0 2px; }
+.gift-modal-tree { color: var(--muted); font-size: .9rem; margin: 0; }
+.gift-label-text { display: block; font-weight: 700; margin-bottom: 6px; font-size: .9rem; }
+.required-star { color: #e53935; }
+.gift-modal-actions { display: flex; gap: 10px; }
+
+/* ── Skeleton loading ─────────────────────────────────── */
+@keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+.skeleton-card {
+    background: linear-gradient(90deg, #e8f0e4 25%, #f4f8f1 50%, #e8f0e4 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    border-radius: 20px;
+    height: 280px;
+}
+.catalog-skeletons {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-column: 1 / -1;
+    padding: 0;
+}
+
+/* ── Card entrance animations ─────────────────────────── */
+@keyframes cardEntrance {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.tree-card {
+    animation: cardEntrance .35s ease both;
+}
+/* Stagger first 8 cards */
+.tree-card:nth-child(1)  { animation-delay: .04s; }
+.tree-card:nth-child(2)  { animation-delay: .08s; }
+.tree-card:nth-child(3)  { animation-delay: .12s; }
+.tree-card:nth-child(4)  { animation-delay: .16s; }
+.tree-card:nth-child(5)  { animation-delay: .20s; }
+.tree-card:nth-child(6)  { animation-delay: .24s; }
+.tree-card:nth-child(7)  { animation-delay: .28s; }
+.tree-card:nth-child(8)  { animation-delay: .32s; }
+
+/* ── Emoji map markers ────────────────────────────────── */
+.emoji-map-marker { background: none !important; border: none !important; }
+.emoji-pin {
+    align-items: center;
+    background: var(--surface);
+    border: 2.5px solid var(--brand);
+    border-radius: 50%;
+    box-shadow: 0 4px 14px rgba(0,0,0,.2);
+    cursor: pointer;
+    display: flex;
+    font-size: 1.15rem;
+    height: 38px;
+    justify-content: center;
+    transition: transform .15s, box-shadow .15s;
+    width: 38px;
+}
+.emoji-pin:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,.28);
+    transform: scale(1.2);
+}
+
+/* ── Reaction button pop animation ───────────────────── */
+@keyframes reactionPop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.35); }
+    100% { transform: scale(1); }
+}
+.reaction-btn.is-active { animation: reactionPop .3s ease; }
+
+/* ── Empty states ─────────────────────────────────────── */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 36px 24px;
+}
+.empty-state-icon { font-size: 2.5rem; display: block; opacity: .7; }
+.empty-state p { color: var(--muted); font-size: .92rem; margin: 0; text-align: center; max-width: 280px; }
+
+/* ── Global UX polish ─────────────────────────────────── */
+
+/* Smooth focus rings */
+:focus-visible {
+    outline: 3px solid var(--brand);
+    outline-offset: 3px;
+    border-radius: 6px;
+}
+
+/* Button hover lift */
+.button:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(47,125,50,.25);
+    transition: transform .15s, box-shadow .15s, background .15s;
+}
+.button.ghost:not(:disabled):hover {
+    box-shadow: 0 4px 14px rgba(47,125,50,.1);
+}
+
+/* Card hover — standardize across all cards */
+.card {
+    transition: box-shadow .2s;
+}
+
+/* Smooth link underlines on text */
+.tree-farm-link:hover { text-decoration: underline; }
+
+/* Better scrollbar */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+/* Smooth scrolling */
+html { scroll-behavior: smooth; }
