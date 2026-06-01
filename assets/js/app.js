@@ -782,7 +782,7 @@
             ${qrSection(qrUrl, tree.code)}
             <div class="share-section">
                 <p class="eyebrow">Condividi questo albero</p>
-                ${shareBar(qrUrl, \`\${tree.species} · \${tree.code}\`)}
+                ${shareBar(qrUrl, tree.species + ' · ' + tree.code)}
             </div>`);
 
         // Farm info card
