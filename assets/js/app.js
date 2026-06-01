@@ -1127,8 +1127,46 @@
             .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state"><span class="empty-state-icon">🌿</span><p>Impossibile caricare i dati. Riprova tra poco.</p></div>'));
     };
 
+    let formModalBackdrop = null;
+
+    const closeFormModal = () => {
+        document.querySelectorAll('[data-farm-form],[data-tree-form],[data-update-form]').forEach((p) => {
+            p.setAttribute('hidden', '');
+            p.classList.remove('is-form-modal');
+        });
+        formModalBackdrop?.classList.remove('is-open');
+        document.body.style.overflow = '';
+    };
+
     const showPanel = (selector) => {
-        document.querySelector(selector)?.removeAttribute('hidden');
+        closeFormModal();
+        const panel = document.querySelector(selector);
+        if (!panel) return;
+
+        if (!formModalBackdrop) {
+            formModalBackdrop = document.createElement('div');
+            formModalBackdrop.className = 'form-modal-backdrop';
+            formModalBackdrop.addEventListener('click', closeFormModal);
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFormModal(); });
+            document.body.appendChild(formModalBackdrop);
+        }
+
+        if (!panel.querySelector('[data-close-form-modal]')) {
+            const btn = document.createElement('button');
+            btn.className = 'modal-close-x form-modal-close';
+            btn.type = 'button';
+            btn.setAttribute('data-close-form-modal', '');
+            btn.setAttribute('aria-label', 'Chiudi');
+            btn.textContent = '✕';
+            btn.addEventListener('click', closeFormModal);
+            panel.prepend(btn);
+        }
+
+        panel.removeAttribute('hidden');
+        panel.classList.add('is-form-modal');
+        formModalBackdrop.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+
         initCoordinateMaps();
         refreshCoordinateMaps();
     };
@@ -1174,6 +1212,9 @@
                             <input type="checkbox" name="reward_ids[]" value="${escapeHtml(String(r.id))}">
                             <span><strong>${escapeHtml(r.name)}</strong> <span class="reward-when-badge">${escapeHtml(whenReceivedLabel(r.when_received))}</span><br><small>${escapeHtml(r.description)}</small></span>
                         </label>`).join('');
+                    // Auto-select if only one reward — makes the common case frictionless
+                    const boxes = pickerList.querySelectorAll('input[type="checkbox"]');
+                    if (boxes.length === 1) boxes[0].checked = true;
                 } else {
                     pickerList.innerHTML = '<p class="muted-note">Nessun premio disponibile per questa azienda. Creane uno qui sotto.</p>';
                     document.querySelector('[data-inline-reward-creator]')?.setAttribute('open', '');

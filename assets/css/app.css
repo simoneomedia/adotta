@@ -1776,3 +1776,42 @@ textarea.is-invalid:focus {
 
 /* Smooth scrolling */
 html { scroll-behavior: smooth; }
+
+/* ── Form modal overlay ───────────────────────────────── */
+.form-modal-backdrop {
+    background: rgba(0,0,0,.55);
+    bottom: 0;
+    display: none;
+    left: 0;
+    position: fixed;
+    right: 0;
+    top: 0;
+    z-index: 4999;
+}
+.form-modal-backdrop.is-open { display: block; }
+
+[data-farm-form].is-form-modal,
+[data-tree-form].is-form-modal,
+[data-update-form].is-form-modal {
+    animation: modalEntrance .22s cubic-bezier(.34,1.4,.64,1);
+    left: 50%;
+    max-height: 92dvh;
+    max-width: 600px;
+    overflow-y: auto;
+    position: fixed;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100vw - 32px);
+    z-index: 5000;
+}
+@keyframes modalEntrance {
+    from { opacity: 0; transform: translate(-50%, calc(-50% + 24px)) scale(.97); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.form-modal-close {
+    float: right;
+    margin: -4px -4px 12px 12px;
+    position: sticky;
+    top: 8px;
+    z-index: 1;
+}

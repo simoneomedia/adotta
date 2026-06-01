@@ -103,7 +103,7 @@ agri_saas_render_shell(__('Dashboard Azienda', 'agri-saas'), function (): void {
                     <details class="inline-reward-creator" data-inline-reward-creator>
                         <summary><?php esc_html_e('+ Crea nuovo premio', 'agri-saas'); ?></summary>
                         <div class="inline-reward-form">
-                            <label><?php esc_html_e('Nome premio', 'agri-saas'); ?><input data-new-reward-name required></label>
+                            <label><?php esc_html_e('Nome premio', 'agri-saas'); ?><input data-new-reward-name></label>
                             <label><?php esc_html_e('Descrizione', 'agri-saas'); ?><textarea data-new-reward-description rows="2"></textarea></label>
                             <div class="form-grid-2">
                                 <label><?php esc_html_e('Tipo', 'agri-saas'); ?>
