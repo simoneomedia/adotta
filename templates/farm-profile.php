@@ -5,36 +5,6 @@ if (!defined('ABSPATH')) {
 require_once AGRI_SAAS_PATH . '/components/cards.php';
 
 $farm_id = absint(get_query_var('farm_id'));
-
-add_action('wp_head', function () use ($farm_id): void {
-    if (!$farm_id) return;
-    global $wpdb;
-    $tables = agri_saas_tables();
-    $farm = $wpdb->get_row($wpdb->prepare(
-        "SELECT name, description, location, crop_focus FROM {$tables['farms']} WHERE id = %d",
-        $farm_id
-    ), ARRAY_A);
-    if (!$farm) return;
-    $title       = esc_attr($farm['name'] . ' — Adotta un albero');
-    $description = esc_attr(wp_trim_words($farm['description'] ?: $farm['location'] . ' · ' . $farm['crop_focus'], 25, '…'));
-    $url         = esc_url(home_url('/farms/' . $farm_id . '/'));
-    $image       = esc_url((string) $wpdb->get_var($wpdb->prepare(
-        "SELECT media_url FROM {$tables['updates']} WHERE farm_id = %d AND media_url != '' ORDER BY created_at DESC LIMIT 1",
-        $farm_id
-    )));
-    ?>
-    <meta property="og:type"        content="website">
-    <meta property="og:title"       content="<?php echo $title; ?>">
-    <meta property="og:description" content="<?php echo $description; ?>">
-    <meta property="og:url"         content="<?php echo $url; ?>">
-    <?php if ($image) : ?><meta property="og:image" content="<?php echo $image; ?>"><?php endif; ?>
-    <meta name="twitter:card"        content="summary_large_image">
-    <meta name="twitter:title"       content="<?php echo $title; ?>">
-    <meta name="twitter:description" content="<?php echo $description; ?>">
-    <?php if ($image) : ?><meta name="twitter:image" content="<?php echo $image; ?>"><?php endif; ?>
-    <?php
-}, 5);
-
 get_header();
 ?>
 <main class="farm-profile-shell" data-agri-endpoint="/farms/<?php echo esc_attr((string) $farm_id); ?>/profile" data-render="farm-profile">
@@ -42,11 +12,10 @@ get_header();
         <div>
             <p class="eyebrow"><?php esc_html_e('Vetrina azienda', 'agri-saas'); ?></p>
             <h1 data-slot="farm-title"><?php esc_html_e('Profilo azienda', 'agri-saas'); ?></h1>
-            <p data-slot="farm-summary"><?php esc_html_e('Caricamento informazioni azienda, alberi, aggiornamenti e foto.', 'agri-saas'); ?></p>
+            <p data-slot="farm-summary"><?php esc_html_e("Caricamento informazioni sull'azienda, alberi, aggiornamenti e foto.", 'agri-saas'); ?></p>
             <div class="contact-actions" data-slot="farm-contacts"></div>
         </div>
         <div class="farm-hero-actions">
-            <div data-slot="farm-share"></div>
             <button class="button" type="button" data-follow-farm hidden><?php esc_html_e('Segui azienda', 'agri-saas'); ?></button>
             <a class="button ghost" href="<?php echo esc_url(home_url('/')); ?>"><?php esc_html_e('Adotta un albero', 'agri-saas'); ?></a>
         </div>
@@ -59,28 +28,19 @@ get_header();
             <?php agri_saas_stat_card(__('Follower', 'agri-saas'), '—', __('Persone che seguono gli aggiornamenti', 'agri-saas')); ?>
         </div>
 
-        <div class="card span-3" data-slot-card>
-            <div class="section-heading">
-                <h2><?php esc_html_e('Premi per gli adottanti', 'agri-saas'); ?></h2>
-            </div>
-            <div data-slot="farm-rewards">
-                <?php agri_saas_empty_state(__('Questa azienda non ha ancora configurato premi per le adozioni.', 'agri-saas')); ?>
-            </div>
-        </div>
-
         <article class="card span-3">
             <div class="section-heading">
                 <div>
-                    <p class="eyebrow"><?php esc_html_e('Mappa del campo', 'agri-saas'); ?></p>
+                    <p class="eyebrow"><?php esc_html_e('Mappa del frutteto', 'agri-saas'); ?></p>
                     <h2><?php esc_html_e('Tutti gli alberi', 'agri-saas'); ?></h2>
                 </div>
             </div>
             <div class="catalog-layout">
                 <div class="catalog-map" data-slot="farm-profile-map" aria-label="<?php esc_attr_e('Mappa alberi azienda', 'agri-saas'); ?>">
-                    <span class="map-placeholder">◎</span>
+                    <span class="map-placeholder">&#9678;</span>
                 </div>
                 <div class="card-list" data-slot="farm-profile-trees">
-                    <?php agri_saas_empty_state(__('Gli alberi dell\'azienda appariranno qui.', 'agri-saas')); ?>
+                    <?php agri_saas_empty_state("Gli alberi dell'azienda appariranno qui."); ?>
                 </div>
             </div>
         </article>
@@ -88,20 +48,20 @@ get_header();
         <article class="card span-2">
             <div class="section-heading">
                 <div>
-                    <p class="eyebrow"><?php esc_html_e('Diario di campo', 'agri-saas'); ?></p>
+                    <p class="eyebrow"><?php esc_html_e('Diario dal campo', 'agri-saas'); ?></p>
                     <h2><?php esc_html_e('Aggiornamenti', 'agri-saas'); ?></h2>
                 </div>
             </div>
             <div class="timeline" data-slot="updates">
-                <?php agri_saas_empty_state(__('Gli aggiornamenti visibili dell\'azienda appariranno qui.', 'agri-saas')); ?>
+                <?php agri_saas_empty_state("Gli aggiornamenti pubblici dell'azienda appariranno qui."); ?>
             </div>
         </article>
 
         <aside class="card">
             <p class="eyebrow"><?php esc_html_e('Galleria', 'agri-saas'); ?></p>
-            <h2><?php esc_html_e('Foto dell\'azienda', 'agri-saas'); ?></h2>
+            <h2><?php esc_html_e("Foto dell'azienda", 'agri-saas'); ?></h2>
             <div class="photo-grid" data-slot="farm-photos">
-                <?php agri_saas_empty_state(__('Le foto degli aggiornamenti appariranno qui.', 'agri-saas')); ?>
+                <?php agri_saas_empty_state("Le foto degli aggiornamenti dell'azienda appariranno qui."); ?>
             </div>
         </aside>
     </section>

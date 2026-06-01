@@ -5,62 +5,47 @@ if (!defined('ABSPATH')) {
 require_once AGRI_SAAS_PATH . '/components/layout.php';
 require_once AGRI_SAAS_PATH . '/components/cards.php';
 
-agri_saas_render_shell(__('Scopri', 'agri-saas'), function (): void {
+agri_saas_render_shell(__('Area Cliente', 'agri-saas'), function (): void {
     ?>
-    <div data-agri-endpoint="/dashboard/client" data-render="client-dashboard" class="catalog-shell">
-
-        <!-- Sticky catalog topbar -->
-        <div class="catalog-topbar">
-            <label class="catalog-search-field" aria-label="<?php esc_attr_e('Cerca alberi', 'agri-saas'); ?>">
-                <span class="catalog-search-icon" aria-hidden="true">🔍</span>
-                <input type="search" class="catalog-search-input" placeholder="<?php esc_attr_e('Cerca specie, azienda, luogo…', 'agri-saas'); ?>" data-tree-search>
-            </label>
-            <div class="catalog-view-toggle" role="group" aria-label="<?php esc_attr_e('Vista', 'agri-saas'); ?>">
-                <button class="view-toggle-btn is-active" type="button" data-view-toggle="lista">
-                    <?php esc_html_e('Lista', 'agri-saas'); ?>
-                </button>
-                <button class="view-toggle-btn" type="button" data-view-toggle="mappa">
-                    <?php esc_html_e('Mappa', 'agri-saas'); ?>
-                </button>
-            </div>
+    <section class="dashboard-grid" data-agri-endpoint="/dashboard/client" data-render="client-dashboard">
+        <div class="stats-grid" data-slot="stats">
+            <?php agri_saas_stat_card(__('Alberi adottati', 'agri-saas'), '—', __('Caricamento portfolio', 'agri-saas')); ?>
+            <?php agri_saas_stat_card(__('Adozioni attive', 'agri-saas'), '—', __('Impegni in corso', 'agri-saas')); ?>
+            <?php agri_saas_stat_card(__('CO₂ stimata', 'agri-saas'), '—', __('kg di assorbimento stimato', 'agri-saas')); ?>
         </div>
-
-        <!-- Milestone banner (hidden until JS fills it) -->
-        <div data-slot="milestones" hidden></div>
-
-        <!-- Split catalog body -->
-        <div class="catalog-body" data-catalog-view="lista">
-            <div class="catalog-list-panel" data-slot="adoptable-trees">
-                <div class="catalog-skeletons">
-                    <div class="skeleton-card"></div>
-                    <div class="skeleton-card"></div>
-                    <div class="skeleton-card"></div>
-                    <div class="skeleton-card"></div>
+        <article class="card span-2">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow"><?php esc_html_e('Catalogo', 'agri-saas'); ?></p>
+                    <h2><?php esc_html_e('Alberi adottabili', 'agri-saas'); ?></h2>
                 </div>
             </div>
-            <div class="catalog-map-panel">
-                <div class="leaflet-map" data-slot="adoptable-map" aria-label="<?php esc_attr_e('Mappa alberi adottabili', 'agri-saas'); ?>"></div>
-            </div>
-        </div>
-
-        <!-- My adoptions (below the fold) -->
-        <section id="mie-adozioni" class="my-adoptions-section">
-            <div class="my-adoptions-inner">
-                <div class="stats-row" data-slot="stats">
-                    <?php agri_saas_stat_card(__('Alberi adottati', 'agri-saas'), '—', __('Nel tuo portafoglio', 'agri-saas')); ?>
-                    <?php agri_saas_stat_card(__('Adozioni attive', 'agri-saas'), '—', __('Attualmente attive', 'agri-saas')); ?>
-                    <?php agri_saas_stat_card(__('Stima CO₂', 'agri-saas'), '—', __('Sequestro stimato', 'agri-saas')); ?>
+            <div class="catalog-layout">
+                <div class="card-list" data-slot="adoptable-trees">
+                    <?php agri_saas_empty_state(__('Gli alberi disponibili appariranno qui con le azioni per richiedere adozione.', 'agri-saas')); ?>
                 </div>
-                <div class="section-heading">
-                    <h2><?php esc_html_e('Le mie adozioni', 'agri-saas'); ?></h2>
-                    <a class="button ghost" href="<?php echo esc_url(home_url('/updates/')); ?>"><?php esc_html_e('Vedi aggiornamenti', 'agri-saas'); ?></a>
-                </div>
-                <div class="card-list" data-slot="trees">
-                    <?php agri_saas_empty_state(__('I dati degli alberi appariranno qui non appena disponibili.', 'agri-saas')); ?>
+                <div class="catalog-map" data-slot="adoptable-map" aria-label="<?php esc_attr_e('Mappa alberi adottabili', 'agri-saas'); ?>">
+                    <span class="map-placeholder">&#9678;</span>
                 </div>
             </div>
-        </section>
-
-    </div>
+        </article>
+        <article class="card span-2">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow"><?php esc_html_e('Portfolio', 'agri-saas'); ?></p>
+                    <h2><?php esc_html_e('I tuoi alberi adottati', 'agri-saas'); ?></h2>
+                </div>
+                <a class="button ghost" href="<?php echo esc_url(home_url('/updates/')); ?>"><?php esc_html_e('Vedi aggiornamenti', 'agri-saas'); ?></a>
+            </div>
+            <div class="card-list" data-slot="trees">
+                <?php agri_saas_empty_state(__('I dati dei tuoi alberi appariranno qui.', 'agri-saas')); ?>
+            </div>
+        </article>
+        <aside class="card insight-card">
+            <p class="eyebrow"><?php esc_html_e('Cosa fare adesso', 'agri-saas'); ?></p>
+            <h2><?php esc_html_e('Segui gli aggiornamenti dal campo', 'agri-saas'); ?></h2>
+            <p><?php esc_html_e('Apri il feed degli aggiornamenti per leggere i post delle aziende, vedere le foto degli alberi e le ultime notizie dal campo.', 'agri-saas'); ?></p>
+        </aside>
+    </section>
     <?php
 });
