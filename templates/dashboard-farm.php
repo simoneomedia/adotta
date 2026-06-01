@@ -94,6 +94,42 @@ agri_saas_render_shell(__('Dashboard Azienda', 'agri-saas'), function (): void {
                 <button class="button ghost" type="button" data-set-marker><?php esc_html_e('Imposta marcatore', 'agri-saas'); ?></button>
                 <div class="coordinate-map" data-coordinate-map aria-label="<?php esc_attr_e('Mappa coordinate azienda', 'agri-saas'); ?>"></div>
                 <label><?php esc_html_e('Stima CO₂ (kg)', 'agri-saas'); ?><input name="carbon_estimate" type="number" min="0" step="0.01"></label>
+                <div class="tree-form-rewards" data-tree-form-rewards>
+                    <p class="eyebrow"><?php esc_html_e('Premi inclusi nell\'adozione', 'agri-saas'); ?></p>
+                    <p class="form-help-text"><?php esc_html_e('Seleziona uno o più premi che il cliente riceverà adottando questo albero.', 'agri-saas'); ?></p>
+                    <div class="reward-picker-list" data-reward-picker-list>
+                        <p class="muted-note"><?php esc_html_e('Seleziona prima un\'azienda per vedere i premi disponibili.', 'agri-saas'); ?></p>
+                    </div>
+                    <details class="inline-reward-creator" data-inline-reward-creator>
+                        <summary><?php esc_html_e('+ Crea nuovo premio', 'agri-saas'); ?></summary>
+                        <div class="inline-reward-form">
+                            <label><?php esc_html_e('Nome premio', 'agri-saas'); ?><input data-new-reward-name required></label>
+                            <label><?php esc_html_e('Descrizione', 'agri-saas'); ?><textarea data-new-reward-description rows="2"></textarea></label>
+                            <div class="form-grid-2">
+                                <label><?php esc_html_e('Tipo', 'agri-saas'); ?>
+                                    <select data-new-reward-type>
+                                        <option value="surprise"><?php esc_html_e('A sorpresa', 'agri-saas'); ?></option>
+                                        <option value="physical"><?php esc_html_e('Prodotto fisico', 'agri-saas'); ?></option>
+                                        <option value="digital"><?php esc_html_e('Digitale', 'agri-saas'); ?></option>
+                                        <option value="experience"><?php esc_html_e('Esperienza', 'agri-saas'); ?></option>
+                                    </select>
+                                </label>
+                                <label><?php esc_html_e('Quando ricevuto', 'agri-saas'); ?>
+                                    <select data-new-reward-when>
+                                        <option value="immediate"><?php esc_html_e('All\'adozione', 'agri-saas'); ?></option>
+                                        <option value="harvest"><?php esc_html_e('Al raccolto', 'agri-saas'); ?></option>
+                                        <option value="6m"><?php esc_html_e('Dopo 6 mesi', 'agri-saas'); ?></option>
+                                        <option value="1y"><?php esc_html_e('Dopo 1 anno', 'agri-saas'); ?></option>
+                                        <option value="annually"><?php esc_html_e('Ogni anno', 'agri-saas'); ?></option>
+                                    </select>
+                                </label>
+                            </div>
+                            <button class="button ghost" type="button" data-save-inline-reward><?php esc_html_e('Aggiungi premio', 'agri-saas'); ?></button>
+                            <p class="form-status" data-inline-reward-status></p>
+                        </div>
+                    </details>
+                    <p class="field-error" data-reward-required-error hidden><?php esc_html_e('Seleziona o crea almeno un premio.', 'agri-saas'); ?></p>
+                </div>
                 <button class="button" type="submit"><?php esc_html_e('Pubblica albero', 'agri-saas'); ?></button>
             </form>
         </aside>

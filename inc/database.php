@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AGRI_SAAS_DB_VERSION', '4');
+define('AGRI_SAAS_DB_VERSION', '5');
 
 add_action('init', 'agri_saas_maybe_upgrade_db');
 function agri_saas_maybe_upgrade_db(): void
@@ -30,6 +30,7 @@ function agri_saas_tables(): array
         'update_reactions'   => $wpdb->prefix . 'agri_update_reactions',
         'push_subscriptions' => $wpdb->prefix . 'agri_push_subscriptions',
         'rewards'            => $wpdb->prefix . 'agri_rewards',
+        'tree_rewards'       => $wpdb->prefix . 'agri_saas_tree_rewards',
     ];
 }
 
@@ -169,5 +170,12 @@ function agri_saas_install_tables(): void
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY  (id),
         KEY farm_id (farm_id)
+    ) $charset_collate;");
+
+    dbDelta("CREATE TABLE {$tables['tree_rewards']} (
+        tree_id BIGINT UNSIGNED NOT NULL,
+        reward_id BIGINT UNSIGNED NOT NULL,
+        PRIMARY KEY  (tree_id, reward_id),
+        KEY reward_id (reward_id)
     ) $charset_collate;");
 }
