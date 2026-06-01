@@ -8,6 +8,45 @@
     let feedOffset = 0;
     const FEED_LIMIT = 20;
 
+    // ── Toast notifications ───────────────────────────────────────────────────
+    let toastContainer = null;
+    const showToast = (message, type = 'success') => {
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.setAttribute('aria-live', 'polite');
+            document.body.appendChild(toastContainer);
+        }
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        const icons = { success: '✓', error: '✕', info: 'ℹ' };
+        toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
+        toastContainer.appendChild(toast);
+        requestAnimationFrame(() => { requestAnimationFrame(() => toast.classList.add('is-visible')); });
+        const hide = () => {
+            toast.classList.remove('is-visible');
+            setTimeout(() => toast.remove(), 350);
+        };
+        toast.addEventListener('click', hide);
+        setTimeout(hide, type === 'error' ? 6000 : 4000);
+    };
+
+    // ── Button loading state ──────────────────────────────────────────────────
+    const setButtonLoading = (btn, loading) => {
+        if (!btn) return;
+        if (loading) {
+            btn._origHtml = btn.innerHTML;
+            btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>';
+            btn.disabled = true;
+            btn.classList.add('is-loading');
+        } else {
+            if (btn._origHtml !== undefined) btn.innerHTML = btn._origHtml;
+            btn.disabled = false;
+            btn.classList.remove('is-loading');
+            delete btn._origHtml;
+        }
+    };
+
     // ── SimpleOsmMap — coordinate pickers only ───────────────────────────────
     const tileSize = 256;
     const tileUrl = (x, y, z) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
@@ -1197,18 +1236,23 @@
             }
 
             const requestButton = event.target.closest('[data-request-adoption]');
-            if (requestButton) {
-                requestButton.disabled = true;
+            if (requestButton && !requestButton.disabled) {
+                setButtonLoading(requestButton, true);
                 try {
-                    await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: requestButton.dataset.requestAdoption }) });
-                } catch { requestButton.disabled = false; return; }
-                const row = requestButton.closest('.catalog-row');
-                const species = row?.querySelector('strong')?.textContent?.trim() || '';
-                const farmInfo = row?.querySelector('small')?.textContent?.split('·')[0]?.trim() || '';
-                const code = row?.querySelector('.badge')?.textContent?.trim() || '';
-                requestButton.textContent = 'In attesa';
-                showAdoptionModal(species, farmInfo, code);
-                loadAdoptableTrees();
+                    const treeId = requestButton.dataset.requestAdoption;
+                    const treeCard = requestButton.closest('[data-tree-id]');
+                    const species = treeCard?.querySelector('.tree-species-name')?.textContent || 'albero';
+                    const farmName = treeCard?.querySelector('.tree-card-farm')?.textContent?.replace('🌿 ', '') || '';
+                    await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: treeId }) });
+                    requestButton.textContent = 'In attesa…';
+                    requestButton.disabled = true;
+                    requestButton.classList.add('ghost');
+                    showAdoptionModal(species, farmName, '');
+                    loadAdoptableTrees();
+                } catch (err) {
+                    showToast(err.message || 'Errore durante la richiesta. Riprova.', 'error');
+                    setButtonLoading(requestButton, false);
+                }
                 return;
             }
 
@@ -1222,23 +1266,27 @@
             const followButton = event.target.closest('[data-follow-farm]');
             if (followButton) {
                 if (!window.AgriSaas.userId) { window.location.href = followButton.dataset.loginUrl || appUrl(''); return; }
-                followButton.disabled = true;
-                const method = followButton.dataset.following === '1' ? 'DELETE' : 'POST';
-                await apiFetch(`/farms/${followButton.dataset.farmId}/follow`, { method, body: JSON.stringify({}) });
-                await loadRoot();
-                followButton.disabled = false;
+                setButtonLoading(followButton, true);
+                try {
+                    const method = followButton.dataset.following === '1' ? 'DELETE' : 'POST';
+                    await apiFetch(`/farms/${followButton.dataset.farmId}/follow`, { method, body: JSON.stringify({}) });
+                    await loadRoot();
+                } catch (err) {
+                    setButtonLoading(followButton, false);
+                    showToast(err.message || 'Errore. Riprova.', 'error');
+                }
                 return;
             }
 
             const decisionButton = event.target.closest('[data-adoption-decision]');
             if (decisionButton) {
-                decisionButton.disabled = true;
+                setButtonLoading(decisionButton, true);
                 try {
                     await apiFetch(`/adoption-requests/${decisionButton.dataset.requestId}/${decisionButton.dataset.adoptionDecision}`, { method: 'POST', body: JSON.stringify({}) });
                     loadRoot();
                 } catch (err) {
-                    decisionButton.disabled = false;
-                    alert(err.message || 'Errore durante l\'operazione. Riprova.');
+                    setButtonLoading(decisionButton, false);
+                    showToast(err.message || 'Errore durante l\'operazione. Riprova.', 'error');
                 }
                 return;
             }
@@ -1261,15 +1309,19 @@
                 event.preventDefault();
                 if (!validateForm(giftForm)) return;
                 const status = giftForm.querySelector('[data-gift-status]');
+                const submitBtn = giftForm.querySelector('[type="submit"]');
+                setButtonLoading(submitBtn, true);
                 if (status) status.textContent = 'Invio in corso…';
                 const treeId = giftForm.querySelector('[data-gift-tree-id]').value;
                 const payload = Object.fromEntries(new FormData(giftForm).entries());
                 try {
                     await apiFetch('/gift-adoption', { method: 'POST', body: JSON.stringify({ tree_id: treeId, recipient_email: payload.recipient_email, gift_message: payload.gift_message }) });
                     if (status) status.textContent = 'Regalo inviato! Il destinatario riceverà un\'email.';
+                    showToast('Regalo inviato! Il destinatario riceverà un\'email con il link di riscatto.', 'success');
                     giftForm.reset();
                     setTimeout(() => giftModal?.classList.remove('is-open'), 2000);
                 } catch (err) {
+                    setButtonLoading(submitBtn, false);
                     if (status) status.textContent = err.message;
                 }
                 return;
@@ -1299,14 +1351,22 @@
             event.preventDefault();
             const form = event.currentTarget;
             if (!validateForm(form)) return;
-            const payload = Object.fromEntries(new FormData(form).entries());
-            await apiFetch('/farms', { method: 'POST', body: JSON.stringify(payload) });
-            window.location.reload();
+            const submitBtn = form.querySelector('[type="submit"]');
+            setButtonLoading(submitBtn, true);
+            try {
+                const payload = Object.fromEntries(new FormData(form).entries());
+                await apiFetch('/farms', { method: 'POST', body: JSON.stringify(payload) });
+                window.location.reload();
+            } catch (err) {
+                setButtonLoading(submitBtn, false);
+                showToast(err.message || 'Errore durante il salvataggio. Riprova.', 'error');
+            }
         });
 
         document.querySelector('[data-agri-tree-form] [name="farm_id"]')?.addEventListener('change', loadTreeFormRewards);
 
-        document.querySelector('[data-save-inline-reward]')?.addEventListener('click', async () => {
+        document.querySelector('[data-save-inline-reward]')?.addEventListener('click', async (event) => {
+            const saveBtn    = event.currentTarget;
             const farmSelect = document.querySelector('[data-agri-tree-form] [name="farm_id"]');
             const nameEl     = document.querySelector('[data-new-reward-name]');
             const descEl     = document.querySelector('[data-new-reward-description]');
@@ -1315,6 +1375,7 @@
             const statusEl   = document.querySelector('[data-inline-reward-status]');
             if (!nameEl?.value.trim()) { if (statusEl) statusEl.textContent = 'Il nome del premio è obbligatorio.'; return; }
             if (statusEl) statusEl.textContent = 'Salvataggio…';
+            setButtonLoading(saveBtn, true);
             try {
                 const r = await apiFetch('/rewards', { method: 'POST', body: JSON.stringify({
                     farm_id:      farmSelect?.value || '',
@@ -1330,8 +1391,12 @@
                 if (nameEl) nameEl.value = '';
                 if (descEl) descEl.value = '';
                 if (statusEl) statusEl.textContent = 'Premio aggiunto ✓';
+                setButtonLoading(saveBtn, false);
                 document.querySelector('[data-inline-reward-creator]')?.removeAttribute('open');
-            } catch (err) { if (statusEl) statusEl.textContent = err.message; }
+            } catch (err) {
+                setButtonLoading(saveBtn, false);
+                if (statusEl) statusEl.textContent = err.message;
+            }
         });
 
         document.querySelector('[data-agri-tree-form]')?.addEventListener('submit', async (event) => {
@@ -1347,11 +1412,18 @@
             }
             if (rewardError) rewardError.hidden = true;
 
-            const payload = Object.fromEntries(new FormData(form).entries());
-            delete payload['reward_ids[]'];
-            payload.reward_ids = selectedRewards;
-            await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
-            window.location.reload();
+            const submitBtn = form.querySelector('[type="submit"]');
+            setButtonLoading(submitBtn, true);
+            try {
+                const payload = Object.fromEntries(new FormData(form).entries());
+                delete payload['reward_ids[]'];
+                payload.reward_ids = selectedRewards;
+                await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
+                window.location.reload();
+            } catch (err) {
+                setButtonLoading(submitBtn, false);
+                showToast(err.message || 'Errore durante il salvataggio. Riprova.', 'error');
+            }
         });
 
         document.querySelector('[data-agri-update-form]')?.addEventListener('submit', async (event) => {
