@@ -1112,7 +1112,8 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
 
     // Validate and assign required rewards
     $raw_ids = $request->get_param('reward_ids') ?: [];
-    $reward_ids_clean = array_filter(array_map('absint', is_array($raw_ids) ? $raw_ids : json_decode($raw_ids, true) ?: []));
+    $decoded = is_array($raw_ids) ? $raw_ids : (json_decode((string) $raw_ids, true) ?: []);
+    $reward_ids_clean = array_filter(array_map('absint', $decoded));
 
     if (empty($reward_ids_clean)) {
         return new WP_Error('agri_saas_rewards_required', __('Seleziona almeno un premio per questo albero.', 'agri-saas'), ['status' => 400]);

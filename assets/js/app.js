@@ -8,6 +8,45 @@
     let feedOffset = 0;
     const FEED_LIMIT = 20;
 
+    // ── Toast notifications ───────────────────────────────────────────────────
+    let toastContainer = null;
+    const showToast = (message, type = 'success') => {
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.setAttribute('aria-live', 'polite');
+            document.body.appendChild(toastContainer);
+        }
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        const icons = { success: '✓', error: '✕', info: 'ℹ' };
+        toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
+        toastContainer.appendChild(toast);
+        requestAnimationFrame(() => { requestAnimationFrame(() => toast.classList.add('is-visible')); });
+        const hide = () => {
+            toast.classList.remove('is-visible');
+            setTimeout(() => toast.remove(), 350);
+        };
+        toast.addEventListener('click', hide);
+        setTimeout(hide, type === 'error' ? 6000 : 4000);
+    };
+
+    // ── Button loading state ──────────────────────────────────────────────────
+    const setButtonLoading = (btn, loading) => {
+        if (!btn) return;
+        if (loading) {
+            btn._origHtml = btn.innerHTML;
+            btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>';
+            btn.disabled = true;
+            btn.classList.add('is-loading');
+        } else {
+            if (btn._origHtml !== undefined) btn.innerHTML = btn._origHtml;
+            btn.disabled = false;
+            btn.classList.remove('is-loading');
+            delete btn._origHtml;
+        }
+    };
+
     // ── SimpleOsmMap — coordinate pickers only ───────────────────────────────
     const tileSize = 256;
     const tileUrl = (x, y, z) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
@@ -369,6 +408,16 @@
 
     const makeCluster = () => (window.L?.markerClusterGroup ? L.markerClusterGroup() : L.featureGroup());
 
+    const makeEmojiMarker = (emoji, label = '') => {
+        return window.L ? L.divIcon({
+            className: 'emoji-map-marker',
+            html: `<div class="emoji-pin" title="${escapeHtml(label)}">${emoji}</div>`,
+            iconSize: [38, 38],
+            iconAnchor: [19, 38],
+            popupAnchor: [0, -38],
+        }) : null;
+    };
+
     const speciesEmoji = (species) => {
         const s = (species || '').toLowerCase();
         if (s.includes('olivo') || s.includes('olive')) return '🫒';
@@ -443,7 +492,8 @@
             const lat = Number(tree.map_latitude);
             const lng = Number(tree.map_longitude);
             bounds.push([lat, lng]);
-            const marker = L.marker([lat, lng])
+            const emojiIcon = makeEmojiMarker(speciesEmoji(tree.species), tree.species);
+            const marker = L.marker([lat, lng], emojiIcon ? { icon: emojiIcon } : undefined)
                 .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`);
 
             marker.on('click', () => {
@@ -505,7 +555,7 @@
         if (trees.length) {
             slot.innerHTML = trees.map(treeCardHtml).join('');
         } else {
-            slot.innerHTML = '<div class="card empty-state">Nessun albero disponibile per l\'adozione al momento.</div>';
+            slot.innerHTML = '<div class="card empty-state"><span class="empty-state-icon">🌱</span><p>Nessun albero disponibile per l\'adozione al momento.</p></div>';
         }
 
         // Search filter (topbar input wired here since it lives outside slot)
@@ -567,9 +617,9 @@
             <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
                 <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small></div>
                 <span class="badge">${escapeHtml(tree.code)}</span>
-            </a>`).join('') : '<div class="card empty-state">Nessun albero adottato ancora.</div>');
+            </a>`).join('') : '<div class="card empty-state"><span class="empty-state-icon">🌳</span><p>Nessun albero adottato ancora.</p></div>');
 
-        loadAdoptableTrees().catch(() => root.querySelector('[data-slot="adoptable-trees"]')?.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare gli alberi disponibili.</div>'));
+        loadAdoptableTrees().catch(() => root.querySelector('[data-slot="adoptable-trees"]')?.insertAdjacentHTML('beforeend', '<div class="card empty-state"><span class="empty-state-icon">🌱</span><p>Impossibile caricare gli alberi disponibili.</p></div>'));
     };
 
     const updateFarmOptions = (farms) => {
@@ -595,11 +645,11 @@
                     <button class="button" type="button" data-adoption-decision="accept" data-request-id="${escapeHtml(String(request.id))}">Accetta</button>
                     <button class="button ghost" type="button" data-adoption-decision="reject" data-request-id="${escapeHtml(String(request.id))}">Rifiuta</button>
                 </div>
-            </article>`).join('') : '<div class="card empty-state">Nessuna richiesta di adozione in sospeso.</div>';
+            </article>`).join('') : '<div class="card empty-state"><span class="empty-state-icon">📋</span><p>Nessuna richiesta di adozione in sospeso.</p></div>';
     };
 
     const renderRewards = (rewards) => {
-        if (!rewards?.length) return '<div class="card empty-state">Nessun premio incluso in questa adozione.</div>';
+        if (!rewards?.length) return '<div class="card empty-state"><span class="empty-state-icon">🎁</span><p>Nessun premio incluso in questa adozione.</p></div>';
         return `<p style="color:var(--muted);font-size:.9rem;margin:0 0 14px;">Adottando un albero di questa azienda riceverai:</p>
         <div class="rewards-list">${rewards.map((r) => `
             <div class="reward-card">
@@ -671,7 +721,7 @@
                 <div><strong><a href="${appUrl(`farms/${farm.id}/`)}">${escapeHtml(farm.name)}</a></strong> ${verifiedBadge(farm.is_verified)}<br>
                 <small>${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus)}${farm.latitude && farm.longitude ? ` · ${escapeHtml(farm.latitude)}, ${escapeHtml(farm.longitude)}` : ''}</small></div>
                 <span class="badge">${escapeHtml(String(farm.tree_count))} alberi · salute ${escapeHtml(String(farm.health_score))}</span>
-            </div>`).join('') : '<div class="card empty-state">Nessuna azienda. Aggiungine una prima di pubblicare alberi.</div>');
+            </div>`).join('') : '<div class="card empty-state"><span class="empty-state-icon">🌿</span><p>Nessuna azienda. Aggiungine una prima di pubblicare alberi.</p></div>');
 
         setSlot('[data-slot="farm-trees"]', data.trees.length ? data.trees.map((tree) => `
             <div class="tree-row" style="justify-content:space-between;">
@@ -683,7 +733,7 @@
                     ${tree.adoption_count > 0 ? `<span class="adoption-count-badge">${escapeHtml(String(tree.adoption_count))} adoz.</span>` : ''}
                     <button class="button ghost" type="button" data-show-qr="${escapeHtml(String(tree.id))}" data-qr-url="${escapeHtml(appUrl(`trees/${tree.id}/`))}" data-qr-label="${escapeHtml(tree.code)}" style="padding:6px 12px;font-size:.78rem;">QR</button>
                 </div>
-            </div>`).join('') : '<div class="card empty-state">Nessun albero pubblicato.</div>');
+            </div>`).join('') : '<div class="card empty-state"><span class="empty-state-icon">🌳</span><p>Nessun albero pubblicato.</p></div>');
 
         renderAdoptionRequests(data.requests || []);
         updateFarmOptions(data.farms || []);
@@ -754,7 +804,8 @@
                 const map = makeLeafletMap(leafletEl);
                 if (map) {
                     map.setView([lat, lng], 14);
-                    L.marker([lat, lng])
+                    const treeEmojiIcon = makeEmojiMarker(speciesEmoji(tree.species), tree.species);
+                    L.marker([lat, lng], treeEmojiIcon ? { icon: treeEmojiIcon } : undefined)
                         .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}`)
                         .addTo(map)
                         .openPopup();
@@ -773,7 +824,7 @@
         if (!slot) return;
 
         if (!updates.length && !append) {
-            slot.innerHTML = '<div class="card empty-state">Nessun aggiornamento pubblicato ancora.</div>';
+            slot.innerHTML = '<div class="card empty-state"><span class="empty-state-icon">📭</span><p>Nessun aggiornamento pubblicato ancora.</p></div>';
             return;
         }
 
@@ -808,7 +859,7 @@
         }).join('');
 
         if (append) slot.insertAdjacentHTML('beforeend', html);
-        else slot.innerHTML = html || '<div class="card empty-state">Nessun aggiornamento pubblicato ancora.</div>';
+        else slot.innerHTML = html || '<div class="card empty-state"><span class="empty-state-icon">📭</span><p>Nessun aggiornamento pubblicato ancora.</p></div>';
     };
 
     // ── Lightbox ──────────────────────────────────────────────────────────────
@@ -842,12 +893,30 @@
         modal.className = 'adoption-modal';
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'adoption-modal-title');
         modal.innerHTML = `<div class="adoption-modal-card">
-            <div class="adoption-modal-icon">🌱</div>
-            <h2>Richiesta inviata!</h2>
-            <p class="adoption-modal-body"></p>
-            <button class="button" type="button" data-close-adoption-modal>Ottimo!</button>
-        </div>`;
+        <div class="adoption-modal-visual">
+            <span class="adoption-modal-emoji" id="adoption-modal-emoji">🌱</span>
+        </div>
+        <h2 id="adoption-modal-title" class="adoption-modal-title">Richiesta inviata!</h2>
+        <p class="adoption-modal-subtitle">Ottima scelta! La tua richiesta è stata ricevuta.</p>
+        <div class="adoption-modal-body" id="adoption-modal-body"></div>
+        <div class="adoption-modal-steps">
+            <div class="adoption-step">
+                <span class="adoption-step-num">1</span>
+                <span>L'azienda riceve la tua richiesta</span>
+            </div>
+            <div class="adoption-step">
+                <span class="adoption-step-num">2</span>
+                <span>Ricevi conferma via email</span>
+            </div>
+            <div class="adoption-step">
+                <span class="adoption-step-num">3</span>
+                <span>Segui il tuo albero nel tempo</span>
+            </div>
+        </div>
+        <button class="button adoption-modal-cta" type="button" data-close-adoption-modal>Perfetto! 🌿</button>
+    </div>`;
         document.body.appendChild(modal);
         modal.addEventListener('click', (e) => { if (e.target === modal || e.target.closest('[data-close-adoption-modal]')) modal.classList.remove('is-open'); });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.classList.remove('is-open'); });
@@ -856,8 +925,10 @@
 
     const showAdoptionModal = (species, farmInfo, code) => {
         if (!adoptionModal) adoptionModal = createAdoptionModal();
-        adoptionModal.querySelector('.adoption-modal-body').innerHTML =
-            `Hai richiesto di adottare <strong>${escapeHtml(species || 'albero')}</strong>${code ? ` (${escapeHtml(code)})` : ''}${farmInfo ? `<br>presso <strong>${escapeHtml(farmInfo)}</strong>` : ''}.<br><br>La tua richiesta è in attesa di approvazione.`;
+        const emoji = speciesEmoji(species);
+        adoptionModal.querySelector('#adoption-modal-emoji').textContent = emoji;
+        adoptionModal.querySelector('#adoption-modal-body').innerHTML =
+            `Hai richiesto di adottare <strong>${escapeHtml(species || 'albero')}</strong>${code ? ` (${escapeHtml(code)})` : ''}${farmInfo ? `<br>presso <strong>${escapeHtml(farmInfo)}</strong>` : ''}.`;
         adoptionModal.classList.add('is-open');
     };
 
@@ -869,16 +940,27 @@
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
         modal.innerHTML = `<div class="gift-modal-card">
-            <div class="adoption-modal-icon">🎁</div>
-            <h2>Regala un albero</h2>
-            <p class="adoption-modal-body" data-gift-species></p>
+            <button class="modal-close-x" type="button" data-close-gift-modal aria-label="Chiudi">✕</button>
+            <div class="gift-modal-header">
+                <span class="gift-modal-emoji">🎁</span>
+                <div>
+                    <h2 class="gift-modal-title">Regala un albero</h2>
+                    <p class="gift-modal-tree" data-gift-species></p>
+                </div>
+            </div>
             <form class="gift-form" data-gift-form>
                 <input type="hidden" data-gift-tree-id>
-                <label>Email destinatario *<input type="email" name="recipient_email" required placeholder="nome@esempio.it"></label>
-                <label>Messaggio (facoltativo)<textarea name="gift_message" rows="3" placeholder="Auguri! Ho adottato questo albero per te…"></textarea></label>
+                <label>
+                    <span class="gift-label-text">Email del destinatario <span class="required-star">*</span></span>
+                    <input type="email" name="recipient_email" required placeholder="nome@esempio.it" autocomplete="email">
+                </label>
+                <label>
+                    <span class="gift-label-text">Messaggio personale</span>
+                    <textarea name="gift_message" rows="3" placeholder="Ho pensato a te… 🌿 Adotta questo albero con me!"></textarea>
+                </label>
                 <p class="form-status" data-gift-status></p>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                    <button class="button" type="submit">Invia regalo</button>
+                <div class="gift-modal-actions">
+                    <button class="button" type="submit" style="flex:1;justify-content:center;">Invia regalo 🎁</button>
                     <button class="button ghost" type="button" data-close-gift-modal>Annulla</button>
                 </div>
             </form>
@@ -955,10 +1037,9 @@
             const lat = Number(tree.map_latitude);
             const lng = Number(tree.map_longitude);
             bounds.push([lat, lng]);
-            const icon = tree.status === 'adopted' ? '🌳' : '🌱';
-            L.marker([lat, lng], {
-                icon: L.divIcon({ className: 'leaflet-tree-icon', html: `<span style="font-size:1.3rem;line-height:1;display:block;text-align:center;">${icon}</span>`, iconSize: [28, 28], iconAnchor: [14, 28] }),
-            }).bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.code)} · ${escapeHtml(statusLabel(tree.status))}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`).addTo(cluster);
+            const farmEmojiIcon = makeEmojiMarker(speciesEmoji(tree.species), tree.species);
+            L.marker([lat, lng], farmEmojiIcon ? { icon: farmEmojiIcon } : undefined)
+                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.code)} · ${escapeHtml(statusLabel(tree.status))}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`).addTo(cluster);
         });
 
         cluster.addTo(farmProfileMap);
@@ -1004,10 +1085,10 @@
                     <span class="badge">${escapeHtml(statusLabel(tree.status))}${tree.adopter_name ? ` · ${escapeHtml(tree.adopter_name)}` : ''}</span>
                     ${tree.adoption_count > 0 ? `<span class="adoption-count-badge">${escapeHtml(String(tree.adoption_count))} adozione/i</span>` : ''}
                 </div>
-            </a>`).join('') : '<div class="card empty-state">Nessun albero pubblicato da questa azienda.</div>';
+            </a>`).join('') : '<div class="card empty-state"><span class="empty-state-icon">🌳</span><p>Nessun albero pubblicato da questa azienda.</p></div>';
 
         root.querySelector('[data-slot="farm-photos"]').innerHTML = data.photos.length ? data.photos.slice(0, 6).map((url) => `
-            <a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Foto azienda" loading="lazy"></a>`).join('') : '<div class="card empty-state">Nessuna foto ancora.</div>';
+            <a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Foto azienda" loading="lazy"></a>`).join('') : '<div class="card empty-state"><span class="empty-state-icon">🌿</span><p>Nessuna foto ancora.</p></div>';
 
         const rewardsSlot = root.querySelector('[data-slot="farm-rewards"]');
         if (rewardsSlot) rewardsSlot.innerHTML = renderRewards(data.rewards || []);
@@ -1043,7 +1124,7 @@
         if (!root) return Promise.resolve();
         return apiFetch(root.dataset.agriEndpoint)
             .then((data) => renderers[root.dataset.render]?.(data))
-            .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare i dati. Riprova tra poco.</div>'));
+            .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state"><span class="empty-state-icon">🌿</span><p>Impossibile caricare i dati. Riprova tra poco.</p></div>'));
     };
 
     const showPanel = (selector) => {
@@ -1197,18 +1278,23 @@
             }
 
             const requestButton = event.target.closest('[data-request-adoption]');
-            if (requestButton) {
-                requestButton.disabled = true;
+            if (requestButton && !requestButton.disabled) {
+                setButtonLoading(requestButton, true);
                 try {
-                    await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: requestButton.dataset.requestAdoption }) });
-                } catch { requestButton.disabled = false; return; }
-                const row = requestButton.closest('.catalog-row');
-                const species = row?.querySelector('strong')?.textContent?.trim() || '';
-                const farmInfo = row?.querySelector('small')?.textContent?.split('·')[0]?.trim() || '';
-                const code = row?.querySelector('.badge')?.textContent?.trim() || '';
-                requestButton.textContent = 'In attesa';
-                showAdoptionModal(species, farmInfo, code);
-                loadAdoptableTrees();
+                    const treeId = requestButton.dataset.requestAdoption;
+                    const treeCard = requestButton.closest('[data-tree-id]');
+                    const species = treeCard?.querySelector('.tree-species-name')?.textContent || 'albero';
+                    const farmName = treeCard?.querySelector('.tree-card-farm')?.textContent?.replace('🌿 ', '') || '';
+                    await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: treeId }) });
+                    requestButton.textContent = 'In attesa…';
+                    requestButton.disabled = true;
+                    requestButton.classList.add('ghost');
+                    showAdoptionModal(species, farmName, '');
+                    loadAdoptableTrees();
+                } catch (err) {
+                    showToast(err.message || 'Errore durante la richiesta. Riprova.', 'error');
+                    setButtonLoading(requestButton, false);
+                }
                 return;
             }
 
@@ -1222,23 +1308,27 @@
             const followButton = event.target.closest('[data-follow-farm]');
             if (followButton) {
                 if (!window.AgriSaas.userId) { window.location.href = followButton.dataset.loginUrl || appUrl(''); return; }
-                followButton.disabled = true;
-                const method = followButton.dataset.following === '1' ? 'DELETE' : 'POST';
-                await apiFetch(`/farms/${followButton.dataset.farmId}/follow`, { method, body: JSON.stringify({}) });
-                await loadRoot();
-                followButton.disabled = false;
+                setButtonLoading(followButton, true);
+                try {
+                    const method = followButton.dataset.following === '1' ? 'DELETE' : 'POST';
+                    await apiFetch(`/farms/${followButton.dataset.farmId}/follow`, { method, body: JSON.stringify({}) });
+                    await loadRoot();
+                } catch (err) {
+                    setButtonLoading(followButton, false);
+                    showToast(err.message || 'Errore. Riprova.', 'error');
+                }
                 return;
             }
 
             const decisionButton = event.target.closest('[data-adoption-decision]');
             if (decisionButton) {
-                decisionButton.disabled = true;
+                setButtonLoading(decisionButton, true);
                 try {
                     await apiFetch(`/adoption-requests/${decisionButton.dataset.requestId}/${decisionButton.dataset.adoptionDecision}`, { method: 'POST', body: JSON.stringify({}) });
                     loadRoot();
                 } catch (err) {
-                    decisionButton.disabled = false;
-                    alert(err.message || 'Errore durante l\'operazione. Riprova.');
+                    setButtonLoading(decisionButton, false);
+                    showToast(err.message || 'Errore durante l\'operazione. Riprova.', 'error');
                 }
                 return;
             }
@@ -1261,15 +1351,19 @@
                 event.preventDefault();
                 if (!validateForm(giftForm)) return;
                 const status = giftForm.querySelector('[data-gift-status]');
+                const submitBtn = giftForm.querySelector('[type="submit"]');
+                setButtonLoading(submitBtn, true);
                 if (status) status.textContent = 'Invio in corso…';
                 const treeId = giftForm.querySelector('[data-gift-tree-id]').value;
                 const payload = Object.fromEntries(new FormData(giftForm).entries());
                 try {
                     await apiFetch('/gift-adoption', { method: 'POST', body: JSON.stringify({ tree_id: treeId, recipient_email: payload.recipient_email, gift_message: payload.gift_message }) });
                     if (status) status.textContent = 'Regalo inviato! Il destinatario riceverà un\'email.';
+                    showToast('Regalo inviato! Il destinatario riceverà un\'email con il link di riscatto.', 'success');
                     giftForm.reset();
                     setTimeout(() => giftModal?.classList.remove('is-open'), 2000);
                 } catch (err) {
+                    setButtonLoading(submitBtn, false);
                     if (status) status.textContent = err.message;
                 }
                 return;
@@ -1299,14 +1393,22 @@
             event.preventDefault();
             const form = event.currentTarget;
             if (!validateForm(form)) return;
-            const payload = Object.fromEntries(new FormData(form).entries());
-            await apiFetch('/farms', { method: 'POST', body: JSON.stringify(payload) });
-            window.location.reload();
+            const submitBtn = form.querySelector('[type="submit"]');
+            setButtonLoading(submitBtn, true);
+            try {
+                const payload = Object.fromEntries(new FormData(form).entries());
+                await apiFetch('/farms', { method: 'POST', body: JSON.stringify(payload) });
+                window.location.reload();
+            } catch (err) {
+                setButtonLoading(submitBtn, false);
+                showToast(err.message || 'Errore durante il salvataggio. Riprova.', 'error');
+            }
         });
 
         document.querySelector('[data-agri-tree-form] [name="farm_id"]')?.addEventListener('change', loadTreeFormRewards);
 
-        document.querySelector('[data-save-inline-reward]')?.addEventListener('click', async () => {
+        document.querySelector('[data-save-inline-reward]')?.addEventListener('click', async (event) => {
+            const saveBtn    = event.currentTarget;
             const farmSelect = document.querySelector('[data-agri-tree-form] [name="farm_id"]');
             const nameEl     = document.querySelector('[data-new-reward-name]');
             const descEl     = document.querySelector('[data-new-reward-description]');
@@ -1315,6 +1417,7 @@
             const statusEl   = document.querySelector('[data-inline-reward-status]');
             if (!nameEl?.value.trim()) { if (statusEl) statusEl.textContent = 'Il nome del premio è obbligatorio.'; return; }
             if (statusEl) statusEl.textContent = 'Salvataggio…';
+            setButtonLoading(saveBtn, true);
             try {
                 const r = await apiFetch('/rewards', { method: 'POST', body: JSON.stringify({
                     farm_id:      farmSelect?.value || '',
@@ -1330,8 +1433,12 @@
                 if (nameEl) nameEl.value = '';
                 if (descEl) descEl.value = '';
                 if (statusEl) statusEl.textContent = 'Premio aggiunto ✓';
+                setButtonLoading(saveBtn, false);
                 document.querySelector('[data-inline-reward-creator]')?.removeAttribute('open');
-            } catch (err) { if (statusEl) statusEl.textContent = err.message; }
+            } catch (err) {
+                setButtonLoading(saveBtn, false);
+                if (statusEl) statusEl.textContent = err.message;
+            }
         });
 
         document.querySelector('[data-agri-tree-form]')?.addEventListener('submit', async (event) => {
@@ -1347,36 +1454,55 @@
             }
             if (rewardError) rewardError.hidden = true;
 
-            const payload = Object.fromEntries(new FormData(form).entries());
-            delete payload['reward_ids[]'];
-            payload.reward_ids = selectedRewards;
-            await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
-            window.location.reload();
+            const submitBtn = form.querySelector('[type="submit"]');
+            setButtonLoading(submitBtn, true);
+            try {
+                const payload = Object.fromEntries(new FormData(form).entries());
+                delete payload['reward_ids[]'];
+                payload.reward_ids = selectedRewards;
+                await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
+                window.location.reload();
+            } catch (err) {
+                setButtonLoading(submitBtn, false);
+                showToast(err.message || 'Errore durante il salvataggio. Riprova.', 'error');
+            }
         });
 
         document.querySelector('[data-agri-update-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
             const form = event.currentTarget;
             const status = form.querySelector('[data-upload-status]');
+            const submitBtn = form.querySelector('[type="submit"]');
+            setButtonLoading(submitBtn, true);
             try {
                 if (await doSubmitUpdate(form, status)) {
+                    showToast('Aggiornamento pubblicato!', 'success');
                     form.reset();
                     window.location.href = appUrl('updates/');
                 }
-            } catch (err) { if (status) status.textContent = err.message; }
+            } catch (err) {
+                setButtonLoading(submitBtn, false);
+                if (status) status.textContent = err.message;
+            }
         });
 
         document.querySelector('[data-quick-update-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
             const form = event.currentTarget;
             const status = form.querySelector('[data-upload-status]');
+            const submitBtn = form.querySelector('[type="submit"]');
+            setButtonLoading(submitBtn, true);
             try {
                 if (await doSubmitUpdate(form, status)) {
+                    showToast('Aggiornamento pubblicato!', 'success');
                     form.reset();
                     document.querySelector('.quick-update-drawer')?.classList.remove('is-open');
                     window.location.href = appUrl('updates/');
                 }
-            } catch (err) { if (status) status.textContent = err.message; }
+            } catch (err) {
+                setButtonLoading(submitBtn, false);
+                if (status) status.textContent = err.message;
+            }
         });
     };
 
