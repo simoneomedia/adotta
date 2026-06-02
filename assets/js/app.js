@@ -291,13 +291,36 @@
         });
     };
 
+    let _farmsData = [];
+
+    const updateTreeRewardOptions = (farmId) => {
+        const slot = document.querySelector('[data-slot="tree-reward-options"]');
+        const box  = document.querySelector('[data-tree-reward-checkboxes]');
+        if (!slot || !box) return;
+        const farm = _farmsData.find((f) => String(f.id) === String(farmId));
+        const rewards = farm?.rewards || [];
+        if (!rewards.length) { slot.style.display = 'none'; return; }
+        slot.style.display = '';
+        box.innerHTML = rewards.map((r) => `
+            <label style="flex-direction:row;align-items:center;gap:8px;font-weight:normal;">
+                <input type="checkbox" name="reward_ids[]" value="${escapeHtml(r.id)}">
+                <span><strong>${escapeHtml(r.name)}</strong>${r.description ? ` — ${escapeHtml(r.description)}` : ''}</span>
+            </label>`).join('');
+    };
+
     const updateFarmOptions = (farms) => {
+        _farmsData = farms;
         document.querySelectorAll('[data-farm-options]').forEach((select) => {
             select.innerHTML = farms.length
                 ? farms.map((farm) => `<option value="${escapeHtml(farm.id)}">${escapeHtml(farm.name)} · ${escapeHtml(farm.location)}</option>`).join('')
                 : '<option value="">Crea prima un\'azienda</option>';
             select.disabled = !farms.length;
         });
+        const treeFormFarmSelect = document.querySelector('[data-agri-tree-form] [data-farm-options]');
+        if (treeFormFarmSelect) {
+            updateTreeRewardOptions(treeFormFarmSelect.value);
+            treeFormFarmSelect.addEventListener('change', (e) => updateTreeRewardOptions(e.target.value));
+        }
     };
 
     const renderAdoptionRequests = (requests) => {
@@ -369,7 +392,13 @@
                 </a>`).join('')
             : '<div class="card empty-state">Nessun albero pubblicato. Usa "+ Albero" per renderlo disponibile.</div>';
         renderAdoptionRequests(data.requests || []);
-        updateFarmOptions(data.farms || []);
+        const rewardsByFarm = {};
+        (data.rewards || []).forEach((r) => {
+            if (!rewardsByFarm[r.farm_id]) rewardsByFarm[r.farm_id] = [];
+            rewardsByFarm[r.farm_id].push(r);
+        });
+        const farmsWithRewards = (data.farms || []).map((f) => ({ ...f, rewards: rewardsByFarm[f.id] || [] }));
+        updateFarmOptions(farmsWithRewards);
     };
 
     // DETTAGLIO ALBERO
@@ -607,9 +636,38 @@
 
         document.querySelector('[data-agri-tree-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
-            const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
-            await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
-            window.location.reload();
+            const form = event.currentTarget;
+            const statusEl    = form.querySelector('[data-tree-form-status]');
+            const uploadStatus = form.querySelector('[data-tree-upload-status]');
+            const photoInput  = form.querySelector('[data-tree-photo-input]');
+            const mediaUrlEl  = form.querySelector('[data-tree-media-url]');
+            const submitBtn   = form.querySelector('[type="submit"]');
+
+            if (statusEl) statusEl.textContent = '';
+            submitBtn.disabled = true;
+
+            try {
+                if (photoInput?.files?.length) {
+                    if (uploadStatus) uploadStatus.textContent = 'Ottimizzazione foto a 100 KB…';
+                    const uploadData = new FormData();
+                    uploadData.append('photo', photoInput.files[0]);
+                    const upload = await apiFetch('/media/photo', { method: 'POST', body: uploadData });
+                    if (mediaUrlEl) mediaUrlEl.value = upload.url;
+                    if (uploadStatus) uploadStatus.textContent = `Foto caricata (${Math.round(upload.size / 1024)} KB).`;
+                }
+
+                const formData = new FormData(form);
+                const payload = Object.fromEntries(formData.entries());
+                delete payload.tree_photo;
+                const rewardIds = formData.getAll('reward_ids[]').map(Number).filter(Boolean);
+                if (rewardIds.length) payload.reward_ids = rewardIds;
+
+                await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
+                window.location.reload();
+            } catch (err) {
+                if (statusEl) statusEl.textContent = err.message || 'Errore durante la pubblicazione. Riprova.';
+                submitBtn.disabled = false;
+            }
         });
 
         document.querySelector('[data-agri-update-form]')?.addEventListener('submit', async (event) => {

@@ -93,6 +93,14 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
                 </div>
                 <button class="button ghost" type="button" data-set-marker><?php esc_html_e('Imposta marcatore sulla mappa', 'agri-saas'); ?></button>
                 <div class="coordinate-map" data-coordinate-map aria-label="<?php esc_attr_e('Mappa coordinate albero', 'agri-saas'); ?>"></div>
+                <label><?php esc_html_e('Foto albero (ottimizzata a max 100 KB)', 'agri-saas'); ?><input name="tree_photo" type="file" accept="image/*" data-tree-photo-input></label>
+                <input name="media_url" type="hidden" data-tree-media-url>
+                <p class="map-note" data-tree-upload-status></p>
+                <div data-slot="tree-reward-options" style="display:none;">
+                    <p class="eyebrow" style="margin-bottom:6px;"><?php esc_html_e('Premi associati a questo albero', 'agri-saas'); ?></p>
+                    <div data-tree-reward-checkboxes></div>
+                </div>
+                <p class="map-note" data-tree-form-status></p>
                 <button class="button" type="submit"><?php esc_html_e('Pubblica albero', 'agri-saas'); ?></button>
             </form>
         </aside>
