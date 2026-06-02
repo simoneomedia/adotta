@@ -826,8 +826,8 @@
                 }
             });
         };
-        bindSimpleModal('[data-agri-product-form]', '/products');
-        bindSimpleModal('[data-agri-baratto-form]', '/baratti');
+        bindSimpleModal('[data-agri-product-form]', '/mercato');
+        bindSimpleModal('[data-agri-baratto-form]', '/baratto');
     };
 
     const bindRegistration = () => {

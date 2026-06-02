@@ -16,23 +16,23 @@ agri_saas_render_shell(__('Mercato', 'agri-saas'), function (): void {
                 <button class="button" type="button" data-open-product-form style="display:none;"><?php esc_html_e('+ Prodotto', 'agri-saas'); ?></button>
             </div>
             <div data-slot="products">
-                <div class="card empty-state"><?php esc_html_e('Caricamento prodotti\xe2\x80\xa6', 'agri-saas'); ?></div>
+                <div class="card empty-state"><?php esc_html_e('Caricamento prodotti…', 'agri-saas'); ?></div>
             </div>
         </article>
     </section>
 
     <div class="modal-backdrop" data-product-form>
         <div class="modal-panel update-composer">
-            <button class="modal-close" type="button" data-close-modal>\xe2\x9c\x95</button>
+            <button class="modal-close" type="button" data-close-modal>✕</button>
             <h2><?php esc_html_e('Aggiungi prodotto', 'agri-saas'); ?></h2>
             <form data-agri-product-form>
                 <label><?php esc_html_e('Nome prodotto', 'agri-saas'); ?><input name="name" required></label>
                 <label><?php esc_html_e('Descrizione', 'agri-saas'); ?><textarea name="description"></textarea></label>
                 <div class="form-grid-2">
-                    <label><?php esc_html_e('Prezzo (\xe2\x82\xac)', 'agri-saas'); ?><input name="price" type="number" min="0" step="0.01" placeholder="Es: 4.50"></label>
-                    <label><?php esc_html_e('Unit\xc3\xa0', 'agri-saas'); ?>
+                    <label><?php esc_html_e('Prezzo (€)', 'agri-saas'); ?><input name="price" type="number" min="0" step="0.01" placeholder="Es: 4.50"></label>
+                    <label><?php esc_html_e('Unità', 'agri-saas'); ?>
                         <select name="unit">
-                            <option value="unit\xc3\xa0"><?php esc_html_e('Per unit\xc3\xa0', 'agri-saas'); ?></option>
+                            <option value="unità"><?php esc_html_e('Per unità', 'agri-saas'); ?></option>
                             <option value="kg"><?php esc_html_e('Per kg', 'agri-saas'); ?></option>
                             <option value="litro"><?php esc_html_e('Per litro', 'agri-saas'); ?></option>
                             <option value="dozzina"><?php esc_html_e('Per dozzina', 'agri-saas'); ?></option>
