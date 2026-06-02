@@ -1132,22 +1132,22 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
 {
     global $wpdb;
     $tables  = agri_saas_tables();
-    $farm_id = absint($request->get_param('farm_id'));
+    $user_id = get_current_user_id();
     $species = sanitize_text_field($request->get_param('species'));
     $code    = sanitize_text_field($request->get_param('code'));
 
-    if (!$farm_id || !$species || !$code) {
-        return new WP_Error('agri_saas_tree_required_fields', __('Farm, species, and code are required.', 'agri-saas'), ['status' => 400]);
+    if (!$species || !$code) {
+        return new WP_Error('agri_saas_tree_required_fields', __('Species and code are required.', 'agri-saas'), ['status' => 400]);
     }
 
-    $owns_farm = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$tables['farms']} WHERE id = %d AND owner_user_id = %d",
-        $farm_id,
-        get_current_user_id()
+    // Auto-resolve the farmer's single farm
+    $farm_id = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM {$tables['farms']} WHERE owner_user_id = %d LIMIT 1",
+        $user_id
     ));
 
-    if (!$owns_farm) {
-        return new WP_Error('agri_saas_farm_forbidden', __('You can add trees only to your farms.', 'agri-saas'), ['status' => 403]);
+    if (!$farm_id) {
+        return new WP_Error('agri_saas_farm_not_found', __('Nessuna azienda trovata per questo account.', 'agri-saas'), ['status' => 403]);
     }
 
     $status = sanitize_key($request->get_param('status') ?: 'available');
@@ -1204,6 +1204,19 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
     }
 
     agri_saas_invalidate_farm_cache($farm_id);
+
+    // Auto-publish a public feed update announcing the new tree
+    $farm_name = $wpdb->get_var($wpdb->prepare("SELECT name FROM {$tables['farms']} WHERE id = %d", $farm_id));
+    $wpdb->insert($tables['updates'], [
+        'farm_id'        => $farm_id,
+        'tree_id'        => $tree_id,
+        'author_user_id' => $user_id,
+        'title'          => sprintf(__('Nuovo albero disponibile: %s', 'agri-saas'), $species),
+        'body'           => sprintf(__('È disponibile un nuovo albero (%s) da %s. Adottalo oggi!', 'agri-saas'), $code, $farm_name),
+        'media_url'      => $media_url ?: null,
+        'visibility'     => 'public',
+    ], ['%d', '%d', '%d', '%s', '%s', '%s', '%s']);
+
     return rest_ensure_response(['id' => $tree_id]);
 }
 
@@ -1393,7 +1406,6 @@ function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response
     global $wpdb;
     $tables     = agri_saas_tables();
     $user_id    = get_current_user_id();
-    $farm_id    = absint($request->get_param('farm_id')) ?: null;
     $tree_id    = absint($request->get_param('tree_id')) ?: null;
     $title      = sanitize_text_field($request->get_param('title'));
     $body       = wp_kses_post($request->get_param('body'));
@@ -1403,14 +1415,12 @@ function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response
         $visibility = 'public';
     }
 
-    if (!$farm_id && !$tree_id) {
-        return new WP_Error('agri_saas_update_target_required', __('Choose a farm or a tree for this update.', 'agri-saas'), ['status' => 400]);
-    }
-
     if (!$title || !$body) {
         return new WP_Error('agri_saas_update_required', __('Title and message are required.', 'agri-saas'), ['status' => 400]);
     }
 
+    // Auto-resolve farm from tree or from the farmer's own farm
+    $farm_id = null;
     if ($tree_id) {
         $tree_farm = $wpdb->get_row($wpdb->prepare(
             "SELECT t.farm_id, f.owner_user_id FROM {$tables['trees']} t INNER JOIN {$tables['farms']} f ON f.id = t.farm_id WHERE t.id = %d",
@@ -1420,19 +1430,14 @@ function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response
         if (!$tree_farm || (int) $tree_farm['owner_user_id'] !== $user_id) {
             return new WP_Error('agri_saas_update_tree_forbidden', __('You can publish updates only for your trees.', 'agri-saas'), ['status' => 403]);
         }
-
         $farm_id = (int) $tree_farm['farm_id'];
-    }
-
-    if ($farm_id) {
-        $owns_farm = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$tables['farms']} WHERE id = %d AND owner_user_id = %d",
-            $farm_id,
+    } else {
+        $farm_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM {$tables['farms']} WHERE owner_user_id = %d LIMIT 1",
             $user_id
         ));
-
-        if (!$owns_farm) {
-            return new WP_Error('agri_saas_update_farm_forbidden', __('You can publish updates only for your farms.', 'agri-saas'), ['status' => 403]);
+        if (!$farm_id) {
+            return new WP_Error('agri_saas_farm_not_found', __('Nessuna azienda trovata per questo account.', 'agri-saas'), ['status' => 403]);
         }
     }
 
