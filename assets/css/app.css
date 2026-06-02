@@ -103,7 +103,7 @@ a { color: inherit; text-decoration: none; }
     letter-spacing: .08em;
     text-transform: uppercase;
 }
-.stat-card strong { display: block; font-size: 2.5rem; margin: 10px 0; }
+.stat-card strong { display: block; font-size: 1.8rem; font-weight: 800; margin: 8px 0; word-break: break-word; }
 .stat-card small { color: var(--muted); }
 .section-heading { justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .section-heading h2, .card h2 { margin: 0; }
@@ -127,6 +127,7 @@ a { color: inherit; text-decoration: none; }
     padding: 16px;
 }
 .tree-row, .farm-row { justify-content: space-between; gap: 16px; }
+.tree-row small, .farm-row small { font-size: .78rem; color: var(--muted); line-height: 1.5; }
 .badge {
     background: #dcedc8;
     border-radius: 999px;
@@ -379,6 +380,68 @@ textarea { min-height: 120px; resize: vertical; }
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+.badge-secolare {
+    background: linear-gradient(135deg, #f4d991, #d8a331);
+    border-radius: 999px;
+    color: #17311f;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .78rem;
+    font-weight: 800;
+    padding: 5px 12px;
+    margin-left: 8px;
+}
+.tree-rewards {
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+}
+.reward-chip {
+    align-items: center;
+    background: #fff9e6;
+    border: 1px solid #f4d991;
+    border-radius: 12px;
+    display: inline-flex;
+    flex-direction: column;
+    font-size: .78rem;
+    gap: 2px;
+    padding: 8px 12px;
+    text-align: left;
+}
+.reward-chip strong { font-size: .82rem; }
+.reward-chip small { color: var(--muted); }
+.adoption-cancel-row {
+    align-items: center;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 10px;
+    flex-wrap: wrap;
+}
+.adoption-cancel-row .badge-warning {
+    background: #fff3e0;
+    border: 1px solid #ffcc02;
+    border-radius: 999px;
+    color: #e65100;
+    font-size: .78rem;
+    font-weight: 800;
+    padding: 4px 10px;
+}
+.tree-row--portfolio {
+    flex-direction: column;
+    align-items: stretch;
+}
+.tree-row--portfolio .tree-row-top {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
 }
 
 @media (max-width: 640px) {
