@@ -582,14 +582,13 @@
     const openModal = (selector) => {
         const modal = document.querySelector(selector);
         if (!modal) return;
-        modal.removeAttribute('hidden');
+        modal.classList.add('is-open');
         document.body.style.overflow = 'hidden';
-        initCoordinateMaps();
-        refreshCoordinateMaps();
+        setTimeout(() => { try { initCoordinateMaps(); refreshCoordinateMaps(); } catch(e) {} }, 50);
     };
 
     const closeAllModals = () => {
-        document.querySelectorAll('.modal-backdrop').forEach((m) => m.setAttribute('hidden', ''));
+        document.querySelectorAll('.modal-backdrop').forEach((m) => m.classList.remove('is-open'));
         document.body.style.overflow = '';
     };
 

@@ -50,7 +50,7 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
     </section>
 
     <!-- Modals -->
-    <div class="modal-backdrop" data-tree-form hidden>
+    <div class="modal-backdrop" data-tree-form>
         <div class="modal-panel update-composer">
             <button class="modal-close" type="button" data-close-modal aria-label="<?php esc_attr_e('Chiudi', 'agri-saas'); ?>">✕</button>
             <h2><?php esc_html_e("Aggiungi albero per l'adozione", 'agri-saas'); ?></h2>
@@ -82,7 +82,7 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
             </form>
         </div>
     </div>
-    <div class="modal-backdrop" data-update-form hidden>
+    <div class="modal-backdrop" data-update-form>
         <div class="modal-panel update-composer">
             <button class="modal-close" type="button" data-close-modal aria-label="<?php esc_attr_e('Chiudi', 'agri-saas'); ?>">✕</button>
             <h2><?php esc_html_e('Pubblica aggiornamento dal campo', 'agri-saas'); ?></h2>
