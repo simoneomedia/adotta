@@ -1162,6 +1162,8 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
     $planted_display = $parsed_planted['display'];
     $planted_at      = $parsed_planted['date'];
 
+    $media_url = esc_url_raw($request->get_param('media_url') ?? '');
+
     $wpdb->insert($tables['trees'], [
         'farm_id'         => $farm_id,
         'species'         => $species,
@@ -1171,7 +1173,8 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
         'status'          => $status,
         'planted_at'      => $planted_at ?: null,
         'planted_display' => $planted_display ?: null,
-    ], ['%d', '%s', '%s', '%f', '%f', '%s', '%s', '%s']);
+        'media_url'       => $media_url ?: null,
+    ], ['%d', '%s', '%s', '%f', '%f', '%s', '%s', '%s', '%s']);
 
     if (!$wpdb->insert_id) {
         return new WP_Error('agri_saas_tree_failed', __('Unable to create tree. Check that the code is unique.', 'agri-saas'), ['status' => 500]);
@@ -1179,27 +1182,25 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
 
     $tree_id = (int) $wpdb->insert_id;
 
-    // Validate and assign required rewards
+    // Optionally assign rewards
     $raw_ids = $request->get_param('reward_ids') ?: [];
     $decoded = is_array($raw_ids) ? $raw_ids : (json_decode((string) $raw_ids, true) ?: []);
     $reward_ids_clean = array_filter(array_map('absint', $decoded));
 
-    if (empty($reward_ids_clean)) {
-        return new WP_Error('agri_saas_rewards_required', __('Seleziona almeno un premio per questo albero.', 'agri-saas'), ['status' => 400]);
-    }
+    if (!empty($reward_ids_clean)) {
+        $placeholders = implode(',', array_fill(0, count($reward_ids_clean), '%d'));
+        $valid_count = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$tables['rewards']} WHERE id IN ({$placeholders}) AND farm_id = %d AND is_active = 1",
+            array_merge($reward_ids_clean, [$farm_id])
+        ));
 
-    $placeholders = implode(',', array_fill(0, count($reward_ids_clean), '%d'));
-    $valid_count = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$tables['rewards']} WHERE id IN ({$placeholders}) AND farm_id = %d AND is_active = 1",
-        array_merge($reward_ids_clean, [$farm_id])
-    ));
+        if ($valid_count !== count($reward_ids_clean)) {
+            return new WP_Error('agri_saas_reward_invalid', __('Premio non valido o non attivo.', 'agri-saas'), ['status' => 400]);
+        }
 
-    if ($valid_count !== count($reward_ids_clean)) {
-        return new WP_Error('agri_saas_reward_invalid', __('Premio non valido o non attivo.', 'agri-saas'), ['status' => 400]);
-    }
-
-    foreach ($reward_ids_clean as $rid) {
-        $wpdb->replace($tables['tree_rewards'], ['tree_id' => $tree_id, 'reward_id' => $rid], ['%d', '%d']);
+        foreach ($reward_ids_clean as $rid) {
+            $wpdb->replace($tables['tree_rewards'], ['tree_id' => $tree_id, 'reward_id' => $rid], ['%d', '%d']);
+        }
     }
 
     agri_saas_invalidate_farm_cache($farm_id);

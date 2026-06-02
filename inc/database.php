@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AGRI_SAAS_DB_VERSION', '6');
+define('AGRI_SAAS_DB_VERSION', '7');
 
 add_action('init', 'agri_saas_maybe_upgrade_db');
 function agri_saas_maybe_upgrade_db(): void
@@ -76,6 +76,7 @@ function agri_saas_install_tables(): void
         planted_at DATE DEFAULT NULL,
         planted_display VARCHAR(20) DEFAULT NULL,
         carbon_estimate DECIMAL(10,2) DEFAULT 0,
+        media_url TEXT DEFAULT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY  (id),
         UNIQUE KEY code (code),
