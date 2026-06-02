@@ -14,6 +14,12 @@ function agri_saas_register_routes(): void
     add_rewrite_rule('^claim-gift/?$', 'index.php?agri_saas_route=claim-gift', 'top');
     add_rewrite_rule('^mercato/?$', 'index.php?agri_saas_route=mercato', 'top');
     add_rewrite_rule('^baratto/?$', 'index.php?agri_saas_route=baratto', 'top');
+
+    // Flush rewrite rules when route set changes
+    if (get_option('agri_saas_routes_version') !== '2') {
+        flush_rewrite_rules();
+        update_option('agri_saas_routes_version', '2');
+    }
 }
 
 add_filter('query_vars', 'agri_saas_query_vars');

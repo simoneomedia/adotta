@@ -3,6 +3,12 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Redirect logged-in users to their dashboard — index.php is registration-only
+if (is_user_logged_in()) {
+    wp_safe_redirect(agri_saas_user_home_url());
+    exit;
+}
+
 get_header();
 ?>
 <main class="marketing-shell registration-shell">
