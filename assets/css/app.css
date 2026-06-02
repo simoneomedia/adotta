@@ -139,6 +139,33 @@ a { color: inherit; text-decoration: none; }
 .empty-state { box-shadow: none; text-align: center; color: var(--muted); }
 .empty-icon, .map-placeholder { display: block; font-size: 3rem; }
 .update-composer label { display: grid; gap: 8px; margin-bottom: 14px; font-weight: 700; }
+
+/* Modal overlay */
+.modal-backdrop {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+}
+.modal-backdrop[hidden] { display: none; }
+.modal-panel {
+    background: var(--surface);
+    border-radius: 22px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.25);
+    max-height: 90dvh;
+    max-width: 560px;
+    overflow-y: auto;
+    padding: 28px;
+    position: relative;
+    width: 100%;
+}
+.modal-close {
+    background: none; border: none; cursor: pointer; font-size: 1.4rem;
+    line-height: 1; padding: 4px 8px; position: absolute; right: 16px; top: 16px;
+    color: var(--muted);
+}
+.modal-close:hover { color: var(--text); }
+
 input, select, textarea {
     border: 1px solid var(--border);
     border-radius: 14px;

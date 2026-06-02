@@ -9,25 +9,21 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
     ?>
     <section class="dashboard-grid" data-agri-endpoint="/dashboard/farm" data-render="farm-dashboard">
         <div class="stats-grid" data-slot="stats">
-            <?php agri_saas_stat_card(__('Aziende gestite', 'agri-saas'), '—', __('Aziende registrate', 'agri-saas')); ?>
             <?php agri_saas_stat_card(__('Alberi disponibili', 'agri-saas'), '—', __("Pronti per l'adozione", 'agri-saas')); ?>
             <?php agri_saas_stat_card(__('Alberi adottati', 'agri-saas'), '—', __('Sponsorizzati dai clienti', 'agri-saas')); ?>
         </div>
         <article class="card span-2">
             <div class="section-heading">
                 <div>
-                    <p class="eyebrow"><?php esc_html_e('Gestione', 'agri-saas'); ?></p>
-                    <h2><?php esc_html_e('Le mie aziende', 'agri-saas'); ?></h2>
+                    <p class="eyebrow"><?php esc_html_e('La mia azienda', 'agri-saas'); ?></p>
+                    <h2 data-slot="farm-name"><?php esc_html_e('—', 'agri-saas'); ?></h2>
                 </div>
                 <div class="button-group">
-                    <button class="button" type="button" data-open-farm-form><?php esc_html_e('+ Azienda', 'agri-saas'); ?></button>
                     <button class="button" type="button" data-open-tree-form><?php esc_html_e('+ Albero', 'agri-saas'); ?></button>
                     <button class="button ghost" type="button" data-open-update-form><?php esc_html_e('📝 Pubblica aggiornamento', 'agri-saas'); ?></button>
                 </div>
             </div>
-            <div class="card-list" data-slot="farms">
-                <?php agri_saas_empty_state(__('Le metriche delle aziende appariranno qui.', 'agri-saas')); ?>
-            </div>
+            <div data-slot="farm-info"></div>
         </article>
         <article class="card span-2">
             <div class="section-heading">
@@ -51,33 +47,14 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
                 <?php agri_saas_empty_state(__('Le richieste in sospeso appariranno qui quando i clienti chiederanno di adottare un albero.', 'agri-saas')); ?>
             </div>
         </article>
-        <aside class="card update-composer" data-farm-form hidden>
-            <h2><?php esc_html_e('Registra azienda', 'agri-saas'); ?></h2>
-            <form data-agri-farm-form>
-                <label><?php esc_html_e('Nome azienda', 'agri-saas'); ?><input name="name" required></label>
-                <label><?php esc_html_e('Località', 'agri-saas'); ?><input name="location" required></label>
-                <label><?php esc_html_e('Superficie (ettari)', 'agri-saas'); ?><input name="acreage" type="number" min="0" step="0.01"></label>
-                <label><?php esc_html_e('Coltura principale', 'agri-saas'); ?><input name="crop_focus"></label>
-                <label><?php esc_html_e('Descrizione vetrina', 'agri-saas'); ?><textarea name="description"></textarea></label>
-                <div class="form-grid-2">
-                    <label><?php esc_html_e('Email di contatto', 'agri-saas'); ?><input name="contact_email" type="email"></label>
-                    <label><?php esc_html_e('WhatsApp', 'agri-saas'); ?><input name="contact_whatsapp" type="tel"></label>
-                </div>
-                <label><?php esc_html_e('Telefono', 'agri-saas'); ?><input name="contact_phone" type="tel"></label>
-                <div class="form-grid-2">
-                    <label><?php esc_html_e('Latitudine', 'agri-saas'); ?><input name="latitude" type="number" step="0.0000001" min="-90" max="90" data-marker-lat></label>
-                    <label><?php esc_html_e('Longitudine', 'agri-saas'); ?><input name="longitude" type="number" step="0.0000001" min="-180" max="180" data-marker-lng></label>
-                </div>
-                <button class="button ghost" type="button" data-set-marker><?php esc_html_e('Imposta marcatore sulla mappa', 'agri-saas'); ?></button>
-                <div class="coordinate-map" data-coordinate-map aria-label="<?php esc_attr_e('Mappa coordinate azienda', 'agri-saas'); ?>"></div>
-                <label><?php esc_html_e('Indice di salute (0–100)', 'agri-saas'); ?><input name="health_score" type="number" min="0" max="100"></label>
-                <button class="button" type="submit"><?php esc_html_e('Salva azienda', 'agri-saas'); ?></button>
-            </form>
-        </aside>
-        <aside class="card update-composer" data-tree-form hidden>
+    </section>
+
+    <!-- Modals -->
+    <div class="modal-backdrop" data-tree-form hidden>
+        <div class="modal-panel update-composer">
+            <button class="modal-close" type="button" data-close-modal aria-label="<?php esc_attr_e('Chiudi', 'agri-saas'); ?>">✕</button>
             <h2><?php esc_html_e("Aggiungi albero per l'adozione", 'agri-saas'); ?></h2>
             <form data-agri-tree-form>
-                <label><?php esc_html_e('Azienda', 'agri-saas'); ?><select name="farm_id" data-farm-options required></select></label>
                 <label><?php esc_html_e('Specie', 'agri-saas'); ?><input name="species" required></label>
                 <label><?php esc_html_e('Codice albero', 'agri-saas'); ?><input name="code" required></label>
                 <label><?php esc_html_e('Stato', 'agri-saas'); ?>
@@ -103,28 +80,30 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
                 <p class="map-note" data-tree-form-status></p>
                 <button class="button" type="submit"><?php esc_html_e('Pubblica albero', 'agri-saas'); ?></button>
             </form>
-        </aside>
-        <aside class="card update-composer" data-update-form hidden>
+        </div>
+    </div>
+    <div class="modal-backdrop" data-update-form hidden>
+        <div class="modal-panel update-composer">
+            <button class="modal-close" type="button" data-close-modal aria-label="<?php esc_attr_e('Chiudi', 'agri-saas'); ?>">✕</button>
             <h2><?php esc_html_e('Pubblica aggiornamento dal campo', 'agri-saas'); ?></h2>
             <form data-agri-update-form>
                 <label><?php esc_html_e('Titolo', 'agri-saas'); ?><input name="title" required></label>
                 <label><?php esc_html_e('Messaggio', 'agri-saas'); ?><textarea name="body" required></textarea></label>
                 <label><?php esc_html_e('Foto (ottimizzata a max 100 KB)', 'agri-saas'); ?><input name="photo" type="file" accept="image/*" data-photo-input></label>
                 <input name="media_url" type="hidden" data-media-url>
-                <p class="map-note" data-upload-status><?php esc_html_e('Le foto vengono compresse sul server e salvate nella libreria media di WordPress, senza bisogno di CDN a pagamento.', 'agri-saas'); ?></p>
-                <label><?php esc_html_e('Azienda', 'agri-saas'); ?><select name="farm_id" data-farm-options required></select></label>
+                <p class="map-note" data-upload-status><?php esc_html_e('Le foto vengono compresse e salvate nella libreria media di WordPress.', 'agri-saas'); ?></p>
                 <label><?php esc_html_e("ID albero (solo per aggiornamenti privati all'adottante)", 'agri-saas'); ?><input name="tree_id" type="number" min="1"></label>
                 <label><?php esc_html_e('Visibilità', 'agri-saas'); ?>
                     <select name="visibility">
                         <option value="public"><?php esc_html_e('Pubblico — visibile a tutti', 'agri-saas'); ?></option>
-                        <option value="followers"><?php esc_html_e('Privato — adottanti o follower di questa azienda', 'agri-saas'); ?></option>
-                        <option value="adopters"><?php esc_html_e('Privato — solo adottanti di questa azienda', 'agri-saas'); ?></option>
-                        <option value="tree_adopter"><?php esc_html_e("Privato — solo l'adottante dell'albero selezionato", 'agri-saas'); ?></option>
+                        <option value="followers"><?php esc_html_e('Privato — adottanti o follower', 'agri-saas'); ?></option>
+                        <option value="adopters"><?php esc_html_e('Privato — solo adottanti', 'agri-saas'); ?></option>
+                        <option value="tree_adopter"><?php esc_html_e("Privato — solo l'adottante dell'albero", 'agri-saas'); ?></option>
                     </select>
                 </label>
                 <button class="button" type="submit"><?php esc_html_e('Pubblica aggiornamento', 'agri-saas'); ?></button>
             </form>
-        </aside>
-    </section>
+        </div>
+    </div>
     <?php
 });

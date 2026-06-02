@@ -366,24 +366,26 @@
 
     // DASHBOARD AZIENDA
     const renderFarmDashboard = (data) => {
+        const farm = (data.farms || [])[0] || null;
         root.querySelector('[data-slot="stats"]').innerHTML = [
-            statCard('Aziende gestite', data.stats.farms, 'Aziende registrate'),
             statCard('Alberi disponibili', data.stats.availableTrees, "Pronti per l'adozione"),
             statCard('Alberi adottati', data.stats.adoptedTrees, 'Sponsorizzati dai clienti'),
         ].join('');
-        root.querySelector('[data-slot="farms"]').innerHTML = data.farms.length
-            ? data.farms.map((farm) => `
+        const nameEl = root.querySelector('[data-slot="farm-name"]');
+        if (nameEl) nameEl.textContent = farm ? farm.name : '—';
+        const infoEl = root.querySelector('[data-slot="farm-info"]');
+        if (infoEl) {
+            infoEl.innerHTML = farm ? `
                 <div class="farm-row">
                     <div>
-                        <strong><a href="${appUrl(`farms/${farm.id}/`)}">${escapeHtml(farm.name)}</a></strong><br>
-                        <small>${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus)}${farm.latitude && farm.longitude ? ` · 📍 ${escapeHtml(farm.latitude)}, ${escapeHtml(farm.longitude)}` : ''}</small>
+                        <small>${escapeHtml(farm.location)}${farm.crop_focus ? ` · ${escapeHtml(farm.crop_focus)}` : ''}${farm.latitude && farm.longitude ? ` · 📍 ${escapeHtml(farm.latitude)}, ${escapeHtml(farm.longitude)}` : ''}</small>
                     </div>
                     <div class="farm-row-end">
-                        <span class="badge">${escapeHtml(farm.tree_count)} alberi · ${escapeHtml(farm.health_score)} salute</span>
+                        <span class="badge">${escapeHtml(farm.health_score)} salute</span>
                         ${shareButtons(appUrl(`farms/${farm.id}/`), `🌾 ${farm.name} — Adotta un albero!`)}
                     </div>
-                </div>`).join('')
-            : '<div class="card empty-state">Nessuna azienda registrata. Aggiungi un\'azienda prima di pubblicare alberi.</div>';
+                </div>` : '<div class="card empty-state">Profilo azienda non trovato.</div>';
+        }
         root.querySelector('[data-slot="farm-trees"]').innerHTML = data.trees.length
             ? data.trees.map((tree) => `
                 <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
@@ -392,13 +394,10 @@
                 </a>`).join('')
             : '<div class="card empty-state">Nessun albero pubblicato. Usa "+ Albero" per renderlo disponibile.</div>';
         renderAdoptionRequests(data.requests || []);
-        const rewardsByFarm = {};
-        (data.rewards || []).forEach((r) => {
-            if (!rewardsByFarm[r.farm_id]) rewardsByFarm[r.farm_id] = [];
-            rewardsByFarm[r.farm_id].push(r);
-        });
-        const farmsWithRewards = (data.farms || []).map((f) => ({ ...f, rewards: rewardsByFarm[f.id] || [] }));
-        updateFarmOptions(farmsWithRewards);
+        // Attach rewards to the single farm and pre-populate reward checkboxes
+        const farmWithRewards = farm ? { ...farm, rewards: data.rewards || [] } : null;
+        _farmsData = farmWithRewards ? [farmWithRewards] : [];
+        if (farmWithRewards) updateTreeRewardOptions(farmWithRewards.id);
     };
 
     // DETTAGLIO ALBERO
@@ -580,17 +579,30 @@
             .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare i dati. Ricarica la pagina.</div>'));
     };
 
-    const showPanel = (selector) => {
-        document.querySelector(selector)?.removeAttribute('hidden');
+    const openModal = (selector) => {
+        const modal = document.querySelector(selector);
+        if (!modal) return;
+        modal.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
         initCoordinateMaps();
         refreshCoordinateMaps();
     };
 
+    const closeAllModals = () => {
+        document.querySelectorAll('.modal-backdrop').forEach((m) => m.setAttribute('hidden', ''));
+        document.body.style.overflow = '';
+    };
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-close-modal]')) { closeAllModals(); return; }
+        if (e.target.classList.contains('modal-backdrop')) { closeAllModals(); }
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllModals(); });
+
     const bindDashboardActions = () => {
         if (!root) return;
-        document.querySelector('[data-open-farm-form]')?.addEventListener('click',   () => showPanel('[data-farm-form]'));
-        document.querySelector('[data-open-tree-form]')?.addEventListener('click',   () => showPanel('[data-tree-form]'));
-        document.querySelector('[data-open-update-form]')?.addEventListener('click', () => showPanel('[data-update-form]'));
+        document.querySelector('[data-open-tree-form]')?.addEventListener('click',   () => openModal('[data-tree-form]'));
+        document.querySelector('[data-open-update-form]')?.addEventListener('click', () => openModal('[data-update-form]'));
 
         document.addEventListener('click', async (event) => {
             const requestButton = event.target.closest('[data-request-adoption]');
@@ -625,13 +637,6 @@
                 await apiFetch(`/adoption-requests/${decisionButton.dataset.requestId}/${decisionButton.dataset.adoptionDecision}`, { method: 'POST', body: JSON.stringify({}) });
                 loadRoot();
             }
-        });
-
-        document.querySelector('[data-agri-farm-form]')?.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
-            await apiFetch('/farms', { method: 'POST', body: JSON.stringify(payload) });
-            window.location.reload();
         });
 
         document.querySelector('[data-agri-tree-form]')?.addEventListener('submit', async (event) => {
