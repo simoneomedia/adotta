@@ -579,6 +579,9 @@
             .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare i dati. Ricarica la pagina.</div>'));
     };
 
+    // Move modals to <body> so position:fixed works regardless of ancestor overflow/transform
+    document.querySelectorAll('.modal-backdrop').forEach((m) => document.body.appendChild(m));
+
     const openModal = (selector) => {
         const modal = document.querySelector(selector);
         if (!modal) return;
