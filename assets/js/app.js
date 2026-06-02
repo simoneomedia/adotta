@@ -130,6 +130,40 @@
 
     const treeMeta = (tree) => [tree.farm_name, tree.location, tree.crop_focus].filter(Boolean).join(' · ');
 
+    const plantedDisplay = (tree) => {
+        const d = tree.planted_display || tree.planted_at;
+        if (!d) return null;
+        // Return as-is (could be "1920", "1920-03", "1920-03-15")
+        return d.substring(0, 10); // trim time if present
+    };
+
+    const treeAgeYears = (tree) => {
+        const d = tree.planted_display || tree.planted_at;
+        if (!d) return null;
+        const year = parseInt(d.substring(0, 4), 10);
+        if (!year) return null;
+        return new Date().getFullYear() - year;
+    };
+
+    const secolareBadge = (tree) => {
+        const age = treeAgeYears(tree);
+        return age !== null && age >= 100
+            ? `<span class="badge-secolare">🏛️ Albero Secolare (${age} anni)</span>`
+            : '';
+    };
+
+    const rewardChips = (rewards) => {
+        if (!rewards || !rewards.length) return '';
+        const whenLabel = (w) => ({ immediate: 'Immediato', '6m': '6 mesi', '1y': '1 anno', harvest: 'Al raccolto', annually: 'Annuale' }[w] || w);
+        return `<div class="tree-rewards">
+            ${rewards.map((r) => `<div class="reward-chip">
+                <strong>🎁 ${escapeHtml(r.name)}</strong>
+                <small>${escapeHtml(r.description.substring(0, 60))}${r.description.length > 60 ? '…' : ''}</small>
+                <small>⏱ ${whenLabel(r.when_received)}${r.estimated_value ? ` · ${escapeHtml(r.estimated_value)}` : ''}</small>
+            </div>`).join('')}
+        </div>`;
+    };
+
     const timeAgo = (dateStr) => {
         if (!dateStr) return '';
         const diff = Date.now() - new Date(dateStr).getTime();
@@ -225,14 +259,32 @@
         root.querySelector('[data-slot="stats"]').innerHTML = [
             statCard('Alberi adottati', data.stats.adoptedTrees, 'Nel tuo portfolio'),
             statCard('Adozioni attive', data.stats.activeAdoptions, 'Attualmente attive'),
-            statCard('CO₂ stimata', `${data.stats.estimatedCarbonKg} kg`, 'Assorbimento stimato'),
         ].join('');
         root.querySelector('[data-slot="trees"]').innerHTML = data.trees.length
-            ? data.trees.map((tree) => `
-                <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
-                    <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small></div>
-                    <span class="badge">${escapeHtml(tree.code)}</span>
-                </a>`).join('')
+            ? data.trees.map((tree) => {
+                const planted = plantedDisplay(tree);
+                const isCancelRequested = tree.adoption_status === 'cancel_requested';
+                const isActive = tree.adoption_status === 'active';
+                return `
+                <article class="tree-row tree-row--portfolio">
+                    <div class="tree-row-top">
+                        <div>
+                            <strong>${escapeHtml(tree.species)}</strong>${secolareBadge(tree)}<br>
+                            <small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small>
+                            ${planted ? `<br><small>🌱 Piantato: ${escapeHtml(planted)}</small>` : ''}
+                        </div>
+                        <span class="badge">${escapeHtml(tree.code)}</span>
+                    </div>
+                    ${rewardChips(tree.rewards)}
+                    ${tree.adoption_id ? `<div class="adoption-cancel-row">
+                        ${isCancelRequested
+                            ? `<span class="badge-warning">⏳ Cancellazione in attesa di conferma dall'azienda</span>`
+                            : isActive
+                                ? `<button class="button ghost" type="button" style="font-size:.78rem;padding:6px 12px;" data-request-cancel="${escapeHtml(tree.adoption_id)}">Richiedi cancellazione</button>`
+                                : ''}
+                    </div>` : ''}
+                </article>`;
+            }).join('')
             : '<div class="card empty-state">Nessun albero adottato ancora.</div>';
         loadAdoptableTrees().catch(() => {
             root.querySelector('[data-slot="adoptable-trees"]')?.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare gli alberi adottabili.</div>');
@@ -251,8 +303,28 @@
     const renderAdoptionRequests = (requests) => {
         const slot = root.querySelector('[data-slot="adoption-requests"]');
         if (!slot) return;
-        slot.innerHTML = requests.length
-            ? requests.map((req) => `
+        const pending = requests.filter(r => r.status === 'pending');
+        const cancelRequests = requests.filter(r => r.status === 'cancel_requested');
+
+        let html = '';
+
+        if (cancelRequests.length) {
+            html += cancelRequests.map((req) => `
+                <article class="tree-row request-row" style="border-color: #ffcc02;">
+                    <div>
+                        <span class="badge-warning" style="margin-bottom:6px;display:inline-block;">⚠️ Richiesta di cancellazione</span><br>
+                        <strong>${escapeHtml(req.species)} · ${escapeHtml(req.code)}</strong><br>
+                        <small>${escapeHtml(req.farm_name)} · ${escapeHtml(req.adopter_name || req.adopter_email || `Utente #${req.adopter_user_id}`)}</small>
+                    </div>
+                    <div class="row-actions">
+                        <button class="button" type="button" data-adoption-decision="confirm-cancel" data-request-id="${escapeHtml(req.id)}">Conferma cancellazione</button>
+                        <button class="button ghost" type="button" data-adoption-decision="reject-cancel" data-request-id="${escapeHtml(req.id)}">Rifiuta cancellazione</button>
+                    </div>
+                </article>`).join('');
+        }
+
+        if (pending.length) {
+            html += pending.map((req) => `
                 <article class="tree-row request-row">
                     <div>
                         <strong>${escapeHtml(req.species)} · ${escapeHtml(req.code)}</strong><br>
@@ -263,8 +335,10 @@
                         <button class="button" type="button" data-adoption-decision="accept" data-request-id="${escapeHtml(req.id)}">Accetta</button>
                         <button class="button ghost" type="button" data-adoption-decision="reject" data-request-id="${escapeHtml(req.id)}">Rifiuta</button>
                     </div>
-                </article>`).join('')
-            : '<div class="card empty-state">Nessuna richiesta di adozione in sospeso.</div>';
+                </article>`).join('');
+        }
+
+        slot.innerHTML = html || '<div class="card empty-state">Nessuna richiesta in sospeso.</div>';
     };
 
     // DASHBOARD AZIENDA
@@ -290,7 +364,7 @@
         root.querySelector('[data-slot="farm-trees"]').innerHTML = data.trees.length
             ? data.trees.map((tree) => `
                 <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
-                    <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.planted_at || 'Data di messa a dimora non disponibile')}</small></div>
+                    <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(plantedDisplay(tree) || 'Data di messa a dimora non disponibile')}</small></div>
                     <span class="badge">${escapeHtml(tree.code)} · ${escapeHtml(tree.status)}</span>
                 </a>`).join('')
             : '<div class="card empty-state">Nessun albero pubblicato. Usa "+ Albero" per renderlo disponibile.</div>';
@@ -308,13 +382,18 @@
             <p>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)} · ${escapeHtml(tree.crop_focus)}</p>
             <div class="stats-grid">
                 ${statCard('Stato', tree.status, 'Ciclo di vita')}
-                ${statCard('CO₂', `${tree.carbon_estimate} kg`, 'Assorbimento stimato')}
-                ${statCard('Messo a dimora', tree.planted_at || 'N/D', 'Data di messa a dimora')}
+                ${statCard('Messo a dimora', plantedDisplay(tree) || 'N/D', 'Data di messa a dimora')}
             </div>
+            ${secolareBadge(tree) ? `<p style="margin-top:12px;">${secolareBadge(tree)}</p>` : ''}
             <div class="share-section">
                 <span class="share-label">Condividi questo albero:</span>
                 ${shareButtons(treeUrl, `🌳 ${tree.species} — Adotta un albero su Adotta!`)}
-            </div>`;
+            </div>
+            ${data.rewards && data.rewards.length ? `
+            <div class="share-section" style="flex-direction:column;align-items:flex-start;">
+                <span class="share-label">🎁 Premi inclusi in questa adozione:</span>
+                ${rewardChips(data.rewards)}
+            </div>` : ''}`;
         renderUpdates(data.updates || [], tree.farm_id);
     };
 
@@ -501,6 +580,14 @@
                 await apiFetch(`/farms/${followButton.dataset.farmId}/follow`, { method, body: JSON.stringify({}) });
                 await loadRoot();
                 followButton.disabled = false;
+                return;
+            }
+            const cancelButton = event.target.closest('[data-request-cancel]');
+            if (cancelButton) {
+                if (!confirm('Sei sicuro di voler richiedere la cancellazione di questa adozione? Il gestore dell\'azienda dovrà confermare.')) return;
+                cancelButton.disabled = true;
+                await apiFetch(`/adoption-requests/${cancelButton.dataset.requestCancel}/request-cancel`, { method: 'POST', body: JSON.stringify({}) });
+                loadRoot();
                 return;
             }
             const decisionButton = event.target.closest('[data-adoption-decision]');

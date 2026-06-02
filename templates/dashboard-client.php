@@ -9,9 +9,8 @@ agri_saas_render_shell(__('Area Cliente', 'agri-saas'), function (): void {
     ?>
     <section class="dashboard-grid" data-agri-endpoint="/dashboard/client" data-render="client-dashboard">
         <div class="stats-grid" data-slot="stats">
-            <?php agri_saas_stat_card(__('Alberi adottati', 'agri-saas'), '—', __('Caricamento portfolio', 'agri-saas')); ?>
-            <?php agri_saas_stat_card(__('Adozioni attive', 'agri-saas'), '—', __('Impegni in corso', 'agri-saas')); ?>
-            <?php agri_saas_stat_card(__('CO₂ stimata', 'agri-saas'), '—', __('kg di assorbimento stimato', 'agri-saas')); ?>
+            <?php agri_saas_stat_card(__('Alberi adottati', 'agri-saas'), '—', __('Nel tuo portfolio', 'agri-saas')); ?>
+            <?php agri_saas_stat_card(__('Adozioni attive', 'agri-saas'), '—', __('Attualmente attive', 'agri-saas')); ?>
         </div>
         <article class="card span-2">
             <div class="section-heading">
