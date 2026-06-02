@@ -86,14 +86,13 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
                         <option value="maintenance"><?php esc_html_e('In manutenzione', 'agri-saas'); ?></option>
                     </select>
                 </label>
-                <label><?php esc_html_e('Data di messa a dimora', 'agri-saas'); ?><input name="planted_at" type="date"></label>
+                <label><?php esc_html_e('Data di messa a dimora (es: 1920, 1920-03, 1920-03-15)', 'agri-saas'); ?><input name="planted_at" type="text" placeholder="Anno, Anno-Mese, o data completa"></label>
                 <div class="form-grid-2">
                     <label><?php esc_html_e('Latitudine', 'agri-saas'); ?><input name="latitude" type="number" step="0.0000001" min="-90" max="90" data-marker-lat></label>
                     <label><?php esc_html_e('Longitudine', 'agri-saas'); ?><input name="longitude" type="number" step="0.0000001" min="-180" max="180" data-marker-lng></label>
                 </div>
                 <button class="button ghost" type="button" data-set-marker><?php esc_html_e('Imposta marcatore sulla mappa', 'agri-saas'); ?></button>
                 <div class="coordinate-map" data-coordinate-map aria-label="<?php esc_attr_e('Mappa coordinate albero', 'agri-saas'); ?>"></div>
-                <label><?php esc_html_e('Stima CO₂ (kg)', 'agri-saas'); ?><input name="carbon_estimate" type="number" min="0" step="0.01"></label>
                 <button class="button" type="submit"><?php esc_html_e('Pubblica albero', 'agri-saas'); ?></button>
             </form>
         </aside>
