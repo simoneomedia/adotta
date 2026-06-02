@@ -401,16 +401,26 @@
     };
 
     // DETTAGLIO ALBERO
+    const treeAge = (tree) => {
+        if (!tree.planted_at) return 'N/D';
+        const year = parseInt(tree.planted_at.slice(0, 4), 10);
+        if (!year) return 'N/D';
+        const years = new Date().getFullYear() - year;
+        return years > 0 ? `${years} anni` : 'N/D';
+    };
+
+    let treeDetailLeafletMap = null;
+
     const renderTreeDetail = (data) => {
         const tree = data.tree;
         const treeUrl = appUrl(`trees/${tree.id}/`);
         root.querySelector('[data-slot="tree"]').innerHTML = `
-            <p class="eyebrow">${escapeHtml(tree.code)}</p>
+            <p class="eyebrow">${escapeHtml(tree.code)}${tree.type && tree.type !== 'albero' ? ` · ${escapeHtml(tree.type)}` : ''}</p>
             <h2>${escapeHtml(tree.species)}</h2>
             <p>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)} · ${escapeHtml(tree.crop_focus)}</p>
             <div class="stats-grid">
                 ${statCard('Stato', tree.status, 'Ciclo di vita')}
-                ${statCard('Messo a dimora', plantedDisplay(tree) || 'N/D', 'Data di messa a dimora')}
+                ${statCard('Età', treeAge(tree), 'Anni dalla messa a dimora')}
             </div>
             ${secolareBadge(tree) ? `<p style="margin-top:12px;">${secolareBadge(tree)}</p>` : ''}
             <div class="share-section">
@@ -422,6 +432,29 @@
                 <span class="share-label">🎁 Premi inclusi in questa adozione:</span>
                 ${rewardChips(data.rewards)}
             </div>` : ''}`;
+
+        // Map slot
+        const mapSlot = root.querySelector('[data-slot="tree-map"]');
+        if (mapSlot) {
+            const lat = Number(tree.latitude || tree.farm_latitude);
+            const lng = Number(tree.longitude || tree.farm_longitude);
+            if (lat && lng) {
+                mapSlot.innerHTML = '<p class="eyebrow">Posizione</p><div id="tree-detail-leaflet-map" class="leaflet-map"></div>';
+                if (!treeDetailLeafletMap) {
+                    treeDetailLeafletMap = L.map('tree-detail-leaflet-map').setView([lat, lng], 14);
+                    makeTileLayer().addTo(treeDetailLeafletMap);
+                } else {
+                    treeDetailLeafletMap.setView([lat, lng], 14);
+                }
+                L.marker([lat, lng])
+                    .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.code)}`)
+                    .addTo(treeDetailLeafletMap);
+                setTimeout(() => treeDetailLeafletMap.invalidateSize(), 80);
+            } else {
+                mapSlot.innerHTML = '<p class="eyebrow">Posizione</p><div class="map-placeholder">&#9678;<br><small>Coordinate non disponibili</small></div>';
+            }
+        }
+
         renderUpdates(data.updates || [], tree.farm_id);
     };
 
@@ -564,12 +597,86 @@
         });
     });
 
+    // MERCATO
+    const renderMercato = (data) => {
+        const slot = root.querySelector('[data-slot="products"]');
+        if (!slot) return;
+
+        if (data.is_farmer) {
+            const btn = root.querySelector('[data-open-product-form]');
+            if (btn) btn.style.display = '';
+        }
+
+        const waLink = (p, label) => {
+            const text = encodeURIComponent(`Ciao, sono interessato al prodotto: ${p.name} (${p.farm_name})`);
+            if (p.contact_whatsapp) return `<a class="button" href="https://wa.me/${p.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">WhatsApp</a>`;
+            if (p.contact_phone)    return `<a class="button ghost" href="tel:${escapeHtml(p.contact_phone)}">${escapeHtml(p.contact_phone)}</a>`;
+            return `<a class="button ghost" href="mailto:${escapeHtml(p.contact_email)}">${escapeHtml(p.contact_email)}</a>`;
+        };
+
+        slot.innerHTML = data.products.length ? `<div class="product-grid">${data.products.map((p) => `
+            <article class="product-card">
+                ${p.media_url ? `<img class="product-img" src="${escapeHtml(p.media_url)}" alt="${escapeHtml(p.name)}" loading="lazy">` : ''}
+                <div class="product-body">
+                    <p class="product-farm">${escapeHtml(p.farm_name)} · ${escapeHtml(p.location)}</p>
+                    <h3 class="product-name">${escapeHtml(p.name)}</h3>
+                    ${p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : ''}
+                    <p class="product-price">${p.price != null ? `€${Number(p.price).toFixed(2)} / ${escapeHtml(p.unit)}` : escapeHtml(p.unit)}</p>
+                    <div class="product-actions">${waLink(p)}</div>
+                </div>
+            </article>`).join('')}</div>`
+            : '<div class="card empty-state">Nessun prodotto disponibile al momento.</div>';
+    };
+
+    // BARATTO
+    const renderBaratto = (data) => {
+        const slot = root.querySelector('[data-slot="baratti"]');
+        if (!slot) return;
+
+        if (data.is_farmer) {
+            const btn = root.querySelector('[data-open-baratto-form]');
+            if (btn) btn.style.display = '';
+        }
+
+        const waLink = (b) => {
+            const text = encodeURIComponent(`Ciao, ho visto il tuo baratto su Adotta: offri "${b.offer_title}" in cambio di "${b.wants_title}". Vorrei fare un'offerta.`);
+            if (b.contact_whatsapp) return `<a class="button" href="https://wa.me/${b.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">Fai un'offerta su WhatsApp</a>`;
+            if (b.contact_phone)    return `<a class="button ghost" href="tel:${escapeHtml(b.contact_phone)}">${escapeHtml(b.contact_phone)}</a>`;
+            return `<a class="button ghost" href="mailto:${escapeHtml(b.contact_email)}">${escapeHtml(b.contact_email)}</a>`;
+        };
+
+        slot.innerHTML = data.baratti.length ? `<div class="product-grid">${data.baratti.map((b) => `
+            <article class="product-card barter-card">
+                ${b.media_url ? `<img class="product-img" src="${escapeHtml(b.media_url)}" alt="${escapeHtml(b.offer_title)}" loading="lazy">` : ''}
+                <div class="product-body">
+                    <p class="product-farm">${escapeHtml(b.farm_name)} · ${escapeHtml(b.location)}</p>
+                    <div class="barter-row">
+                        <div class="barter-side">
+                            <span class="eyebrow">Offro</span>
+                            <h3 class="product-name">${escapeHtml(b.offer_title)}</h3>
+                            ${b.offer_description ? `<p class="product-desc">${escapeHtml(b.offer_description)}</p>` : ''}
+                        </div>
+                        <div class="barter-arrow">⇄</div>
+                        <div class="barter-side">
+                            <span class="eyebrow">Cerco</span>
+                            <h3 class="product-name">${escapeHtml(b.wants_title)}</h3>
+                            ${b.wants_description ? `<p class="product-desc">${escapeHtml(b.wants_description)}</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="product-actions">${waLink(b)}</div>
+                </div>
+            </article>`).join('')}</div>`
+            : '<div class="card empty-state">Nessun baratto disponibile al momento.</div>';
+    };
+
     const renderers = {
         'client-dashboard': renderClientDashboard,
         'farm-dashboard':   renderFarmDashboard,
         'tree-detail':      renderTreeDetail,
         'updates-feed':     (data) => renderUpdates(data.updates || []),
         'farm-profile':     renderFarmProfile,
+        'mercato':          renderMercato,
+        'baratto':          renderBaratto,
     };
 
     const loadRoot = () => {
@@ -603,8 +710,10 @@
 
     const bindDashboardActions = () => {
         if (!root) return;
-        document.querySelector('[data-open-tree-form]')?.addEventListener('click',   () => openModal('[data-tree-form]'));
-        document.querySelector('[data-open-update-form]')?.addEventListener('click', () => openModal('[data-update-form]'));
+        document.querySelector('[data-open-tree-form]')?.addEventListener('click',     () => openModal('[data-tree-form]'));
+        document.querySelector('[data-open-update-form]')?.addEventListener('click',   () => openModal('[data-update-form]'));
+        document.querySelector('[data-open-product-form]')?.addEventListener('click',  () => openModal('[data-product-form]'));
+        document.querySelector('[data-open-baratto-form]')?.addEventListener('click',  () => openModal('[data-baratto-form]'));
 
         document.addEventListener('click', async (event) => {
             const requestButton = event.target.closest('[data-request-adoption]');
@@ -697,6 +806,28 @@
             form.reset();
             window.location.href = appUrl('updates/');
         });
+
+        const bindSimpleModal = (formSelector, endpoint) => {
+            document.querySelector(formSelector)?.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const form = event.currentTarget;
+                const btn = form.querySelector('[type="submit"]');
+                const statusEl = form.querySelector('[data-form-status]');
+                btn.disabled = true;
+                if (statusEl) statusEl.textContent = '';
+                try {
+                    const payload = Object.fromEntries(new FormData(form).entries());
+                    await apiFetch(endpoint, { method: 'POST', body: JSON.stringify(payload) });
+                    closeAllModals();
+                    window.location.reload();
+                } catch (err) {
+                    if (statusEl) statusEl.textContent = err.message || 'Errore. Riprova.';
+                    btn.disabled = false;
+                }
+            });
+        };
+        bindSimpleModal('[data-agri-product-form]', '/products');
+        bindSimpleModal('[data-agri-baratto-form]', '/baratti');
     };
 
     const bindRegistration = () => {
