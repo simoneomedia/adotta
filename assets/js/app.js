@@ -580,17 +580,31 @@
             .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare i dati. Ricarica la pagina.</div>'));
     };
 
-    const showPanel = (selector) => {
-        document.querySelector(selector)?.removeAttribute('hidden');
+    const openModal = (selector) => {
+        const modal = document.querySelector(selector);
+        if (!modal) return;
+        modal.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
         initCoordinateMaps();
         refreshCoordinateMaps();
     };
 
+    const closeAllModals = () => {
+        document.querySelectorAll('.modal-backdrop').forEach((m) => m.setAttribute('hidden', ''));
+        document.body.style.overflow = '';
+    };
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-close-modal]')) { closeAllModals(); return; }
+        if (e.target.classList.contains('modal-backdrop')) { closeAllModals(); }
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllModals(); });
+
     const bindDashboardActions = () => {
         if (!root) return;
-        document.querySelector('[data-open-farm-form]')?.addEventListener('click',   () => showPanel('[data-farm-form]'));
-        document.querySelector('[data-open-tree-form]')?.addEventListener('click',   () => showPanel('[data-tree-form]'));
-        document.querySelector('[data-open-update-form]')?.addEventListener('click', () => showPanel('[data-update-form]'));
+        document.querySelector('[data-open-farm-form]')?.addEventListener('click',   () => openModal('[data-farm-form]'));
+        document.querySelector('[data-open-tree-form]')?.addEventListener('click',   () => openModal('[data-tree-form]'));
+        document.querySelector('[data-open-update-form]')?.addEventListener('click', () => openModal('[data-update-form]'));
 
         document.addEventListener('click', async (event) => {
             const requestButton = event.target.closest('[data-request-adoption]');
@@ -629,9 +643,17 @@
 
         document.querySelector('[data-agri-farm-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
-            const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
-            await apiFetch('/farms', { method: 'POST', body: JSON.stringify(payload) });
-            window.location.reload();
+            const btn = event.currentTarget.querySelector('[type="submit"]');
+            btn.disabled = true;
+            try {
+                const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+                await apiFetch('/farms', { method: 'POST', body: JSON.stringify(payload) });
+                closeAllModals();
+                window.location.reload();
+            } catch (err) {
+                alert(err.message || 'Errore durante il salvataggio.');
+                btn.disabled = false;
+            }
         });
 
         document.querySelector('[data-agri-tree-form]')?.addEventListener('submit', async (event) => {

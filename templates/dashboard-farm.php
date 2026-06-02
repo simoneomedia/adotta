@@ -51,7 +51,12 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
                 <?php agri_saas_empty_state(__('Le richieste in sospeso appariranno qui quando i clienti chiederanno di adottare un albero.', 'agri-saas')); ?>
             </div>
         </article>
-        <aside class="card update-composer" data-farm-form hidden>
+    </section>
+
+    <!-- Modals (outside grid so they overlay the full viewport) -->
+    <div class="modal-backdrop" data-farm-form hidden>
+        <div class="modal-panel update-composer">
+            <button class="modal-close" type="button" data-close-modal aria-label="<?php esc_attr_e('Chiudi', 'agri-saas'); ?>">✕</button>
             <h2><?php esc_html_e('Registra azienda', 'agri-saas'); ?></h2>
             <form data-agri-farm-form>
                 <label><?php esc_html_e('Nome azienda', 'agri-saas'); ?><input name="name" required></label>
@@ -73,8 +78,11 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
                 <label><?php esc_html_e('Indice di salute (0–100)', 'agri-saas'); ?><input name="health_score" type="number" min="0" max="100"></label>
                 <button class="button" type="submit"><?php esc_html_e('Salva azienda', 'agri-saas'); ?></button>
             </form>
-        </aside>
-        <aside class="card update-composer" data-tree-form hidden>
+        </div>
+    </div>
+    <div class="modal-backdrop" data-tree-form hidden>
+        <div class="modal-panel update-composer">
+            <button class="modal-close" type="button" data-close-modal aria-label="<?php esc_attr_e('Chiudi', 'agri-saas'); ?>">✕</button>
             <h2><?php esc_html_e("Aggiungi albero per l'adozione", 'agri-saas'); ?></h2>
             <form data-agri-tree-form>
                 <label><?php esc_html_e('Azienda', 'agri-saas'); ?><select name="farm_id" data-farm-options required></select></label>
@@ -103,8 +111,11 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
                 <p class="map-note" data-tree-form-status></p>
                 <button class="button" type="submit"><?php esc_html_e('Pubblica albero', 'agri-saas'); ?></button>
             </form>
-        </aside>
-        <aside class="card update-composer" data-update-form hidden>
+        </div>
+    </div>
+    <div class="modal-backdrop" data-update-form hidden>
+        <div class="modal-panel update-composer">
+            <button class="modal-close" type="button" data-close-modal aria-label="<?php esc_attr_e('Chiudi', 'agri-saas'); ?>">✕</button>
             <h2><?php esc_html_e('Pubblica aggiornamento dal campo', 'agri-saas'); ?></h2>
             <form data-agri-update-form>
                 <label><?php esc_html_e('Titolo', 'agri-saas'); ?><input name="title" required></label>
@@ -124,7 +135,7 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
                 </label>
                 <button class="button" type="submit"><?php esc_html_e('Pubblica aggiornamento', 'agri-saas'); ?></button>
             </form>
-        </aside>
-    </section>
+        </div>
+    </div>
     <?php
 });
