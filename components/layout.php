@@ -33,6 +33,8 @@ function agri_saas_render_sidebar(): void
         ['label' => __('Area Cliente', 'agri-saas'),  'url' => home_url('/dashboard/'),      'icon' => '🌱'],
         ['label' => __('Area Azienda', 'agri-saas'),  'url' => home_url('/farm-dashboard/'), 'icon' => '🚜'],
         ['label' => __('Aggiornamenti', 'agri-saas'), 'url' => home_url('/updates/'),        'icon' => '🛰️'],
+        ['label' => __('Mercato', 'agri-saas'),        'url' => home_url('/mercato/'),        'icon' => '🛒'],
+        ['label' => __('Baratto', 'agri-saas'),        'url' => home_url('/baratto/'),        'icon' => '🤝'],
     ];
     ?>
     <aside class="app-sidebar">

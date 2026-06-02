@@ -12,6 +12,8 @@ function agri_saas_register_routes(): void
     add_rewrite_rule('^trees/([0-9]+)/?$', 'index.php?agri_saas_route=tree-detail&tree_id=$matches[1]', 'top');
     add_rewrite_rule('^updates/?$', 'index.php?agri_saas_route=updates', 'top');
     add_rewrite_rule('^claim-gift/?$', 'index.php?agri_saas_route=claim-gift', 'top');
+    add_rewrite_rule('^mercato/?$', 'index.php?agri_saas_route=mercato', 'top');
+    add_rewrite_rule('^baratto/?$', 'index.php?agri_saas_route=baratto', 'top');
 }
 
 add_filter('query_vars', 'agri_saas_query_vars');
@@ -31,7 +33,7 @@ function agri_saas_template_router(string $template): string
         return $template;
     }
 
-    if (!in_array($route, ['farm-profile', 'claim-gift'], true)) {
+    if (!in_array($route, ['farm-profile', 'claim-gift', 'mercato', 'baratto'], true)) {
         agri_saas_require_login();
     }
 
@@ -53,6 +55,8 @@ function agri_saas_template_router(string $template): string
         'tree-detail' => AGRI_SAAS_PATH . '/templates/tree-detail.php',
         'updates'     => AGRI_SAAS_PATH . '/templates/updates.php',
         'claim-gift'  => AGRI_SAAS_PATH . '/templates/claim-gift.php',
+        'mercato'     => AGRI_SAAS_PATH . '/templates/mercato.php',
+        'baratto'     => AGRI_SAAS_PATH . '/templates/baratto.php',
     ];
 
     if (isset($routes[$route]) && file_exists($routes[$route])) {

@@ -56,6 +56,18 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
             <h2><?php esc_html_e("Aggiungi albero per l'adozione", 'agri-saas'); ?></h2>
             <form data-agri-tree-form>
                 <label><?php esc_html_e('Specie', 'agri-saas'); ?><input name="species" required></label>
+                <label><?php esc_html_e('Tipo', 'agri-saas'); ?>
+                    <select name="type">
+                        <option value="albero"><?php esc_html_e('Albero', 'agri-saas'); ?></option>
+                        <option value="orto"><?php esc_html_e('Orto', 'agri-saas'); ?></option>
+                        <option value="animale"><?php esc_html_e('Animale', 'agri-saas'); ?></option>
+                        <option value="alveare"><?php esc_html_e('Alveare', 'agri-saas'); ?></option>
+                        <option value="bosco"><?php esc_html_e('Bosco', 'agri-saas'); ?></option>
+                        <option value="vite"><?php esc_html_e('Vite', 'agri-saas'); ?></option>
+                        <option value="olivo"><?php esc_html_e('Olivo', 'agri-saas'); ?></option>
+                        <option value="altro"><?php esc_html_e('Altro', 'agri-saas'); ?></option>
+                    </select>
+                </label>
                 <label><?php esc_html_e('Codice albero', 'agri-saas'); ?><input name="code" required></label>
                 <label><?php esc_html_e('Stato', 'agri-saas'); ?>
                     <select name="status">
