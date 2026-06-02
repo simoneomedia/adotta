@@ -142,12 +142,14 @@ a { color: inherit; text-decoration: none; }
 
 /* Modal overlay */
 .modal-backdrop {
-    position: fixed; inset: 0; z-index: 1000;
-    background: rgba(0,0,0,.45);
+    display: none;
+}
+.modal-backdrop.is-open {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,.55);
     display: flex; align-items: center; justify-content: center;
     padding: 16px;
 }
-.modal-backdrop[hidden] { display: none; }
 .modal-panel {
     background: var(--surface);
     border-radius: 22px;
