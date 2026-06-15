@@ -37,6 +37,23 @@ function agri_saas_query_vars(array $vars): array
 add_filter('template_include', 'agri_saas_template_router');
 function agri_saas_template_router(string $template): string
 {
+    // Also catch pretty URLs directly in case rewrite rules aren't flushed yet
+    $path = trim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '', '/');
+    $path_map = [
+        'dashboard'    => 'dashboard',
+        'farm-dashboard' => 'farm-dashboard',
+        'updates'      => 'updates',
+        'mercato'      => 'mercato',
+        'baratto'      => 'baratto',
+        'claim-gift'   => 'claim-gift',
+        'wido-admin'   => 'wido-admin',
+        'profilo'      => 'profilo',
+        'login'        => 'login',
+    ];
+    if (!get_query_var('agri_saas_route') && isset($path_map[$path])) {
+        set_query_var('agri_saas_route', $path_map[$path]);
+    }
+
     $route = get_query_var('agri_saas_route');
     if (!$route) {
         return $template;
