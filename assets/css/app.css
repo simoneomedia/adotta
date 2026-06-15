@@ -1135,6 +1135,7 @@ a.ig-farm-name:hover { color: var(--brand); }
 @media (max-width: 640px) {
     .app-main { padding: 16px 14px 80px; }
     .app-topbar { flex-direction: column; gap: 12px; }
+    .topbar-actions { display: none; }
     .section-heading { flex-direction: column; gap: 10px; }
     .tree-row, .farm-row { flex-direction: column; align-items: flex-start; }
     .row-actions { align-items: flex-start; }
