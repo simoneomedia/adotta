@@ -649,8 +649,11 @@
         if (!slot || !box) return;
         const farm = _farmsData.find((f) => String(f.id) === String(farmId));
         const rewards = farm?.rewards || [];
-        if (!rewards.length) { slot.style.display = 'none'; return; }
         slot.style.display = '';
+        if (!rewards.length) {
+            box.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">⚠️ Nessun premio configurato per questa azienda. Chiedi all\'admin di aggiungerne prima di creare elementi.</p>';
+            return;
+        }
         box.innerHTML = rewards.map((r) => `
             <label style="flex-direction:row;align-items:center;gap:8px;font-weight:normal;">
                 <input type="checkbox" name="reward_ids[]" value="${escapeHtml(r.id)}">

@@ -128,6 +128,10 @@ function agri_saas_nav_items(): array
         $items[] = ['label' => __('Profilo', 'agri-saas'), 'url' => home_url('/profilo/'), 'icon' => '👤'];
     }
 
+    if (current_user_can('manage_options')) {
+        $items[] = ['label' => __('Admin', 'agri-saas'), 'url' => home_url('/wido-admin/'), 'icon' => '⚙️'];
+    }
+
     return $items;
 }
 
