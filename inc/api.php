@@ -214,6 +214,11 @@ function agri_saas_register_api_routes(): void
         'permission_callback' => static fn() => current_user_can('manage_options'),
         'args'                => ['id' => ['sanitize_callback' => 'absint']],
     ]);
+
+    register_rest_route('agri-saas/v1', '/profile', [
+        ['methods' => WP_REST_Server::READABLE,  'callback' => 'agri_saas_api_get_profile',    'permission_callback' => 'is_user_logged_in'],
+        ['methods' => 'PUT',                      'callback' => 'agri_saas_api_update_profile', 'permission_callback' => 'is_user_logged_in'],
+    ]);
 }
 
 
@@ -2089,4 +2094,53 @@ function agri_saas_der_to_raw_ecdsa(string $der): string|false
     }
 
     return $r . $s;
+}
+
+function agri_saas_api_get_profile(): WP_REST_Response {
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $user_id = get_current_user_id();
+    $user    = wp_get_current_user();
+    $stats = [
+        'activeAdoptions' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['adoptions']} WHERE adopter_user_id = %d AND status = 'active'", $user_id)),
+        'adoptedTrees'    => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['trees']} WHERE adopter_user_id = %d", $user_id)),
+        'farms'           => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['farms']} WHERE owner_user_id = %d", $user_id)),
+    ];
+    $adoptions = $wpdb->get_results($wpdb->prepare(
+        "SELECT a.id, a.status, a.requested_at,
+                t.id AS tree_id, t.species, t.code, t.type, t.media_url,
+                f.name AS farm_name, f.location, f.id AS farm_id,
+                (SELECT u2.media_url FROM {$tables['updates']} u2 WHERE u2.farm_id = f.id AND u2.media_url != '' ORDER BY u2.created_at DESC LIMIT 1) AS farm_photo
+         FROM {$tables['adoptions']} a
+         LEFT JOIN {$tables['trees']} t ON t.id = a.tree_id
+         LEFT JOIN {$tables['farms']} f ON f.id = t.farm_id
+         WHERE a.adopter_user_id = %d
+         ORDER BY a.requested_at DESC LIMIT 20",
+        $user_id
+    ), ARRAY_A);
+    return rest_ensure_response([
+        'user' => [
+            'id'           => $user_id,
+            'display_name' => $user->display_name,
+            'user_email'   => $user->user_email,
+            'whatsapp'     => get_user_meta($user_id, 'contact_whatsapp', true),
+            'phone'        => get_user_meta($user_id, 'contact_phone', true),
+            'registered'   => $user->user_registered,
+        ],
+        'stats'     => $stats,
+        'adoptions' => $adoptions ?: [],
+    ]);
+}
+
+function agri_saas_api_update_profile(WP_REST_Request $request): WP_REST_Response|WP_Error {
+    $user_id      = get_current_user_id();
+    $display_name = sanitize_text_field($request->get_param('display_name') ?? '');
+    $whatsapp     = sanitize_text_field($request->get_param('whatsapp') ?? '');
+    $phone        = sanitize_text_field($request->get_param('phone') ?? '');
+    if ($display_name) {
+        wp_update_user(['ID' => $user_id, 'display_name' => $display_name]);
+    }
+    update_user_meta($user_id, 'contact_whatsapp', $whatsapp);
+    update_user_meta($user_id, 'contact_phone', $phone);
+    return rest_ensure_response(['updated' => true, 'display_name' => $display_name ?: wp_get_current_user()->display_name]);
 }

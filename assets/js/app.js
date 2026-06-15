@@ -254,6 +254,70 @@
         renderAdoptableTrees(data.trees || []);
     };
 
+    const _dashInlineMap = (containerId, items, makeMarker) => {
+        // reuse makeClusterMap
+        const map = makeClusterMap(containerId);
+        const cluster = makeClusterGroup();
+        items.forEach((item) => {
+            if (Number.isFinite(Number(item.map_latitude)) && Number.isFinite(Number(item.map_longitude))) {
+                makeMarker(item).addTo(cluster);
+            }
+        });
+        map.addLayer(cluster);
+        setTimeout(() => map.invalidateSize(), 80);
+        return map;
+    };
+
+    const renderMercatoInline = (products, mapSlot, listSlot) => {
+        const WIDO_PH = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
+        if (!products.length) {
+            if (mapSlot) mapSlot.innerHTML = '<div class="map-placeholder"><small>Nessun prodotto disponibile</small></div>';
+            return;
+        }
+        if (mapSlot) {
+            mapSlot.innerHTML = '<div id="dash-mercato-map" class="leaflet-map"></div>';
+            _dashInlineMap('dash-mercato-map', products, (p) =>
+                L.marker([Number(p.map_latitude), Number(p.map_longitude)], { icon: _makeTypeIcon('_shop') })
+                 .bindPopup(`<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.farm_name)}<br><a href="${appUrl('mercato/')}">Vai al mercato →</a>`)
+            );
+        }
+        if (listSlot) {
+            listSlot.innerHTML = products.map((p) => `
+                <a class="tree-row tree-row--link" href="${appUrl('mercato/')}">
+                    <img class="product-img product-img--small" src="${escapeHtml(p.media_url || WIDO_PH)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}'">
+                    <div class="tree-row-top">
+                        <div><strong>${escapeHtml(p.name)}</strong><br><small>${escapeHtml(p.farm_name)} · ${escapeHtml(p.location)}</small></div>
+                        <span class="badge">${p.price ? `€${Number(p.price).toFixed(2)}` : (p.price_note || '—')}</span>
+                    </div>
+                </a>`).join('');
+        }
+    };
+
+    const renderBarattoInline = (baratti, mapSlot, listSlot) => {
+        const WIDO_PH = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
+        if (!baratti.length) {
+            if (mapSlot) mapSlot.innerHTML = '<div class="map-placeholder"><small>Nessun baratto disponibile</small></div>';
+            return;
+        }
+        if (mapSlot) {
+            mapSlot.innerHTML = '<div id="dash-baratto-map" class="leaflet-map"></div>';
+            _dashInlineMap('dash-baratto-map', baratti, (b) =>
+                L.marker([Number(b.map_latitude), Number(b.map_longitude)], { icon: _makeTypeIcon('_barter') })
+                 .bindPopup(`<strong>${escapeHtml(b.offer_title)}</strong><br>Cerca: ${escapeHtml(b.wants_title)}<br><a href="${appUrl('baratto/')}">Vai al baratto →</a>`)
+            );
+        }
+        if (listSlot) {
+            listSlot.innerHTML = baratti.map((b) => `
+                <a class="tree-row tree-row--link" href="${appUrl('baratto/')}">
+                    <img class="product-img product-img--small" src="${escapeHtml(b.media_url || WIDO_PH)}" alt="${escapeHtml(b.offer_title)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}'">
+                    <div class="tree-row-top">
+                        <div><strong>${escapeHtml(b.offer_title)}</strong><br><small>Cerco: ${escapeHtml(b.wants_title)}</small><br><small>${escapeHtml(b.farm_name)}</small></div>
+                        <span class="badge">🤝</span>
+                    </div>
+                </a>`).join('');
+        }
+    };
+
     // DASHBOARD CLIENTE
     const renderClientDashboard = (data) => {
         root.querySelector('[data-slot="stats"]').innerHTML = [
@@ -289,6 +353,42 @@
         loadAdoptableTrees().catch(() => {
             root.querySelector('[data-slot="adoptable-trees"]')?.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare gli alberi adottabili.</div>');
         });
+
+        // Content tab switching for dashboard
+        const contentTabs = root.querySelectorAll('[data-content-tab]');
+        const filterBar   = root.querySelector('[data-slot="catalog-filter"]');
+        if (contentTabs.length) {
+            contentTabs.forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    contentTabs.forEach((b) => b.classList.toggle('active', b === btn));
+                    const tab = btn.dataset.contentTab;
+                    if (filterBar) filterBar.style.display = tab === 'adoptions' ? '' : 'none';
+                    if (tab === 'adoptions') {
+                        renderAdoptableTrees(_filteredTrees());
+                        renderAdoptableMap(_adoptableMapTrees);
+                    } else if (tab === 'mercato') {
+                        // lazy-load mercato
+                        const mapSlot  = root.querySelector('[data-slot="adoptable-map"]');
+                        const listSlot = root.querySelector('[data-slot="adoptable-trees"]');
+                        if (mapSlot) mapSlot.innerHTML = '<div class="map-placeholder"><small>Caricamento mercato…</small></div>';
+                        try {
+                            const res  = await fetch(`${window.AgriSaas.apiBase}/mercato`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
+                            const data = await res.json();
+                            renderMercatoInline(data.products || [], mapSlot, listSlot);
+                        } catch (_) {}
+                    } else if (tab === 'baratto') {
+                        const mapSlot  = root.querySelector('[data-slot="adoptable-map"]');
+                        const listSlot = root.querySelector('[data-slot="adoptable-trees"]');
+                        if (mapSlot) mapSlot.innerHTML = '<div class="map-placeholder"><small>Caricamento baratto…</small></div>';
+                        try {
+                            const res  = await fetch(`${window.AgriSaas.apiBase}/baratto`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
+                            const data = await res.json();
+                            renderBarattoInline(data.baratti || [], mapSlot, listSlot);
+                        } catch (_) {}
+                    }
+                });
+            });
+        }
     };
 
     let _farmsData = [];
@@ -669,6 +769,77 @@
             : '<div class="card empty-state">Nessun baratto disponibile al momento.</div>';
     };
 
+    const renderProfile = (data) => {
+        const user      = data.user || {};
+        const stats     = data.stats || {};
+        const adoptions = data.adoptions || [];
+        const WIDO_PH   = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
+
+        renderLevelBadge(stats.activeAdoptions || 0);
+
+        root.querySelector('[data-slot="profile-info"]').innerHTML = `
+            <p class="eyebrow">Account</p>
+            <h2 style="margin-bottom:20px;">${escapeHtml(user.display_name || '')}</h2>
+            <form data-profile-form class="profile-form">
+                <label>Nome visualizzato<input name="display_name" value="${escapeHtml(user.display_name || '')}" required></label>
+                <label>Email<input name="email" value="${escapeHtml(user.user_email || '')}" type="email" disabled style="opacity:.5;cursor:not-allowed;"></label>
+                <div class="form-grid-2">
+                    <label>WhatsApp<input name="whatsapp" value="${escapeHtml(user.whatsapp || '')}" type="tel"></label>
+                    <label>Telefono<input name="phone" value="${escapeHtml(user.phone || '')}" type="tel"></label>
+                </div>
+                <button class="button" type="submit">Salva modifiche</button>
+                <p class="form-status" data-form-status></p>
+            </form>`;
+
+        root.querySelector('[data-slot="profile-stats"]').innerHTML = `
+            <p class="eyebrow">Le tue statistiche</p>
+            <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">
+                <div class="profile-stat"><span class="profile-stat-num">${stats.activeAdoptions || 0}</span><span>Adozioni attive</span></div>
+                <div class="profile-stat"><span class="profile-stat-num">${stats.adoptedTrees || 0}</span><span>Elementi adottati</span></div>
+                ${stats.farms ? `<div class="profile-stat"><span class="profile-stat-num">${stats.farms}</span><span>Aziende gestite</span></div>` : ''}
+            </div>`;
+
+        const statusLabel = { active: '✅ Attiva', pending: '⏳ In attesa', cancelled: '❌ Cancellata', cancel_requested: '⚠️ Cancellazione richiesta' };
+        root.querySelector('[data-slot="profile-adoptions"]').innerHTML = `
+            <div class="section-heading"><div><p class="eyebrow">Storico</p><h2>Le mie adozioni</h2></div></div>
+            ${adoptions.length ? `<div class="profile-adoptions-grid">
+                ${adoptions.map((a) => {
+                    const photo = a.media_url || a.farm_photo || WIDO_PH;
+                    return `<a class="profile-adoption-card" href="${appUrl(`trees/${a.tree_id}/`)}">
+                        <img src="${escapeHtml(photo)}" alt="${escapeHtml(a.species || '')}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}';this.style.objectFit='contain';this.style.padding='12px'">
+                        <div class="profile-adoption-info">
+                            <strong>${escapeHtml(a.species || '—')}</strong>
+                            <small>${escapeHtml(a.farm_name || '')} · ${escapeHtml(a.location || '')}</small>
+                            <span class="profile-adoption-status">${statusLabel[a.status] || a.status}</span>
+                        </div>
+                    </a>`;
+                }).join('')}
+            </div>` : '<div class="card empty-state">Nessuna adozione ancora.</div>'}`;
+
+        // Form submit
+        root.querySelector('[data-profile-form]')?.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const btn    = ev.target.querySelector('button[type="submit"]');
+            const status = ev.target.querySelector('[data-form-status]');
+            const fd     = new FormData(ev.target);
+            btn.disabled = true; status.textContent = 'Salvataggio…';
+            try {
+                const res = await fetch(`${window.AgriSaas.apiBase}/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': window.AgriSaas.nonce },
+                    body: JSON.stringify(Object.fromEntries(fd)),
+                });
+                if (!res.ok) throw new Error('Errore server');
+                const r = await res.json();
+                status.style.color = 'var(--brand)';
+                status.textContent = '✅ Salvato!';
+                // Update name in topbar
+                document.querySelectorAll('.user-pill, .mobile-user').forEach((el) => { el.textContent = r.display_name; });
+            } catch (_) { status.style.color = 'var(--error)'; status.textContent = '❌ Errore durante il salvataggio.'; }
+            btn.disabled = false;
+        });
+    };
+
     const renderers = {
         'client-dashboard': renderClientDashboard,
         'farm-dashboard':   renderFarmDashboard,
@@ -677,6 +848,7 @@
         'farm-profile':     renderFarmProfile,
         'mercato':          renderMercato,
         'baratto':          renderBaratto,
+        'profile':          renderProfile,
     };
 
     const loadRoot = () => {

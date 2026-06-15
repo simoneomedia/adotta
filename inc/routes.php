@@ -14,11 +14,14 @@ function agri_saas_register_routes(): void
     add_rewrite_rule('^claim-gift/?$', 'index.php?agri_saas_route=claim-gift', 'top');
     add_rewrite_rule('^mercato/?$', 'index.php?agri_saas_route=mercato', 'top');
     add_rewrite_rule('^baratto/?$', 'index.php?agri_saas_route=baratto', 'top');
+    add_rewrite_rule('^login/?$', 'index.php?agri_saas_route=login', 'top');
+    add_rewrite_rule('^wido-admin/?$', 'index.php?agri_saas_route=wido-admin', 'top');
+    add_rewrite_rule('^profilo/?$', 'index.php?agri_saas_route=profilo', 'top');
 
     // Flush rewrite rules when route set changes
-    if (get_option('agri_saas_routes_version') !== '2') {
+    if (get_option('agri_saas_routes_version') !== '5') {
         flush_rewrite_rules();
-        update_option('agri_saas_routes_version', '2');
+        update_option('agri_saas_routes_version', '5');
     }
 }
 
@@ -39,8 +42,14 @@ function agri_saas_template_router(string $template): string
         return $template;
     }
 
-    if (!in_array($route, ['farm-profile', 'claim-gift', 'mercato', 'baratto'], true)) {
+    $public_routes = ['farm-profile', 'claim-gift', 'mercato', 'baratto', 'updates', 'tree-detail', 'login'];
+    if (!in_array($route, $public_routes, true)) {
         agri_saas_require_login();
+    }
+
+    if ($route === 'wido-admin' && !current_user_can('manage_options')) {
+        wp_safe_redirect(home_url('/dashboard/'));
+        exit;
     }
 
     // Farm dashboard is restricted to farm managers and admins only
@@ -55,14 +64,17 @@ function agri_saas_template_router(string $template): string
     }
 
     $routes = [
-        'dashboard'   => AGRI_SAAS_PATH . '/templates/dashboard-client.php',
+        'dashboard'      => AGRI_SAAS_PATH . '/templates/dashboard-client.php',
         'farm-dashboard' => AGRI_SAAS_PATH . '/templates/dashboard-farm.php',
-        'farm-profile' => AGRI_SAAS_PATH . '/templates/farm-profile.php',
-        'tree-detail' => AGRI_SAAS_PATH . '/templates/tree-detail.php',
-        'updates'     => AGRI_SAAS_PATH . '/templates/updates.php',
-        'claim-gift'  => AGRI_SAAS_PATH . '/templates/claim-gift.php',
-        'mercato'     => AGRI_SAAS_PATH . '/templates/mercato.php',
-        'baratto'     => AGRI_SAAS_PATH . '/templates/baratto.php',
+        'farm-profile'   => AGRI_SAAS_PATH . '/templates/farm-profile.php',
+        'tree-detail'    => AGRI_SAAS_PATH . '/templates/tree-detail.php',
+        'updates'        => AGRI_SAAS_PATH . '/templates/updates.php',
+        'claim-gift'     => AGRI_SAAS_PATH . '/templates/claim-gift.php',
+        'mercato'        => AGRI_SAAS_PATH . '/templates/mercato.php',
+        'baratto'        => AGRI_SAAS_PATH . '/templates/baratto.php',
+        'login'          => AGRI_SAAS_PATH . '/templates/login.php',
+        'wido-admin'     => AGRI_SAAS_PATH . '/templates/admin-dashboard.php',
+        'profilo'        => AGRI_SAAS_PATH . '/templates/profile.php',
     ];
 
     if (isset($routes[$route]) && file_exists($routes[$route])) {

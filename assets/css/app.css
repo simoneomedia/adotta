@@ -617,3 +617,81 @@ textarea { min-height: 120px; resize: vertical; }
     .barter-row { flex-direction: column; }
     .barter-arrow { padding-top: 0; transform: rotate(90deg); }
 }
+
+/* ── Profile page ─────────────────────────────────────────────────── */
+.profile-form {
+    display: grid;
+    gap: 16px;
+}
+.profile-form label {
+    display: grid;
+    gap: 6px;
+    font-size: .88rem;
+    font-weight: 500;
+}
+.profile-form input {
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: .9rem;
+    transition: border-color var(--transition);
+}
+.profile-form input:focus { outline: none; border-color: var(--brand); }
+.profile-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+.profile-stat-num {
+    font-size: 2rem;
+    font-weight: 300;
+    font-family: 'Fraunces', Georgia, serif;
+    color: var(--brand);
+}
+.profile-adoptions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+    margin-top: 4px;
+}
+.profile-adoption-card {
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+    overflow: hidden;
+    text-decoration: none;
+    color: var(--text);
+    transition: box-shadow var(--transition), transform var(--transition);
+    display: flex;
+    flex-direction: column;
+}
+.profile-adoption-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.profile-adoption-card img { width: 100%; height: 120px; object-fit: cover; }
+.profile-adoption-info { padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+.profile-adoption-info strong { font-size: .9rem; }
+.profile-adoption-info small { color: var(--muted); font-size: .78rem; }
+.profile-adoption-status { font-size: .78rem; font-weight: 600; margin-top: 4px; }
+
+/* ── Dashboard content tabs ──────────────────────────────────────── */
+.dashboard-content-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.dash-content-tab {
+    padding: 9px 20px;
+    border-radius: var(--radius-full);
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    font-family: inherit;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition), color var(--transition);
+    color: var(--muted);
+}
+.dash-content-tab:hover { border-color: var(--brand); color: var(--brand); }
+.dash-content-tab.active { background: var(--brand); border-color: var(--brand); color: #fff; box-shadow: 0 2px 10px rgba(59,109,17,.25); }
+
+.product-img--small { width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-xs); flex-shrink: 0; }
