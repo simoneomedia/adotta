@@ -128,6 +128,10 @@ function agri_saas_nav_items(): array
         array_splice($items, 1, 0, [['label' => __('Area Azienda', 'agri-saas'), 'url' => home_url('/farm-dashboard/'), 'icon' => '🚜']]);
     }
 
+    if ($logged_in) {
+        $items[] = ['label' => __('Profilo', 'agri-saas'), 'url' => home_url('/profilo/'), 'icon' => '👤'];
+    }
+
     return $items;
 }
 

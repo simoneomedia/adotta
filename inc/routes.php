@@ -64,17 +64,17 @@ function agri_saas_template_router(string $template): string
     }
 
     $routes = [
-        'dashboard'      => AGRI_SAAS_PATH . '/templates/dashboard-client.php',
+        'dashboard'   => AGRI_SAAS_PATH . '/templates/dashboard-client.php',
         'farm-dashboard' => AGRI_SAAS_PATH . '/templates/dashboard-farm.php',
-        'farm-profile'   => AGRI_SAAS_PATH . '/templates/farm-profile.php',
-        'tree-detail'    => AGRI_SAAS_PATH . '/templates/tree-detail.php',
-        'updates'        => AGRI_SAAS_PATH . '/templates/updates.php',
-        'claim-gift'     => AGRI_SAAS_PATH . '/templates/claim-gift.php',
-        'mercato'        => AGRI_SAAS_PATH . '/templates/mercato.php',
-        'baratto'        => AGRI_SAAS_PATH . '/templates/baratto.php',
-        'login'          => AGRI_SAAS_PATH . '/templates/login.php',
-        'wido-admin'     => AGRI_SAAS_PATH . '/templates/admin-dashboard.php',
-        'profilo'        => AGRI_SAAS_PATH . '/templates/profile.php',
+        'farm-profile' => AGRI_SAAS_PATH . '/templates/farm-profile.php',
+        'tree-detail' => AGRI_SAAS_PATH . '/templates/tree-detail.php',
+        'updates'     => AGRI_SAAS_PATH . '/templates/updates.php',
+        'claim-gift'  => AGRI_SAAS_PATH . '/templates/claim-gift.php',
+        'mercato'     => AGRI_SAAS_PATH . '/templates/mercato.php',
+        'baratto'     => AGRI_SAAS_PATH . '/templates/baratto.php',
+        'login'       => AGRI_SAAS_PATH . '/templates/login.php',
+        'wido-admin'  => AGRI_SAAS_PATH . '/templates/admin-dashboard.php',
+        'profilo'     => AGRI_SAAS_PATH . '/templates/profile.php',
     ];
 
     if (isset($routes[$route]) && file_exists($routes[$route])) {

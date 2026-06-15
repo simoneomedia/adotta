@@ -1,6 +1,9 @@
 <?php
-if (!defined('ABSPATH')) { exit; }
+if (!defined('ABSPATH')) {
+    exit;
+}
 require_once AGRI_SAAS_PATH . '/components/layout.php';
+
 agri_saas_render_shell(__('Il mio profilo', 'agri-saas'), function (): void {
     ?>
     <section class="dashboard-grid" data-agri-endpoint="/profile" data-render="profile">
