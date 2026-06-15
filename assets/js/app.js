@@ -1,15 +1,96 @@
 (function () {
     if (!window.AgriSaas) return;
 
+    // ── Auth modal (for unauthenticated actions) ─────────────────
+    const _injectAuthModal = () => {
+        if (document.getElementById('auth-modal')) return;
+        const loginUrl = `${window.AgriSaas.homeUrl}login/`;
+        const logoUrl  = `${window.AgriSaas.homeUrl}wp-content/uploads/2026/06/icon-light.png`;
+        document.body.insertAdjacentHTML('beforeend', `
+        <dialog class="agri-modal auth-modal" id="auth-modal">
+            <div class="auth-modal-inner">
+                <button class="auth-modal-close" data-close-modal aria-label="Chiudi">✕</button>
+                <div class="auth-modal-brand">
+                    <img src="${logoUrl}" alt="wido" width="36" height="36" style="border-radius:9px;">
+                    <span>wido.</span>
+                </div>
+                <h2 class="auth-modal-title">Il tuo pezzo di terra.</h2>
+                <p class="auth-modal-sub">Scegli come vuoi registrarti, oppure accedi al tuo account</p>
+                <div class="auth-modal-options">
+                    <a class="auth-option" href="${window.AgriSaas.homeUrl}?type=client">
+                        <span class="auth-option-icon">🌱</span>
+                        <div class="auth-option-text">
+                            <strong>Sono un Cliente</strong>
+                            <small>Adotta alberi, segui il loro percorso, ricevi prodotti dall'azienda</small>
+                        </div>
+                        <span class="auth-option-arrow">→</span>
+                    </a>
+                    <a class="auth-option" href="${window.AgriSaas.homeUrl}?type=farm">
+                        <span class="auth-option-icon">🚜</span>
+                        <div class="auth-option-text">
+                            <strong>Sono un Agricoltore</strong>
+                            <small>Pubblica alberi adottabili, condividi aggiornamenti, connettiti con i sostenitori</small>
+                        </div>
+                        <span class="auth-option-arrow">→</span>
+                    </a>
+                </div>
+                <div class="auth-modal-login">
+                    <a href="${loginUrl}">Ho già un account — Accedi →</a>
+                </div>
+            </div>
+        </dialog>`);
+    };
+    const showAuthModal = () => {
+        _injectAuthModal();
+        const modal = document.getElementById('auth-modal');
+        if (modal && typeof modal.showModal === 'function') modal.showModal();
+    };
+
     const root = document.querySelector('[data-agri-endpoint]');
     const coordinateLeafletMaps = new Map();
     let adoptableLeafletMap = null;
     let farmProfileLeafletMap = null;
 
-    const makeTileLayer = () => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // ── Geolocation ───────────────────────────────────────────────────
+    let _userLat = null;
+    let _userLng = null;
+    const _geoCallbacks = [];
+    const _onGeo = (cb) => { if (_userLat !== null) cb(_userLat, _userLng); else _geoCallbacks.push(cb); };
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                _userLat = pos.coords.latitude;
+                _userLng = pos.coords.longitude;
+                _geoCallbacks.forEach((cb) => cb(_userLat, _userLng));
+                _geoCallbacks.length = 0;
+            },
+            () => {},
+            { enableHighAccuracy: false, timeout: 8000 }
+        );
+    }
+    const _haversineKm = (lat1, lng1, lat2, lng2) => {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+    const _distLabel = (itemLat, itemLng) => {
+        if (_userLat === null || !itemLat || !itemLng) return '';
+        const km = _haversineKm(_userLat, _userLng, Number(itemLat), Number(itemLng));
+        return `<small class="dist-label">📍 ${km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`} da te</small>`;
+    };
+
+    // ── Tile layers ───────────────────────────────────────────────────
+    const makeSatelliteTileLayer = () => L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { attribution: 'Tiles &copy; Esri', maxZoom: 19 }
+    );
+    const makeStreetTileLayer = () => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19,
     });
+    const makeTileLayer = makeSatelliteTileLayer;
 
     // COORDINATE PICKER (usato nei form di registrazione / aggiunta)
     const initCoordinateMaps = () => {
@@ -24,8 +105,10 @@
             const lat = Number(latInput?.value) || 41.9028;
             const lng = Number(lngInput?.value) || 12.4964;
 
-            const map = L.map(container).setView([lat, lng], hasCoords ? 13 : 6);
-            makeTileLayer().addTo(map);
+            const _sat = makeSatelliteTileLayer();
+            const _str = makeStreetTileLayer();
+            const map = L.map(container, { layers: [_sat] }).setView([lat, lng], hasCoords ? 13 : 6);
+            L.control.layers({ '🛰 Satellite': _sat, '🗺 Mappa': _str }, {}, { position: 'topright' }).addTo(map);
 
             let marker = null;
 
@@ -89,8 +172,11 @@
             ...fetchOptions,
             headers: { ...headers, 'X-WP-Nonce': window.AgriSaas.nonce, ...optionHeaders },
         });
-        const payload = await response.json().catch(() => ({}));
+        const rawText = await response.text();
+        let payload;
+        try { payload = JSON.parse(rawText); } catch(_) { payload = {}; console.error('[AgriSaas] JSON parse failed for', path, '— raw response:', rawText.slice(0, 500)); }
         if (!response.ok) throw new Error(payload.message || `Errore API: ${response.status}`);
+        if (!payload || typeof payload !== 'object') throw new Error(`Risposta non valida dall'API: ${rawText.slice(0, 120)}`);
         return payload;
     };
 
@@ -121,12 +207,22 @@
     };
 
     // UTILITIES
-    const statCard = (label, value, meta) => `
-        <article class="card stat-card">
-            <span>${escapeHtml(label)}</span>
+    let _statCardIdx = 0;
+    const _statPalettes = [
+        'background:linear-gradient(135deg,#e8f5e9,#c8e6c9);color:#1b5e20;',
+        'background:linear-gradient(135deg,#fffde7,#fff9c4);color:#5c4200;',
+        'background:linear-gradient(135deg,#e3f2fd,#bbdefb);color:#0d47a1;',
+        'background:linear-gradient(135deg,#fce4ec,#f8bbd0);color:#880e4f;',
+    ];
+    const statCard = (label, value, meta) => {
+        const style = _statPalettes[_statCardIdx++ % _statPalettes.length];
+        return `
+        <article class="card stat-card" style="${style}">
+            <span style="color:currentColor;opacity:.7">${escapeHtml(label)}</span>
             <strong>${escapeHtml(value)}</strong>
-            <small>${escapeHtml(meta)}</small>
+            <small style="opacity:.7">${escapeHtml(meta)}</small>
         </article>`;
+    };
 
     const treeMeta = (tree) => [tree.farm_name, tree.location, tree.crop_focus].filter(Boolean).join(' · ');
 
@@ -181,10 +277,42 @@
 
     const visibilityLabel = (v) => ({ public: '🌐 Pubblico', followers: '👥 Follower', adopters: '🌱 Adottanti', tree_adopter: '🌳 Adottante albero' }[v] || v);
 
+    // TYPE-SPECIFIC MAP ICONS
+    const _TYPE_ICONS = {
+        albero:   '🌳',
+        olivo:    '🫒',
+        vite:     '🍇',
+        alveare:  '🐝',
+        animale:  '🐄',
+        bosco:    '🌲',
+        terreno:  '🌾',
+        orto:     '🥦',
+        _shop:    '🛒',
+        _barter:  '🤝',
+    };
+    const _makeTypeIcon = (type) => {
+        const emoji = _TYPE_ICONS[type] || '🌿';
+        return L.divIcon({
+            html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4));">${emoji}</div>`,
+            className: '',
+            iconSize: [30, 30],
+            iconAnchor: [15, 28],
+            popupAnchor: [0, -28],
+        });
+    };
+
     // CLUSTER MAP HELPER
     const makeClusterMap = (containerId) => {
-        const map = L.map(containerId).setView([41.9028, 12.4964], 6);
-        makeTileLayer().addTo(map);
+        const satellite = makeSatelliteTileLayer();
+        const street    = makeStreetTileLayer();
+        const map = L.map(containerId, { layers: [satellite] }).setView([41.9028, 12.4964], 6);
+        L.control.layers({ '🛰 Satellite': satellite, '🗺 Mappa': street }, {}, { position: 'topright' }).addTo(map);
+        // User location marker
+        _onGeo((lat, lng) => {
+            L.circleMarker([lat, lng], { radius: 8, color: '#2563EB', fillColor: '#3B82F6', fillOpacity: 0.9, weight: 2 })
+                .bindPopup('📍 La tua posizione')
+                .addTo(map);
+        });
         return map;
     };
 
@@ -197,16 +325,13 @@
             ? L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 60 })
             : L.layerGroup();
 
-    // MAPPA ALBERI ADOTTABILI
-    const renderAdoptableMap = (trees) => {
+    let _adoptableMapTrees = [];
+
+    const _initAdoptableLeafletMap = () => {
         const slot = root?.querySelector('[data-slot="adoptable-map"]');
         if (!slot) return;
-        const mapped = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
-        if (!mapped.length) {
-            slot.innerHTML = '<div class="map-placeholder">&#9678;<small>Nessuna coordinata disponibile</small></div>';
-            adoptableLeafletMap = null;
-            return;
-        }
+        const mapped = _adoptableMapTrees;
+        if (!mapped.length) return;
         if (!adoptableLeafletMap) {
             slot.innerHTML = '<div id="adoptable-leaflet-map" class="leaflet-map"></div><p class="map-note">I numeri nei cerchi indicano quanti alberi si trovano nell\'area — clicca per espandere.</p>';
             adoptableLeafletMap = makeClusterMap('adoptable-leaflet-map');
@@ -215,17 +340,39 @@
         }
         const cluster = makeClusterGroup();
         mapped.forEach((tree) => {
-            L.marker([Number(tree.map_latitude), Number(tree.map_longitude)])
-                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`)
+            L.marker([Number(tree.map_latitude), Number(tree.map_longitude)], { icon: _makeTypeIcon(tree.type) })
+                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi elemento →</a>`)
                 .addTo(cluster);
         });
         adoptableLeafletMap.addLayer(cluster);
-        try {
-            mapped.length === 1
-                ? adoptableLeafletMap.setView([Number(mapped[0].map_latitude), Number(mapped[0].map_longitude)], 13)
-                : adoptableLeafletMap.fitBounds(cluster.getBounds ? cluster.getBounds() : mapped.map((t) => [Number(t.map_latitude), Number(t.map_longitude)]), { padding: [28, 28], maxZoom: 14 });
-        } catch (_) {}
-        setTimeout(() => adoptableLeafletMap.invalidateSize(), 80);
+        setTimeout(() => {
+            adoptableLeafletMap.invalidateSize();
+            try {
+                mapped.length === 1
+                    ? adoptableLeafletMap.setView([Number(mapped[0].map_latitude), Number(mapped[0].map_longitude)], 13)
+                    : adoptableLeafletMap.fitBounds(cluster.getBounds ? cluster.getBounds() : mapped.map((t) => [Number(t.map_latitude), Number(t.map_longitude)]), { padding: [28, 28], maxZoom: 14 });
+            } catch (_) {}
+        }, 150);
+    };
+
+    // MAPPA ALBERI ADOTTABILI
+    const renderAdoptableMap = (trees) => {
+        const slot = root?.querySelector('[data-slot="adoptable-map"]');
+        if (!slot) return;
+        const mapped = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
+        _adoptableMapTrees = mapped;
+        if (!mapped.length) {
+            slot.innerHTML = '<div class="map-placeholder">&#9678;<small>Nessuna coordinata disponibile</small></div>';
+            adoptableLeafletMap = null;
+            return;
+        }
+        // If the map panel is currently visible, initialize immediately; otherwise defer to toggle click
+        const panel = slot.closest('[data-catalog-panel]');
+        if (!panel || !panel.hidden) {
+            _initAdoptableLeafletMap();
+        } else {
+            slot.innerHTML = '<div class="map-placeholder">&#9678;</div>'; // placeholder until panel shown
+        }
     };
 
     const renderAdoptableTrees = (trees) => {
@@ -233,25 +380,178 @@
         if (!slot) return;
         slot.innerHTML = trees.length
             ? trees.map((tree) => `
-                <article class="tree-row catalog-row">
-                    <a href="${appUrl(`trees/${tree.id}/`)}">
-                        <strong>${escapeHtml(tree.species)}</strong><br>
-                        <small>${escapeHtml(treeMeta(tree))}</small><br>
-                        <small>${tree.map_latitude && tree.map_longitude ? `📍 ${escapeHtml(tree.map_latitude)}, ${escapeHtml(tree.map_longitude)}` : 'Coordinate non ancora disponibili'}</small>
-                    </a>
+                <article class="tree-row catalog-row catalog-row--card">
+                    <div class="catalog-row-img"><img src="${escapeHtml(tree.media_url || tree.farm_photo || 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png')}" alt="${escapeHtml(tree.species)}" loading="lazy" onerror="this.onerror=null;this.src='https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';this.style.objectFit='contain';this.style.padding='8px';this.style.background='var(--surface-soft)'"></div>
+                    <div class="catalog-row-body">
+                        <strong>${escapeHtml(tree.species)}</strong>
+                        <small>${escapeHtml(treeMeta(tree))}</small>
+                        ${tree.map_latitude && tree.map_longitude ? `<small class="catalog-row-loc">📍 ${escapeHtml(tree.location || tree.farm_name)}</small>` : ''}
+                        ${_distLabel(tree.map_latitude, tree.map_longitude)}
+                    </div>
                     <div class="row-actions">
                         <span class="badge">${escapeHtml(tree.code)}</span>
-                        <button class="button" type="button" data-request-adoption="${escapeHtml(tree.id)}" ${tree.request_status === 'pending' ? 'disabled' : ''}>${tree.request_status === 'pending' ? 'In attesa' : 'Adotta'}</button>
+                        <a class="button" href="${appUrl(`trees/${tree.id}/`)}">Info</a>
                     </div>
                 </article>`).join('')
             : '<div class="card empty-state">Nessun albero disponibile per l\'adozione al momento.</div>';
         renderAdoptableMap(trees);
     };
 
+    // ── Catalogo filtri ───────────────────────────────────────────────
+    const _CATALOG_TYPES = [
+        { type: null,      label: 'Tutti',    icon: '🌿' },
+        { type: 'albero',  label: 'Alberi',   icon: '🌳' },
+        { type: 'olivo',   label: 'Olivi',    icon: '🫒' },
+        { type: 'vite',    label: 'Viti',     icon: '🍇' },
+        { type: 'orto',    label: 'Orti',     icon: '🥦' },
+        { type: 'alveare', label: 'Alveari',  icon: '🐝' },
+        { type: 'bosco',   label: 'Boschi',   icon: '🌲' },
+        { type: 'terreno', label: 'Terreni',  icon: '🏡' },
+        { type: 'animale', label: 'Animali',  icon: '🐄' },
+        { type: 'altro',   label: 'Altro',    icon: '✨' },
+    ];
+    let _activeTypeFilter = null;
+
+    const renderCatalogFilter = (trees) => {
+        const slot = root?.querySelector('[data-slot="catalog-filter"]');
+        if (!slot) return;
+        // Only show types that actually exist in the data
+        const presentTypes = new Set(trees.map((t) => t.type || 'altro'));
+        const visible = _CATALOG_TYPES.filter((c) => c.type === null || presentTypes.has(c.type));
+        if (visible.length <= 2) { slot.innerHTML = ''; return; } // no point showing just "Tutti" + 1 type
+        slot.innerHTML = visible.map((c) => `
+            <button class="catalog-filter-chip${_activeTypeFilter === c.type ? ' active' : ''}"
+                    data-filter-type="${c.type ?? ''}" type="button">
+                <span>${c.icon}</span> ${c.label}
+                ${c.type !== null ? `<span class="filter-count">${trees.filter((t) => (t.type || 'altro') === c.type).length}</span>` : ''}
+            </button>`).join('');
+    };
+
+    let _lastAdoptableTrees = null;
+    const _filteredTrees = () => {
+        if (!_lastAdoptableTrees) return [];
+        if (_activeTypeFilter === null) return _lastAdoptableTrees;
+        return _lastAdoptableTrees.filter((t) => (t.type || 'altro') === _activeTypeFilter);
+    };
+
     const loadAdoptableTrees = async () => {
-        if (!root?.querySelector('[data-slot="adoptable-trees"]')) return;
+        if (!root?.querySelector('[data-slot="adoptable-trees"]') && !root?.querySelector('[data-slot="adoptable-map"]')) return;
         const data = await apiFetch('/catalog/trees');
-        renderAdoptableTrees(data.trees || []);
+        _lastAdoptableTrees = data.trees || [];
+        renderCatalogFilter(_lastAdoptableTrees);
+        renderAdoptableTrees(_filteredTrees());
+        // Re-render when geolocation arrives to show distances
+        _onGeo(() => { if (_lastAdoptableTrees) renderAdoptableTrees(_filteredTrees()); });
+    };
+
+    // Filter chip click
+    document.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-filter-type]');
+        if (!chip || !chip.classList.contains('catalog-filter-chip')) return;
+        _activeTypeFilter = chip.dataset.filterType || null;
+        renderCatalogFilter(_lastAdoptableTrees || []);
+        renderAdoptableTrees(_filteredTrees());
+    });
+
+    // ── Sistema livelli "Radici" ──────────────────────────────────────
+    const _LEVELS = [
+        { min: 0,  name: 'Seme',               icon: '🌱', color: '#A8D5A2', text: '#1B5E20' },
+        { min: 1,  name: 'Germoglio',           icon: '🌿', color: '#B2DFDB', text: '#00695C' },
+        { min: 3,  name: 'Custode della terra', icon: '🌳', color: '#C8E6C9', text: '#2E7D32' },
+        { min: 6,  name: 'Eroe della campagna', icon: '🌾', color: '#FFF9C4', text: '#F57F17' },
+        { min: 10, name: 'Anima del bosco',     icon: '🏡', color: '#D7CCC8', text: '#4E342E' },
+    ];
+    const _getLevel = (active) => {
+        let lvl = _LEVELS[0];
+        for (const l of _LEVELS) { if (active >= l.min) lvl = l; }
+        return lvl;
+    };
+    const _getNextLevel = (active) => _LEVELS.find((l) => l.min > active) || null;
+    const renderLevelBadge = (activeAdoptions) => {
+        const slot = root?.querySelector('[data-slot="level-badge"]');
+        if (!slot) return;
+        const lvl  = _getLevel(activeAdoptions);
+        const next = _getNextLevel(activeAdoptions);
+        const idx  = _LEVELS.indexOf(lvl) + 1;
+        const pct  = next ? Math.round(((activeAdoptions - lvl.min) / (next.min - lvl.min)) * 100) : 100;
+        slot.innerHTML = `
+        <div class="level-badge" style="background:${lvl.color};color:${lvl.text};">
+            <span class="level-icon">${lvl.icon}</span>
+            <div class="level-info">
+                <span class="level-label">Livello ${idx} · ${lvl.name}</span>
+                ${next
+                    ? `<div class="level-progress-wrap">
+                        <div class="level-progress-bar" style="width:${pct}%;background:${lvl.text};opacity:.6;"></div>
+                       </div>
+                       <span class="level-next">ancora ${next.min - activeAdoptions} adozione${next.min - activeAdoptions !== 1 ? 'i' : ''} per diventare <strong>${next.icon} ${next.name}</strong></span>`
+                    : `<span class="level-next">🏆 Livello massimo raggiunto!</span>`
+                }
+            </div>
+        </div>`;
+    };
+
+    const _dashInlineMap = (containerId, items, makeMarker) => {
+        // reuse makeClusterMap
+        const map = makeClusterMap(containerId);
+        const cluster = makeClusterGroup();
+        items.forEach((item) => {
+            if (Number.isFinite(Number(item.map_latitude)) && Number.isFinite(Number(item.map_longitude))) {
+                makeMarker(item).addTo(cluster);
+            }
+        });
+        map.addLayer(cluster);
+        setTimeout(() => map.invalidateSize(), 80);
+        return map;
+    };
+
+    const renderMercatoInline = (products, mapSlot, listSlot) => {
+        const WIDO_PH = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
+        if (!products.length) {
+            if (mapSlot) mapSlot.innerHTML = '<div class="map-placeholder"><small>Nessun prodotto disponibile</small></div>';
+            return;
+        }
+        if (mapSlot) {
+            mapSlot.innerHTML = '<div id="dash-mercato-map" class="leaflet-map"></div>';
+            _dashInlineMap('dash-mercato-map', products, (p) =>
+                L.marker([Number(p.map_latitude), Number(p.map_longitude)], { icon: _makeTypeIcon('_shop') })
+                 .bindPopup(`<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.farm_name)}<br><a href="${appUrl('mercato/')}">Vai al mercato →</a>`)
+            );
+        }
+        if (listSlot) {
+            listSlot.innerHTML = products.map((p) => `
+                <a class="tree-row tree-row--link" href="${appUrl('mercato/')}">
+                    <img class="product-img product-img--small" src="${escapeHtml(p.media_url || WIDO_PH)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}'">
+                    <div class="tree-row-top">
+                        <div><strong>${escapeHtml(p.name)}</strong><br><small>${escapeHtml(p.farm_name)} · ${escapeHtml(p.location)}</small></div>
+                        <span class="badge">${p.price ? `€${Number(p.price).toFixed(2)}` : (p.price_note || '—')}</span>
+                    </div>
+                </a>`).join('');
+        }
+    };
+
+    const renderBarattoInline = (baratti, mapSlot, listSlot) => {
+        const WIDO_PH = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
+        if (!baratti.length) {
+            if (mapSlot) mapSlot.innerHTML = '<div class="map-placeholder"><small>Nessun baratto disponibile</small></div>';
+            return;
+        }
+        if (mapSlot) {
+            mapSlot.innerHTML = '<div id="dash-baratto-map" class="leaflet-map"></div>';
+            _dashInlineMap('dash-baratto-map', baratti, (b) =>
+                L.marker([Number(b.map_latitude), Number(b.map_longitude)], { icon: _makeTypeIcon('_barter') })
+                 .bindPopup(`<strong>${escapeHtml(b.offer_title)}</strong><br>Cerca: ${escapeHtml(b.wants_title)}<br><a href="${appUrl('baratto/')}">Vai al baratto →</a>`)
+            );
+        }
+        if (listSlot) {
+            listSlot.innerHTML = baratti.map((b) => `
+                <a class="tree-row tree-row--link" href="${appUrl('baratto/')}">
+                    <img class="product-img product-img--small" src="${escapeHtml(b.media_url || WIDO_PH)}" alt="${escapeHtml(b.offer_title)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}'">
+                    <div class="tree-row-top">
+                        <div><strong>${escapeHtml(b.offer_title)}</strong><br><small>Cerco: ${escapeHtml(b.wants_title)}</small><br><small>${escapeHtml(b.farm_name)}</small></div>
+                        <span class="badge">🤝</span>
+                    </div>
+                </a>`).join('');
+        }
     };
 
     const _dashInlineMap = (containerId, items, makeMarker) => {
@@ -320,36 +620,50 @@
 
     // DASHBOARD CLIENTE
     const renderClientDashboard = (data) => {
+        _statCardIdx = 0;
         root.querySelector('[data-slot="stats"]').innerHTML = [
-            statCard('Alberi adottati', data.stats.adoptedTrees, 'Nel tuo portfolio'),
-            statCard('Adozioni attive', data.stats.activeAdoptions, 'Attualmente attive'),
+            statCard('Adottati', data.stats.adoptedTrees, 'Nel tuo portfolio'),
+            statCard('Attivi', data.stats.activeAdoptions, 'Adozioni attive'),
         ].join('');
-        root.querySelector('[data-slot="trees"]').innerHTML = data.trees.length
-            ? data.trees.map((tree) => {
-                const planted = plantedDisplay(tree);
-                const isCancelRequested = tree.adoption_status === 'cancel_requested';
-                const isActive = tree.adoption_status === 'active';
-                return `
-                <article class="tree-row tree-row--portfolio">
-                    <div class="tree-row-top">
-                        <div>
-                            <strong>${escapeHtml(tree.species)}</strong>${secolareBadge(tree)}<br>
-                            <small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small>
-                            ${planted ? `<br><small>🌱 Piantato: ${escapeHtml(planted)}</small>` : ''}
-                        </div>
-                        <span class="badge">${escapeHtml(tree.code)}</span>
+        renderLevelBadge(data.stats.activeAdoptions || 0);
+
+        const treeRow = (tree) => {
+            const planted = plantedDisplay(tree);
+            const isCancelRequested = tree.adoption_status === 'cancel_requested';
+            return `
+            <a href="${appUrl(`trees/${tree.id}/`)}" class="tree-row tree-row--portfolio tree-row--link">
+                <div class="tree-row-top">
+                    <div>
+                        <strong>${escapeHtml(tree.species)}</strong>${secolareBadge(tree)}<br>
+                        <small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small>
+                        ${planted ? `<br><small>🌱 ${escapeHtml(planted)}</small>` : ''}
                     </div>
-                    ${rewardChips(tree.rewards)}
-                    ${tree.adoption_id ? `<div class="adoption-cancel-row">
-                        ${isCancelRequested
-                            ? `<span class="badge-warning">⏳ Cancellazione in attesa di conferma dall'azienda</span>`
-                            : isActive
-                                ? `<button class="button ghost" type="button" style="font-size:.78rem;padding:6px 12px;" data-request-cancel="${escapeHtml(tree.adoption_id)}">Richiedi cancellazione</button>`
-                                : ''}
-                    </div>` : ''}
-                </article>`;
-            }).join('')
-            : '<div class="card empty-state">Nessun albero adottato ancora.</div>';
+                    <span class="badge">${escapeHtml(tree.code)}</span>
+                </div>
+                ${rewardChips(tree.rewards)}
+                ${isCancelRequested ? `<span class="badge-warning">⏳ Cancellazione in attesa di conferma</span>` : ''}
+            </a>`;
+        };
+
+        // Pending adoptions (shown first, section hidden if empty)
+        const pendingTrees = data.trees.filter((t) => t.adoption_status === 'pending');
+        const activeTrees  = data.trees.filter((t) => t.adoption_status !== 'pending');
+
+        const pendingSection = root.querySelector('[data-profile-section="pending"]');
+        if (pendingSection) {
+            if (pendingTrees.length) {
+                pendingSection.hidden = false;
+                pendingSection.querySelector('[data-slot="trees-pending"]').innerHTML =
+                    pendingTrees.map(treeRow).join('');
+            } else {
+                pendingSection.hidden = true;
+            }
+        }
+
+        root.querySelector('[data-slot="trees"]').innerHTML = activeTrees.length
+            ? activeTrees.map(treeRow).join('')
+            : '<div class="card empty-state">Non hai ancora adozioni attive. Adotta il tuo primo albero dalla mappa qui sopra!</div>';
+
         loadAdoptableTrees().catch(() => {
             root.querySelector('[data-slot="adoptable-trees"]')?.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare gli alberi adottabili.</div>');
         });
@@ -452,9 +766,11 @@
                     <div>
                         <strong>${escapeHtml(req.species)} · ${escapeHtml(req.code)}</strong><br>
                         <small>${escapeHtml(req.farm_name)} · richiesta da ${escapeHtml(req.adopter_name || req.adopter_email || `Utente #${req.adopter_user_id}`)} · ${escapeHtml(req.requested_at)}</small><br>
-                        <small>${escapeHtml([req.adopter_email, req.adopter_whatsapp ? `WhatsApp ${req.adopter_whatsapp}` : '', req.adopter_phone ? `Tel ${req.adopter_phone}` : ''].filter(Boolean).join(' · '))}</small>
+                        <small>${escapeHtml([req.adopter_email, req.adopter_phone ? `📞 ${req.adopter_phone}` : '', req.adopter_whatsapp ? `💬 ${req.adopter_whatsapp}` : ''].filter(Boolean).join(' · '))}</small>
                     </div>
                     <div class="row-actions">
+                        ${req.adopter_whatsapp ? `<a class="button" href="https://wa.me/${String(req.adopter_whatsapp).replace(/\D/g,'')}?text=${encodeURIComponent(`Ciao ${req.adopter_name || ''}, ti scrivo riguardo all'adozione di ${req.species} (${req.code}).`)}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}
+                        ${req.adopter_phone ? `<a class="button ghost" href="tel:${escapeHtml(req.adopter_phone)}">📞 Chiama</a>` : ''}
                         <button class="button" type="button" data-adoption-decision="accept" data-request-id="${escapeHtml(req.id)}">Accetta</button>
                         <button class="button ghost" type="button" data-adoption-decision="reject" data-request-id="${escapeHtml(req.id)}">Rifiuta</button>
                     </div>
@@ -466,6 +782,7 @@
 
     // DASHBOARD AZIENDA
     const renderFarmDashboard = (data) => {
+        _statCardIdx = 0;
         const farm = (data.farms || [])[0] || null;
         root.querySelector('[data-slot="stats"]').innerHTML = [
             statCard('Alberi disponibili', data.stats.availableTrees, "Pronti per l'adozione"),
@@ -504,34 +821,120 @@
     const treeAge = (tree) => {
         if (!tree.planted_at) return 'N/D';
         const year = parseInt(tree.planted_at.slice(0, 4), 10);
-        if (!year) return 'N/D';
+        if (!year || year < 100) return 'N/D';
         const years = new Date().getFullYear() - year;
-        return years > 0 ? `${years} anni` : 'N/D';
+        if (years <= 0) return 'N/D';
+        if (years >= 200) return 'circa 200 anni';
+        if (years >= 150) return 'circa 150 anni';
+        if (years >= 120) return 'circa 120 anni';
+        if (years >= 100) return 'circa 100 anni';
+        return `${years} anni`;
     };
 
     let treeDetailLeafletMap = null;
 
     const renderTreeDetail = (data) => {
+        _statCardIdx = 0;
+        if (!data.tree) {
+            console.error('[AgriSaas] renderTreeDetail: data.tree is missing. Full response:', data);
+            throw new Error(`Dati albero non trovati. Risposta API: ${JSON.stringify(Object.keys(data))}`);
+        }
         const tree = data.tree;
         const treeUrl = appUrl(`trees/${tree.id}/`);
+        const adoption = data.user_adoption;
+        const isAvailable = tree.status === 'available';
+        const isAdopter   = adoption && Number(tree.adopter_user_id) === Number(window.AgriSaas.userId);
+        const isCancelReq = adoption?.status === 'cancel_requested';
+        const isPending   = adoption?.status === 'pending';
+
+        let adoptionHtml = '';
+        if (isAvailable && !adoption) {
+            adoptionHtml = `<div style="margin-top:16px;"><button class="button" type="button" data-request-adoption="${escapeHtml(tree.id)}">🌱 Adotta questo elemento</button></div>`;
+        } else if (isPending) {
+            adoptionHtml = `<div style="margin-top:16px;"><span class="badge-pending">⏳ Richiesta di adozione inviata — in attesa di conferma</span></div>`;
+        } else if (isAdopter && isCancelReq) {
+            adoptionHtml = `<div style="margin-top:16px;"><span class="badge-warning">⏳ Richiesta di cancellazione in attesa di conferma dall'azienda</span></div>`;
+        } else if (isAdopter && adoption?.status === 'active') {
+            adoptionHtml = `<div style="margin-top:16px;"><button class="button ghost" type="button" style="font-size:.82rem;" data-request-cancel="${escapeHtml(adoption.id)}">Richiedi cancellazione adozione</button></div>`;
+        }
+
+        // Step 1 = available+no adoption; Step 2 = pending; Step 3 = active
+        const _step = !adoption ? 1 : isPending ? 2 : isAdopter && adoption.status === 'active' ? 3 : 2;
+        const adoptionStepsHtml = `
+        <div class="adoption-steps">
+            <div class="adoption-step ${_step > 1 ? 'done' : 'active'}">
+                <div class="adoption-step-num">${_step > 1 ? '✓' : '1'}</div>
+                <div class="adoption-step-body">
+                    <div class="adoption-step-title">Richiedi l'adozione</div>
+                    <div class="adoption-step-desc">Clicca su "Adotta" e invia la tua richiesta al produttore.</div>
+                </div>
+            </div>
+            <div class="adoption-step ${_step > 2 ? 'done' : _step === 2 ? 'active' : ''}">
+                <div class="adoption-step-num">${_step > 2 ? '✓' : '2'}</div>
+                <div class="adoption-step-body">
+                    <div class="adoption-step-title">Mettiti d'accordo con il produttore</div>
+                    <div class="adoption-step-desc">Concordate modalità di pagamento e raccolta dei prodotti.</div>
+                </div>
+            </div>
+            <div class="adoption-step ${_step >= 3 ? 'done' : ''}">
+                <div class="adoption-step-num">${_step >= 3 ? '✓' : '3'}</div>
+                <div class="adoption-step-body">
+                    <div class="adoption-step-title">Segui gli aggiornamenti e goditi i premi!</div>
+                    <div class="adoption-step-desc">Ricevi notizie dal campo su Wido e riscatta i premi inclusi nell'adozione.</div>
+                </div>
+            </div>
+        </div>`;
+
+        const WIDO_PH = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
+        const treePhoto = tree.media_url || tree.farm_photo || WIDO_PH;
+        const ageYrs = treeAgeYears(tree);
+
+        const _rewardTypeIcon = (type) => ({
+            product: '📦', experience: '🎟️', discount: '🏷️', surprise: '🎁', harvest: '🌾', oil: '🫒', wine: '🍷', honey: '🍯',
+        }[type] || '🎁');
+
+        const rewardsHeroHtml = data.rewards && data.rewards.length ? `
+        <div class="tree-rewards-hero">
+            <p class="rewards-hero-title">🎁 Cosa ricevi adottando</p>
+            <div class="rewards-hero-grid">
+                ${data.rewards.map((r) => {
+                    const whenLabel = { immediate: 'Subito', '6m': '6 mesi', '1y': '1 anno', harvest: 'Al raccolto', annually: 'Ogni anno' }[r.when_received] || r.when_received;
+                    return `<div class="reward-hero-card">
+                        <div class="reward-hero-icon">${_rewardTypeIcon(r.reward_type)}</div>
+                        <div class="reward-hero-body">
+                            <strong class="reward-hero-name">${escapeHtml(r.name)}</strong>
+                            <p class="reward-hero-desc">${escapeHtml(r.description)}</p>
+                            <div class="reward-hero-meta">
+                                <span class="reward-hero-when">⏱ ${whenLabel}</span>
+                                ${r.estimated_value ? `<span class="reward-hero-value">💰 ${escapeHtml(r.estimated_value)}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>` : '';
+
         root.querySelector('[data-slot="tree"]').innerHTML = `
-            <p class="eyebrow">${escapeHtml(tree.code)}${tree.type && tree.type !== 'albero' ? ` · ${escapeHtml(tree.type)}` : ''}</p>
-            <h2>${escapeHtml(tree.species)}</h2>
-            <p>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)} · ${escapeHtml(tree.crop_focus)}</p>
-            <div class="stats-grid">
-                ${statCard('Stato', tree.status, 'Ciclo di vita')}
-                ${statCard('Età', treeAge(tree), 'Anni dalla messa a dimora')}
+            <div class="tree-hero-photo"><img src="${escapeHtml(treePhoto)}" alt="${escapeHtml(tree.species)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}';this.style.objectFit='contain';this.style.padding='40px';this.style.background='var(--surface-soft)'"></div>
+            <div class="tree-hero-info">
+                <p class="eyebrow">${escapeHtml(tree.code)}${tree.type ? ` · ${escapeHtml(tree.type)}` : ''}</p>
+                <h2 style="margin-top:4px;font-size:1.8rem;">${escapeHtml(tree.species)}</h2>
+                <p style="margin-top:6px;"><a href="${appUrl(`farms/${tree.farm_id}/`)}" style="color:var(--brand);font-weight:600;">${escapeHtml(tree.farm_name)}</a> · ${escapeHtml(tree.location)}${tree.crop_focus ? ` · ${escapeHtml(tree.crop_focus)}` : ''}</p>
+                <div class="tree-meta-badges">
+                    <span class="tree-meta-badge">📋 ${escapeHtml(tree.status)}</span>
+                    ${ageYrs !== null ? `<span class="tree-meta-badge">🌱 ${ageYrs} anni</span>` : ''}
+                    ${secolareBadge(tree) ? `<span class="tree-meta-badge">🏛️ Secolare</span>` : ''}
+                </div>
             </div>
-            ${secolareBadge(tree) ? `<p style="margin-top:12px;">${secolareBadge(tree)}</p>` : ''}
-            <div class="share-section">
-                <span class="share-label">Condividi questo albero:</span>
-                ${shareButtons(treeUrl, `🌳 ${tree.species} — Adotta un albero su Adotta!`)}
-            </div>
-            ${data.rewards && data.rewards.length ? `
-            <div class="share-section" style="flex-direction:column;align-items:flex-start;">
-                <span class="share-label">🎁 Premi inclusi in questa adozione:</span>
-                ${rewardChips(data.rewards)}
-            </div>` : ''}`;
+            ${rewardsHeroHtml}
+            <div class="tree-adoption-section">
+                ${adoptionStepsHtml}
+                ${adoptionHtml}
+                <div class="share-section" style="margin-top:16px;">
+                    <span class="share-label">Condividi:</span>
+                    ${shareButtons(treeUrl, `🌱 ${tree.species} — Adotta su Wido!`)}
+                </div>
+            </div>`;
 
         // Map slot
         const mapSlot = root.querySelector('[data-slot="tree-map"]');
@@ -556,6 +959,35 @@
         }
 
         renderUpdates(data.updates || [], tree.farm_id);
+        renderFarmTreesSuggestions(data.farm_trees || [], tree.farm_id, tree.farm_name);
+    };
+
+    const renderFarmTreesSuggestions = (trees, farmId, farmName) => {
+        const slot = root?.querySelector('[data-slot="farm-trees"]');
+        if (!slot) return;
+        if (!trees.length) { slot.hidden = true; return; }
+        const WIDO_PH = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
+        slot.hidden = false;
+        slot.innerHTML = `
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">Stesso produttore</p>
+                    <h2>Altre adozioni disponibili da <a href="${appUrl(`farms/${farmId}/`)}" style="color:var(--brand);">${escapeHtml(farmName)}</a></h2>
+                </div>
+            </div>
+            <div class="farm-suggestions-grid">
+                ${trees.map((t) => {
+                    const photo = t.media_url || t.farm_photo || WIDO_PH;
+                    return `<a class="farm-suggestion-card" href="${appUrl(`trees/${t.id}/`)}">
+                        <img src="${escapeHtml(photo)}" alt="${escapeHtml(t.species)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}';this.style.objectFit='contain';this.style.padding='16px';this.style.background='var(--surface-soft)'">
+                        <div class="farm-suggestion-info">
+                            <span class="eyebrow" style="font-size:.7rem;">${escapeHtml(t.code)}</span>
+                            <strong>${escapeHtml(t.species)}</strong>
+                            <span class="dist-label">${_TYPE_ICONS[t.type] || '🌿'} ${escapeHtml(t.type || 'elemento')}</span>
+                        </div>
+                    </a>`;
+                }).join('')}
+            </div>`;
     };
 
     // FEED STILE INSTAGRAM
@@ -570,24 +1002,32 @@
         slot.className = 'ig-feed';
         slot.innerHTML = updates.map((update) => {
             const farmId = update.farm_id || contextFarmId;
-            const updateUrl = farmId
-                ? appUrl(`farms/${farmId}/`) + `#update-${update.id}`
-                : appUrl('updates/') + `#update-${update.id}`;
+            const farmUrl   = farmId ? appUrl(`farms/${farmId}/`) : null;
+            const treeUrl   = update.tree_id ? appUrl(`trees/${update.tree_id}/`) : null;
+            const detailUrl = treeUrl || farmUrl;
+            const updateUrl = farmUrl ? farmUrl + `#update-${update.id}` : appUrl('updates/') + `#update-${update.id}`;
             return `
             <article class="ig-card" id="update-${escapeHtml(update.id)}">
                 <div class="ig-card-header">
-                    <div class="ig-avatar">🌿</div>
+                    ${farmUrl
+                        ? `<a class="ig-avatar" href="${escapeHtml(farmUrl)}">🌿</a>`
+                        : `<div class="ig-avatar">🌿</div>`}
                     <div class="ig-card-meta">
-                        <strong class="ig-farm-name">${escapeHtml(update.farm_name || 'Azienda')}</strong>
+                        ${farmUrl
+                            ? `<a class="ig-farm-name" href="${escapeHtml(farmUrl)}">${escapeHtml(update.farm_name || 'Azienda')}</a>`
+                            : `<strong class="ig-farm-name">${escapeHtml(update.farm_name || 'Azienda')}</strong>`}
                         <span class="ig-timestamp">${timeAgo(update.created_at)}</span>
                     </div>
                     <span class="ig-visibility">${visibilityLabel(update.visibility)}</span>
                 </div>
-                ${update.media_url ? `<div class="ig-card-img-wrap"><img class="ig-card-img" src="${escapeHtml(update.media_url)}" alt="${escapeHtml(update.title)}" loading="lazy"></div>` : ''}
+                ${update.media_url
+                    ? `<div class="ig-card-img-wrap">${detailUrl ? `<a href="${escapeHtml(detailUrl)}">` : ''}<img class="ig-card-img" src="${escapeHtml(update.media_url)}" alt="${escapeHtml(update.title)}" loading="lazy">${detailUrl ? '</a>' : ''}</div>`
+                    : ''}
                 <div class="ig-card-body">
                     <p class="ig-card-title">${escapeHtml(update.title)}</p>
                     <p class="ig-card-text">${escapeHtml(update.body)}</p>
-                    ${update.tree_code ? `<span class="ig-tag">🌱 ${escapeHtml(update.tree_code)}</span>` : ''}
+                    ${update.tree_code ? `<a class="ig-tag" href="${escapeHtml(treeUrl || '#')}">🌱 ${escapeHtml(update.tree_code)}</a>` : ''}
+                    ${detailUrl ? `<div style="margin-top:8px;"><a class="ig-scopri" href="${escapeHtml(detailUrl)}">Scopri di più →</a></div>` : ''}
                 </div>
                 <div class="ig-card-footer">
                     ${shareButtons(updateUrl, `📰 ${update.title} — Adotta un albero su Adotta!`)}
@@ -614,8 +1054,8 @@
         }
         const cluster = makeClusterGroup();
         mapped.forEach((tree) => {
-            L.marker([Number(tree.map_latitude), Number(tree.map_longitude)])
-                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.code)} · ${escapeHtml(tree.status)}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi albero →</a>`)
+            L.marker([Number(tree.map_latitude), Number(tree.map_longitude)], { icon: _makeTypeIcon(tree.type) })
+                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.code)} · ${escapeHtml(tree.status)}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi elemento →</a>`)
                 .addTo(cluster);
         });
         farmProfileLeafletMap.addLayer(cluster);
@@ -631,16 +1071,25 @@
 
     // PROFILO AZIENDA
     const renderFarmProfile = (data) => {
+        _statCardIdx = 0;
         const farm = data.farm;
         const farmUrl = appUrl(`farms/${farm.id}/`);
         root.querySelector('[data-slot="farm-title"]').textContent = farm.name;
+        // Also update the shell topbar h1 if present
+        const shellH1 = document.querySelector('.app-topbar h1');
+        if (shellH1) shellH1.textContent = farm.name;
         root.querySelector('[data-slot="farm-summary"]').innerHTML =
             `${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus || 'Produzione mista')}<br>${escapeHtml(farm.description || "Questa azienda usa il suo profilo come vetrina pubblica per alberi, foto e aggiornamenti dal campo.")}`;
-        root.querySelector('[data-slot="farm-contacts"]').innerHTML = [
-            contactButton(farm.contact_email  ? `mailto:${farm.contact_email}` : '', '📧 Email'),
-            contactButton(farm.contact_whatsapp ? `https://wa.me/${String(farm.contact_whatsapp).replace(/\D/g, '')}` : '', '💬 WhatsApp'),
-            contactButton(farm.contact_phone  ? `tel:${farm.contact_phone}` : '', '📞 Telefono'),
-        ].join('') || '<span class="badge">Contatti in arrivo</span>';
+        if (!data.logged_in) {
+            root.querySelector('[data-slot="farm-contacts"]').innerHTML =
+                `<button class="button ghost" type="button" data-auth-contact>🔒 Accedi per vedere i contatti</button>`;
+        } else {
+            root.querySelector('[data-slot="farm-contacts"]').innerHTML = [
+                contactButton(farm.contact_email  ? `mailto:${farm.contact_email}` : '', '📧 Email'),
+                contactButton(farm.contact_whatsapp ? `https://wa.me/${String(farm.contact_whatsapp).replace(/\D/g, '')}` : '', '💬 WhatsApp'),
+                contactButton(farm.contact_phone  ? `tel:${farm.contact_phone}` : '', '📞 Telefono'),
+            ].join('') || '<span class="badge">Contatti in arrivo</span>';
+        }
 
         const followButton = root.querySelector('[data-follow-farm]');
         if (followButton) {
@@ -682,7 +1131,70 @@
 
         renderFarmProfileMap(data.trees || []);
         renderUpdates(data.updates || [], farm.id);
+
+        // Products
+        const productsSection = root.querySelector('[data-profile-section="products"]');
+        if (productsSection) {
+            const productsSlot = productsSection.querySelector('[data-slot="farm-products"]');
+            if ((data.products || []).length) {
+                productsSection.style.display = '';
+                productsSlot.innerHTML = data.products.map((p) => `
+                    <article class="product-card">
+                        <img class="product-img" src="${escapeHtml(p.media_url || 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png')}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';this.style.objectFit='contain';this.style.padding='20px';this.style.background='var(--surface-soft)'">
+                        <div class="product-body">
+                            <h3 class="product-name">${escapeHtml(p.name)}</h3>
+                            ${p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : ''}
+                            <p class="product-price">${p.price != null ? `€${Number(p.price).toFixed(2)} / ${escapeHtml(p.unit)}` : escapeHtml(p.unit)}</p>
+                        </div>
+                    </article>`).join('');
+            }
+        }
+        const barattiSection = root.querySelector('[data-profile-section="baratti"]');
+        if (barattiSection) {
+            const barattiSlot = barattiSection.querySelector('[data-slot="farm-baratti"]');
+            if ((data.baratti || []).length) {
+                barattiSection.style.display = '';
+                barattiSlot.innerHTML = data.baratti.map((b) => `
+                    <article class="product-card barter-card">
+                        <img class="product-img" src="${escapeHtml(b.media_url || 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png')}" alt="${escapeHtml(b.offer_title)}" loading="lazy" onerror="this.onerror=null;this.src='https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';this.style.objectFit='contain';this.style.padding='20px';this.style.background='var(--surface-soft)'">
+                        <div class="product-body">
+                            <div class="barter-row">
+                                <div class="barter-side">
+                                    <span class="eyebrow">Offro</span>
+                                    <h3 class="product-name">${escapeHtml(b.offer_title)}</h3>
+                                </div>
+                                <div class="barter-arrow">⇄</div>
+                                <div class="barter-side">
+                                    <span class="eyebrow">Cerco</span>
+                                    <h3 class="product-name">${escapeHtml(b.wants_title)}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </article>`).join('');
+            }
+        }
     };
+
+    // ── Lightbox per immagini prodotto/baratto ──────────────────────
+    const _injectLightbox = () => {
+        if (document.getElementById('img-lightbox')) return;
+        document.body.insertAdjacentHTML('beforeend', `
+        <dialog class="img-lightbox" id="img-lightbox">
+            <button class="img-lightbox-close" data-close-modal aria-label="Chiudi">✕</button>
+            <img class="img-lightbox-img" id="img-lightbox-img" src="" alt="">
+        </dialog>`);
+    };
+    document.addEventListener('click', (e) => {
+        const img = e.target.closest('.product-img');
+        if (!img) return;
+        _injectLightbox();
+        const lb = document.getElementById('img-lightbox');
+        const lbImg = document.getElementById('img-lightbox-img');
+        lbImg.src = img.src;
+        lbImg.alt = img.alt;
+        lb.showModal();
+        lbImg.onclick = () => lb.close();
+    });
 
     // HANDLER COPIA LINK
     document.addEventListener('click', (event) => {
@@ -700,6 +1212,7 @@
     // MERCATO
     const renderMercato = (data) => {
         const slot = root.querySelector('[data-slot="products"]');
+        const mapSlot = root.querySelector('[data-slot="mercato-map"]');
         if (!slot) return;
 
         if (data.is_farmer) {
@@ -707,18 +1220,39 @@
             if (btn) btn.style.display = '';
         }
 
-        const waLink = (p, label) => {
-            const text = encodeURIComponent(`Ciao, sono interessato al prodotto: ${p.name} (${p.farm_name})`);
-            if (p.contact_whatsapp) return `<a class="button" href="https://wa.me/${p.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">WhatsApp</a>`;
-            if (p.contact_phone)    return `<a class="button ghost" href="tel:${escapeHtml(p.contact_phone)}">${escapeHtml(p.contact_phone)}</a>`;
-            return `<a class="button ghost" href="mailto:${escapeHtml(p.contact_email)}">${escapeHtml(p.contact_email)}</a>`;
+        // View toggle
+        root.querySelectorAll('[data-view-toggle]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.viewToggle;
+                root.querySelectorAll('[data-view-toggle]').forEach((b) => b.classList.toggle('active', b === btn));
+                if (view === 'map') {
+                    slot.style.display = 'none';
+                    if (mapSlot) mapSlot.style.display = '';
+                    renderMercatoMap(data.products || []);
+                } else {
+                    slot.style.display = '';
+                    if (mapSlot) mapSlot.style.display = 'none';
+                }
+            });
+        });
+
+        const waLink = (p) => {
+            if (!data.logged_in) return `<button class="button ghost" type="button" data-auth-contact>🔒 Accedi per contattare</button>`;
+            const text = encodeURIComponent(`Ciao, sono interessato al prodotto "${p.name}" di ${p.farm_name}`);
+            if (p.contact_whatsapp) return `<a class="button" href="https://wa.me/${p.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">💬 WhatsApp</a>`;
+            if (p.contact_phone) return `<a class="button ghost" href="tel:${escapeHtml(p.contact_phone)}">📞 Chiama</a>`;
+            if (p.contact_email) return `<a class="button ghost" href="mailto:${escapeHtml(p.contact_email)}">📧 Email</a>`;
+            return '';
         };
 
         slot.innerHTML = data.products.length ? `<div class="product-grid">${data.products.map((p) => `
             <article class="product-card">
-                ${p.media_url ? `<img class="product-img" src="${escapeHtml(p.media_url)}" alt="${escapeHtml(p.name)}" loading="lazy">` : ''}
+                <img class="product-img" src="${escapeHtml(p.media_url || 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png')}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';this.style.objectFit='contain';this.style.padding='20px';this.style.background='var(--surface-soft)'">
                 <div class="product-body">
-                    <p class="product-farm">${escapeHtml(p.farm_name)} · ${escapeHtml(p.location)}</p>
+                    <a class="product-farm-link" href="${appUrl(`farms/${p.farm_id}/`)}">
+                        <span class="product-farm">${escapeHtml(p.farm_name)}</span>
+                        <span class="product-location">📍 ${escapeHtml(p.location)}${_distLabel(p.map_latitude, p.map_longitude) ? ` · ${_distLabel(p.map_latitude, p.map_longitude).replace(/<[^>]+>/g, '')}` : ''}</span>
+                    </a>
                     <h3 class="product-name">${escapeHtml(p.name)}</h3>
                     ${p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : ''}
                     <p class="product-price">${p.price != null ? `€${Number(p.price).toFixed(2)} / ${escapeHtml(p.unit)}` : escapeHtml(p.unit)}</p>
@@ -731,6 +1265,7 @@
     // BARATTO
     const renderBaratto = (data) => {
         const slot = root.querySelector('[data-slot="baratti"]');
+        const mapSlot = root.querySelector('[data-slot="baratto-map"]');
         if (!slot) return;
 
         if (data.is_farmer) {
@@ -738,18 +1273,39 @@
             if (btn) btn.style.display = '';
         }
 
+        // View toggle
+        root.querySelectorAll('[data-view-toggle]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.viewToggle;
+                root.querySelectorAll('[data-view-toggle]').forEach((b) => b.classList.toggle('active', b === btn));
+                if (view === 'map') {
+                    slot.style.display = 'none';
+                    if (mapSlot) mapSlot.style.display = '';
+                    renderBarattoMap(data.baratti || []);
+                } else {
+                    slot.style.display = '';
+                    if (mapSlot) mapSlot.style.display = 'none';
+                }
+            });
+        });
+
         const waLink = (b) => {
+            if (!data.logged_in) return `<button class="button ghost" type="button" data-auth-contact>🔒 Accedi per contattare</button>`;
             const text = encodeURIComponent(`Ciao, ho visto il tuo baratto su Adotta: offri "${b.offer_title}" in cambio di "${b.wants_title}". Vorrei fare un'offerta.`);
-            if (b.contact_whatsapp) return `<a class="button" href="https://wa.me/${b.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">Fai un'offerta su WhatsApp</a>`;
-            if (b.contact_phone)    return `<a class="button ghost" href="tel:${escapeHtml(b.contact_phone)}">${escapeHtml(b.contact_phone)}</a>`;
-            return `<a class="button ghost" href="mailto:${escapeHtml(b.contact_email)}">${escapeHtml(b.contact_email)}</a>`;
+            if (b.contact_whatsapp) return `<a class="button" href="https://wa.me/${b.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">💬 WhatsApp</a>`;
+            if (b.contact_phone) return `<a class="button ghost" href="tel:${escapeHtml(b.contact_phone)}">📞 Chiama</a>`;
+            if (b.contact_email) return `<a class="button ghost" href="mailto:${escapeHtml(b.contact_email)}">📧 Email</a>`;
+            return '';
         };
 
         slot.innerHTML = data.baratti.length ? `<div class="product-grid">${data.baratti.map((b) => `
             <article class="product-card barter-card">
-                ${b.media_url ? `<img class="product-img" src="${escapeHtml(b.media_url)}" alt="${escapeHtml(b.offer_title)}" loading="lazy">` : ''}
+                <img class="product-img" src="${escapeHtml(b.media_url || 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png')}" alt="${escapeHtml(b.offer_title)}" loading="lazy" onerror="this.onerror=null;this.src='https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';this.style.objectFit='contain';this.style.padding='20px';this.style.background='var(--surface-soft)'">
                 <div class="product-body">
-                    <p class="product-farm">${escapeHtml(b.farm_name)} · ${escapeHtml(b.location)}</p>
+                    <a class="product-farm-link" href="${appUrl(`farms/${b.farm_id}/`)}">
+                        <span class="product-farm">${escapeHtml(b.farm_name)}</span>
+                        <span class="product-location">📍 ${escapeHtml(b.location)}</span>
+                    </a>
                     <div class="barter-row">
                         <div class="barter-side">
                             <span class="eyebrow">Offro</span>
@@ -767,6 +1323,478 @@
                 </div>
             </article>`).join('')}</div>`
             : '<div class="card empty-state">Nessun baratto disponibile al momento.</div>';
+    };
+
+    let mercatoLeafletMap = null;
+    let barattoLeafletMap = null;
+
+    const renderMercatoMap = (items) => {
+        const slot = root?.querySelector('[data-slot="mercato-map"]');
+        if (!slot) return;
+        const mapped = items.filter((i) => Number.isFinite(Number(i.map_latitude)) && Number.isFinite(Number(i.map_longitude)));
+        if (!mapped.length) {
+            slot.innerHTML = '<div class="map-placeholder" style="min-height:260px;"><small>Nessuna coordinata disponibile</small></div>';
+            return;
+        }
+        if (!mercatoLeafletMap) {
+            slot.innerHTML = '<div id="mercato-leaflet-map" class="leaflet-map" style="height:340px;border-radius:16px;"></div>';
+            mercatoLeafletMap = makeClusterMap('mercato-leaflet-map');
+        } else {
+            clearMapLayers(mercatoLeafletMap);
+        }
+        const cluster = makeClusterGroup();
+        mapped.forEach((item) => {
+            const label = item.name || item.offer_title;
+            L.marker([Number(item.map_latitude), Number(item.map_longitude)], { icon: _makeTypeIcon('_shop') })
+                .bindPopup(`<strong>${escapeHtml(label)}</strong><br><a href="${appUrl(`farms/${item.farm_id}/`)}">→ ${escapeHtml(item.farm_name)}</a>`)
+                .addTo(cluster);
+        });
+        mercatoLeafletMap.addLayer(cluster);
+        try {
+            mapped.length === 1
+                ? mercatoLeafletMap.setView([Number(mapped[0].map_latitude), Number(mapped[0].map_longitude)], 12)
+                : mercatoLeafletMap.fitBounds(cluster.getBounds ? cluster.getBounds() : mapped.map((i) => [Number(i.map_latitude), Number(i.map_longitude)]), { padding: [28, 28], maxZoom: 13 });
+        } catch (_) {}
+        setTimeout(() => mercatoLeafletMap.invalidateSize(), 80);
+    };
+
+    const renderBarattoMap = (items) => {
+        const slot = root?.querySelector('[data-slot="baratto-map"]');
+        if (!slot) return;
+        const mapped = items.filter((i) => Number.isFinite(Number(i.map_latitude)) && Number.isFinite(Number(i.map_longitude)));
+        if (!mapped.length) {
+            slot.innerHTML = '<div class="map-placeholder" style="min-height:260px;"><small>Nessuna coordinata disponibile</small></div>';
+            return;
+        }
+        if (!barattoLeafletMap) {
+            slot.innerHTML = '<div id="baratto-leaflet-map" class="leaflet-map" style="height:340px;border-radius:16px;"></div>';
+            barattoLeafletMap = makeClusterMap('baratto-leaflet-map');
+        } else {
+            clearMapLayers(barattoLeafletMap);
+        }
+        const cluster = makeClusterGroup();
+        mapped.forEach((item) => {
+            L.marker([Number(item.map_latitude), Number(item.map_longitude)], { icon: _makeTypeIcon('_barter') })
+                .bindPopup(`<strong>${escapeHtml(item.offer_title)}</strong><br>Cerca: ${escapeHtml(item.wants_title)}<br><a href="${appUrl(`farms/${item.farm_id}/`)}">→ ${escapeHtml(item.farm_name)}</a>`)
+                .addTo(cluster);
+        });
+        barattoLeafletMap.addLayer(cluster);
+        try {
+            mapped.length === 1
+                ? barattoLeafletMap.setView([Number(mapped[0].map_latitude), Number(mapped[0].map_longitude)], 12)
+                : barattoLeafletMap.fitBounds(cluster.getBounds ? cluster.getBounds() : mapped.map((i) => [Number(i.map_latitude), Number(i.map_longitude)]), { padding: [28, 28], maxZoom: 13 });
+        } catch (_) {}
+        setTimeout(() => barattoLeafletMap.invalidateSize(), 80);
+    };
+
+    const renderPublicCatalog = (data) => {
+        _lastAdoptableTrees = data.trees || [];
+        renderCatalogFilter(_lastAdoptableTrees);
+        renderAdoptableTrees(_filteredTrees());
+        _onGeo(() => { if (_lastAdoptableTrees) renderAdoptableTrees(_filteredTrees()); });
+    };
+
+    // ── ADMIN DASHBOARD ───────────────────────────────────────────────
+    const _adminPost = async (url, body = {}) => {
+        const res = await fetch(`${window.AgriSaas.apiBase}${url}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': window.AgriSaas.nonce },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        return res.json();
+    };
+    const _adminDelete = async (url) => {
+        const res = await fetch(`${window.AgriSaas.apiBase}${url}`, {
+            method: 'DELETE',
+            headers: { 'X-WP-Nonce': window.AgriSaas.nonce },
+        });
+        if (!res.ok) throw new Error(await res.text());
+        return res.json();
+    };
+
+    const renderAdminDashboard = (data) => {
+        const e = escapeHtml;
+        const cell = (v) => `<td>${e(String(v ?? '—'))}</td>`;
+        const dateCell = (v) => `<td>${v ? e(v.substring(0, 10)) : '—'}</td>`;
+        const btnDel = (type, id) => `<button class="admin-action-btn danger" data-admin-delete="${type}" data-id="${e(String(id))}" title="Elimina">🗑</button>`;
+
+        const _fillTables = (d) => {
+            const farms = d.farms || [];
+            root.querySelector('[data-slot="admin-farms"]').innerHTML = farms.map((r) => {
+                const verified = Number(r.is_verified) === 1;
+                return `<tr data-farm-row="${e(String(r.id))}">
+                    ${cell(r.id)}${cell(r.name)}${cell(r.location)}${cell(r.crop_focus)}${cell(r.owner_name)}${cell(r.owner_email)}${cell(r.tree_count)}${cell(r.adoption_count)}
+                    <td><button class="admin-verify-btn ${verified ? 'verified' : ''}" data-farm-id="${e(String(r.id))}" data-verified="${verified ? '1' : '0'}">${verified ? '✅ Verificata' : '⬜ Verifica'}</button></td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="9">Nessuna azienda</td></tr>';
+
+            const adoptionStatuses = ['pending', 'active', 'cancelled', 'cancel_requested'];
+            root.querySelector('[data-slot="admin-adoptions"]').innerHTML = (d.adoptions || []).map((r) =>
+                `<tr data-adoption-row="${e(String(r.id))}">
+                 ${cell(r.id)}${cell(r.species)}${cell(r.type)}${cell(r.code)}${cell(r.farm_name)}${cell(r.adopter_name)}${cell(r.adopter_email)}
+                 <td>${r.adopter_whatsapp ? `<a href="https://wa.me/${String(r.adopter_whatsapp).replace(/\D/g,'')}" target="_blank">💬 ${e(r.adopter_whatsapp)}</a>` : '—'}</td>
+                 <td>${r.adopter_phone ? `<a href="tel:${e(r.adopter_phone)}">📞 ${e(r.adopter_phone)}</a>` : '—'}</td>
+                 <td><select class="admin-status-select" data-adoption-id="${e(String(r.id))}">
+                     ${adoptionStatuses.map((s) => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+                 </select></td>
+                 ${dateCell(r.requested_at)}</tr>`
+            ).join('') || '<tr><td colspan="11">Nessuna adozione</td></tr>';
+
+            root.querySelector('[data-slot="admin-users"]').innerHTML = (d.users || []).map((r) =>
+                `<tr>
+                 ${cell(r.id)}${cell(r.display_name)}${cell(r.user_email)}
+                 <td>${r.whatsapp ? `<a href="https://wa.me/${String(r.whatsapp).replace(/\D/g,'')}" target="_blank">💬 ${e(r.whatsapp)}</a>` : '—'}</td>
+                 <td>${r.phone ? `<a href="tel:${e(r.phone)}">📞 ${e(r.phone)}</a>` : '—'}</td>
+                 ${cell(r.active_adoptions)}${cell(r.farms_count)}${dateCell(r.user_registered)}
+                 <td><button class="admin-action-btn" data-impersonate="${e(String(r.id))}" title="Impersona">👤 Accedi come</button></td>
+                </tr>`
+            ).join('') || '<tr><td colspan="9">Nessun utente</td></tr>';
+
+            root.querySelector('[data-slot="admin-products"]').innerHTML = (d.products || []).map((r) =>
+                `<tr>${cell(r.id)}${cell(r.name)}<td>${r.price != null ? `€${Number(r.price).toFixed(2)}` : '—'}</td>${cell(r.unit)}${cell(r.price_note)}${cell(r.farm_name)}${cell(r.location)}${cell(r.owner_name)}${dateCell(r.created_at)}<td>${btnDel('product', r.id)}</td></tr>`
+            ).join('') || '<tr><td colspan="10">Nessun prodotto</td></tr>';
+
+            root.querySelector('[data-slot="admin-baratti"]').innerHTML = (d.baratti || []).map((r) =>
+                `<tr>${cell(r.id)}${cell(r.offer_title)}${cell(r.wants_title)}${cell(r.farm_name)}${cell(r.location)}${cell(r.owner_name)}${dateCell(r.created_at)}<td>${btnDel('baratto', r.id)}</td></tr>`
+            ).join('') || '<tr><td colspan="8">Nessun baratto</td></tr>';
+        };
+
+        _fillTables(data);
+
+        const _refreshTables = async () => {
+            try {
+                const res  = await fetch(`${window.AgriSaas.apiBase}/admin/overview`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
+                const fresh = await res.json();
+                _fillTables(fresh);
+            } catch (_) {}
+        };
+
+        // ── Danger zone: reset all content ───────────────────────────
+        const resetBtn = root.querySelector('[data-admin-reset]');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', async () => {
+                const first = confirm('⚠️ ATTENZIONE: questa operazione elimina TUTTE le aziende, elementi, adozioni, prodotti, baratti e aggiornamenti. Gli account utente restano intatti.\n\nSei sicuro di voler continuare?');
+                if (!first) return;
+                const code = prompt('Digita ELIMINA_TUTTO per confermare:');
+                if (code !== 'ELIMINA_TUTTO') { alert('Operazione annullata.'); return; }
+                resetBtn.disabled = true;
+                resetBtn.textContent = 'Eliminazione…';
+                try {
+                    await _adminPost('/admin/reset-all-content', { confirm: 'ELIMINA_TUTTO' });
+                    alert('✅ Tutti i contenuti eliminati. La pagina verrà ricaricata.');
+                    window.location.reload();
+                } catch (err) {
+                    alert(`❌ Errore: ${err.message}`);
+                    resetBtn.disabled = false;
+                    resetBtn.textContent = '🗑 Svuota tutto';
+                }
+            });
+        }
+
+        // Tab switching
+        root.querySelectorAll('[data-admin-tab]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.adminTab;
+                root.querySelectorAll('[data-admin-tab]').forEach((b) => b.classList.toggle('active', b === btn));
+                root.querySelectorAll('[data-admin-panel]').forEach((p) => { p.hidden = p.dataset.adminPanel !== tab; });
+                _adminFilterSearch(document.getElementById('admin-search')?.value || '');
+            });
+        });
+
+        // Live search/filter
+        const _adminFilterSearch = (q) => {
+            const lq = q.toLowerCase();
+            const activePanel = root.querySelector('[data-admin-panel]:not([hidden])');
+            if (!activePanel) return;
+            activePanel.querySelectorAll('tbody tr').forEach((row) => {
+                row.style.display = !lq || row.textContent.toLowerCase().includes(lq) ? '' : 'none';
+            });
+        };
+        document.getElementById('admin-search')?.addEventListener('input', (ev) => _adminFilterSearch(ev.target.value));
+
+        // ── Action: verify/de-verify farm ────────────────────────────
+        root.addEventListener('click', async (ev) => {
+            const btn = ev.target.closest('[data-farm-id]');
+            if (!btn) return;
+            const farmId  = btn.dataset.farmId;
+            const wasVeri = btn.dataset.verified === '1';
+            btn.disabled  = true;
+            try {
+                const res = await _adminPost(`/admin/farms/${farmId}/verify`);
+                const isVeri = Number(res.is_verified) === 1;
+                btn.dataset.verified = isVeri ? '1' : '0';
+                btn.textContent = isVeri ? '✅ Verificata' : '⬜ Verifica';
+                btn.classList.toggle('verified', isVeri);
+            } catch (_) { alert('Errore durante la verifica.'); }
+            btn.disabled = false;
+        }, { capture: false });
+
+        // ── Action: change adoption status ───────────────────────────
+        root.addEventListener('change', async (ev) => {
+            const sel = ev.target.closest('[data-adoption-id]');
+            if (!sel) return;
+            const adoptionId = sel.dataset.adoptionId;
+            const newStatus  = sel.value;
+            if (!confirm(`Imposta stato adozione #${adoptionId} → "${newStatus}"?`)) {
+                // revert
+                sel.value = sel.dataset.prev || sel.value;
+                return;
+            }
+            sel.dataset.prev = newStatus;
+            try {
+                await _adminPost(`/admin/adoptions/${adoptionId}/status`, { status: newStatus });
+                const row = root.querySelector(`[data-adoption-row="${adoptionId}"]`);
+                if (row) row.style.opacity = newStatus === 'cancelled' ? '.45' : '1';
+            } catch (_) { alert('Errore nel cambio stato.'); }
+        });
+
+        // ── Action: delete tree / product / baratto ──────────────────
+        root.addEventListener('click', async (ev) => {
+            const btn = ev.target.closest('[data-admin-delete]');
+            if (!btn) return;
+            const type = btn.dataset.adminDelete;
+            const id   = btn.dataset.id;
+            if (!confirm(`Eliminare ${type} #${id}? Operazione irreversibile.`)) return;
+            btn.disabled = true;
+            try {
+                await _adminDelete(`/admin/${type === 'baratto' ? 'baratti' : type + 's'}/${id}`);
+                btn.closest('tr')?.remove();
+            } catch (_) { alert('Errore durante l\'eliminazione.'); btn.disabled = false; }
+        });
+
+        // ── Action: impersonate user ─────────────────────────────────
+        root.addEventListener('click', async (ev) => {
+            const btn = ev.target.closest('[data-impersonate]');
+            if (!btn) return;
+            const userId = btn.dataset.impersonate;
+            if (!confirm(`Accedere come utente #${userId}? Verrai disconnesso dal tuo account admin.`)) return;
+            btn.disabled = true;
+            try {
+                const res = await _adminPost(`/admin/impersonate/${userId}`);
+                window.location.href = res.redirect || '/dashboard/';
+            } catch (_) { alert('Errore durante l\'impersonazione.'); btn.disabled = false; }
+        });
+
+        // ── Creation panel ───────────────────────────────────────────
+        const _renderCreatePanel = async () => {
+            const slot = root.querySelector('[data-slot="admin-create-panel"]');
+            if (!slot) return;
+            slot.innerHTML = '<p style="color:var(--muted);">Caricamento utenti…</p>';
+
+            // Fetch WP users and farms live — independent of overview cache
+            let wpUsers = [], liveFarms = [];
+            try {
+                const [uRes, oRes] = await Promise.all([
+                    fetch(`${window.AgriSaas.apiBase}/admin/wp-users`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } }),
+                    fetch(`${window.AgriSaas.apiBase}/admin/overview`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } }),
+                ]);
+                wpUsers   = await uRes.json();
+                const ov  = await oRes.json();
+                liveFarms = ov.farms || [];
+            } catch (_) {}
+
+            const farmOptions = liveFarms.map((f) =>
+                `<option value="${escapeHtml(String(f.id))}">${escapeHtml(f.name)} (${escapeHtml(f.location)})</option>`
+            ).join('');
+            const userOptions = wpUsers.map((u) =>
+                `<option value="${escapeHtml(String(u.id))}">${escapeHtml(u.display_name)} — ${escapeHtml(u.user_email)}</option>`
+            ).join('');
+
+            slot.innerHTML = `
+            <div class="admin-create-tabs">
+                <button class="admin-create-tab active" data-create-tab="farm">🏡 Azienda</button>
+                <button class="admin-create-tab" data-create-tab="tree">🌱 Elemento</button>
+                <button class="admin-create-tab" data-create-tab="product">🛒 Prodotto</button>
+                <button class="admin-create-tab" data-create-tab="baratto">🤝 Baratto</button>
+                <button class="admin-create-tab" data-create-tab="update">📣 Aggiornamento</button>
+            </div>
+
+            <!-- FORM AZIENDA -->
+            <div class="admin-create-form card" data-create-panel="farm">
+                <p class="eyebrow">Nuova azienda</p>
+                <h2 style="margin-bottom:20px;">Crea azienda</h2>
+                <form data-admin-form="farm" class="admin-form-grid">
+                    <label>Proprietario (utente) <select name="owner_user_id" required><option value="">Seleziona…</option>${userOptions}</select></label>
+                    <div class="form-grid-2">
+                        <label>Nome azienda <input name="name" required></label>
+                        <label>Località <input name="location" required></label>
+                    </div>
+                    <div class="form-grid-2">
+                        <label>Coltura principale <input name="crop_focus"></label>
+                        <label>Ettari <input name="acreage" type="number" step="0.01" min="0"></label>
+                    </div>
+                    <div class="form-grid-2">
+                        <label>Latitudine <input name="latitude" type="number" step="0.0000001"></label>
+                        <label>Longitudine <input name="longitude" type="number" step="0.0000001"></label>
+                    </div>
+                    <label>Descrizione <textarea name="description" rows="3"></textarea></label>
+                    <div class="form-grid-2">
+                        <label>Email contatto <input name="contact_email" type="email"></label>
+                        <label>WhatsApp <input name="contact_whatsapp" type="tel"></label>
+                    </div>
+                    <label class="checkbox-label"><input type="checkbox" name="is_verified" value="1"> Segna come verificata subito</label>
+                    <button class="button" type="submit">Crea azienda</button>
+                    <p class="form-status" data-form-status></p>
+                </form>
+            </div>
+
+            <!-- FORM ELEMENTO -->
+            <div class="admin-create-form card" data-create-panel="tree" hidden>
+                <p class="eyebrow">Nuovo elemento</p>
+                <h2 style="margin-bottom:20px;">Crea elemento adottabile</h2>
+                <form data-admin-form="tree" class="admin-form-grid">
+                    <label>Azienda <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
+                    <div class="form-grid-2">
+                        <label>Specie / nome <input name="species" required placeholder="es. Oliva Taggiasca"></label>
+                        <label>Codice univoco <input name="code" required placeholder="es. OLV-001"></label>
+                    </div>
+                    <div class="form-grid-2">
+                        <label>Tipo <select name="type">
+                            <option value="albero">🌳 Albero</option>
+                            <option value="olivo">🫒 Olivo</option>
+                            <option value="vite">🍇 Vite</option>
+                            <option value="alveare">🐝 Alveare</option>
+                            <option value="animale">🐄 Animale</option>
+                            <option value="bosco">🌲 Bosco</option>
+                            <option value="terreno">🌾 Terreno</option>
+                            <option value="orto">🥦 Orto</option>
+                            <option value="altro">🌿 Altro</option>
+                        </select></label>
+                        <label>Stato <select name="status">
+                            <option value="available">Disponibile</option>
+                            <option value="adopted">Adottato</option>
+                            <option value="maintenance">Manutenzione</option>
+                        </select></label>
+                    </div>
+                    <div class="form-grid-2">
+                        <label>Piantato/creato il <input name="planted_at" placeholder="es. 2010 o 2010-03"></label>
+                        <label>URL foto <input name="media_url" type="url"></label>
+                    </div>
+                    <div class="form-grid-2">
+                        <label>Latitudine <input name="latitude" type="number" step="0.0000001"></label>
+                        <label>Longitudine <input name="longitude" type="number" step="0.0000001"></label>
+                    </div>
+                    <label>Descrizione <textarea name="description" rows="3"></textarea></label>
+                    <button class="button" type="submit">Crea elemento</button>
+                    <p class="form-status" data-form-status></p>
+                </form>
+            </div>
+
+            <!-- FORM PRODOTTO -->
+            <div class="admin-create-form card" data-create-panel="product" hidden>
+                <p class="eyebrow">Nuovo prodotto</p>
+                <h2 style="margin-bottom:20px;">Crea prodotto mercato</h2>
+                <form data-admin-form="product" class="admin-form-grid">
+                    <label>Azienda <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
+                    <div class="form-grid-2">
+                        <label>Nome prodotto <input name="name" required></label>
+                        <label>Unità <input name="unit" placeholder="es. kg, litro, confezione"></label>
+                    </div>
+                    <div class="form-grid-2">
+                        <label>Prezzo (€) <input name="price" type="number" step="0.01" min="0"></label>
+                        <label>Note prezzo <input name="price_note" placeholder="es. Su richiesta"></label>
+                    </div>
+                    <label>Descrizione <textarea name="description" rows="3"></textarea></label>
+                    <label>URL foto <input name="media_url" type="url"></label>
+                    <button class="button" type="submit">Crea prodotto</button>
+                    <p class="form-status" data-form-status></p>
+                </form>
+            </div>
+
+            <!-- FORM BARATTO -->
+            <div class="admin-create-form card" data-create-panel="baratto" hidden>
+                <p class="eyebrow">Nuovo baratto</p>
+                <h2 style="margin-bottom:20px;">Crea offerta baratto</h2>
+                <form data-admin-form="baratto" class="admin-form-grid">
+                    <label>Azienda <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
+                    <div class="form-grid-2">
+                        <label>Offro (titolo) <input name="offer_title" required placeholder="es. Olio EVO 5L"></label>
+                        <label>Cerco (titolo) <input name="wants_title" required placeholder="es. Miele artigianale"></label>
+                    </div>
+                    <div class="form-grid-2">
+                        <label>Descrizione offerta <textarea name="offer_description" rows="2"></textarea></label>
+                        <label>Descrizione richiesta <textarea name="wants_description" rows="2"></textarea></label>
+                    </div>
+                    <label>URL foto <input name="media_url" type="url"></label>
+                    <button class="button" type="submit">Crea baratto</button>
+                    <p class="form-status" data-form-status></p>
+                </form>
+            </div>
+
+            <!-- FORM AGGIORNAMENTO -->
+            <div class="admin-create-form card" data-create-panel="update" hidden>
+                <p class="eyebrow">Nuovo aggiornamento</p>
+                <h2 style="margin-bottom:20px;">Pubblica aggiornamento</h2>
+                <form data-admin-form="update" class="admin-form-grid">
+                    <label>Azienda <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
+                    <label>Titolo <input name="title" required></label>
+                    <label>Testo <textarea name="body" rows="4"></textarea></label>
+                    <div class="form-grid-2">
+                        <label>Visibilità <select name="visibility">
+                            <option value="public">Pubblico</option>
+                            <option value="adopters">Solo adottanti</option>
+                            <option value="private">Privato</option>
+                        </select></label>
+                        <label>URL foto <input name="media_url" type="url"></label>
+                    </div>
+                    <button class="button" type="submit">Pubblica aggiornamento</button>
+                    <p class="form-status" data-form-status></p>
+                </form>
+            </div>`;
+
+            // Sub-tab switching
+            slot.querySelectorAll('[data-create-tab]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    slot.querySelectorAll('[data-create-tab]').forEach((b) => b.classList.toggle('active', b === btn));
+                    slot.querySelectorAll('[data-create-panel]').forEach((p) => { p.hidden = p.dataset.createPanel !== btn.dataset.createTab; });
+                });
+            });
+
+            // Form submissions
+            slot.querySelectorAll('[data-admin-form]').forEach((form) => {
+                form.addEventListener('submit', async (ev) => {
+                    ev.preventDefault();
+                    const type   = form.dataset.adminForm;
+                    const status = form.querySelector('[data-form-status]');
+                    const btn    = form.querySelector('button[type="submit"]');
+                    const data   = Object.fromEntries(new FormData(form));
+                    // checkbox: if unchecked it won't appear in FormData
+                    if (type === 'farm') data.is_verified = form.querySelector('[name="is_verified"]')?.checked ? 1 : 0;
+                    status.textContent = 'Salvataggio…';
+                    btn.disabled = true;
+                    try {
+                        const res = await _adminPost(`/admin/create/${type}`, data);
+                        status.style.color = 'var(--brand)';
+                        status.textContent = `✅ Creato con successo (ID: ${res.id}${res.name ? ' — ' + res.name : ''})`;
+                        form.reset();
+                        // Refresh all admin tables and, if a farm was created, also update farm selects
+                        await _refreshTables();
+                        if (type === 'farm') {
+                            try {
+                                const oRes  = await fetch(`${window.AgriSaas.apiBase}/admin/overview`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
+                                const fresh = await oRes.json();
+                                const newOpts = '<option value="">Seleziona…</option>' + (fresh.farms || []).map((f) =>
+                                    `<option value="${escapeHtml(String(f.id))}">${escapeHtml(f.name)} (${escapeHtml(f.location)})</option>`
+                                ).join('');
+                                slot.querySelectorAll('select[name="farm_id"]').forEach((sel) => { sel.innerHTML = newOpts; });
+                            } catch (_) {}
+                        }
+                    } catch (err) {
+                        status.style.color = 'var(--error)';
+                        status.textContent = `❌ Errore: ${err.message}`;
+                    }
+                    btn.disabled = false;
+                });
+            });
+        };
+
+        // Render create panel when tab is clicked
+        root.querySelector('[data-admin-tab][data-admin-tab="create"]')
+            ?.addEventListener('click', () => {
+                // only render once
+                if (!root.querySelector('[data-create-tab]')) _renderCreatePanel();
+            });
     };
 
     const renderProfile = (data) => {
@@ -848,6 +1876,8 @@
         'farm-profile':     renderFarmProfile,
         'mercato':          renderMercato,
         'baratto':          renderBaratto,
+        'public-catalog':   renderPublicCatalog,
+        'admin-dashboard':  renderAdminDashboard,
         'profile':          renderProfile,
     };
 
@@ -855,30 +1885,39 @@
         if (!root) return Promise.resolve();
         return apiFetch(root.dataset.agriEndpoint)
             .then((data) => renderers[root.dataset.render]?.(data))
-            .catch(() => root.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare i dati. Ricarica la pagina.</div>'));
+            .catch((err) => {
+                console.error('[AgriSaas] loadRoot error:', err);
+                const slot = root.querySelector('[data-slot="tree"], [data-slot="stats"], [data-slot="trees"]') || root;
+                slot.innerHTML = `<div class="card empty-state" style="color:#c62828;">⚠️ Impossibile caricare i dati: ${escapeHtml(err?.message || 'errore sconosciuto')}. Ricarica la pagina.</div>`;
+            });
     };
-
-    // Move modals to <body> so position:fixed works regardless of ancestor overflow/transform
-    document.querySelectorAll('.modal-backdrop').forEach((m) => document.body.appendChild(m));
 
     const openModal = (selector) => {
         const modal = document.querySelector(selector);
         if (!modal) return;
-        modal.classList.add('is-open');
-        document.body.style.overflow = 'hidden';
+        if (typeof modal.showModal === 'function') {
+            modal.showModal();
+        } else {
+            modal.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+        }
         setTimeout(() => { try { initCoordinateMaps(); refreshCoordinateMaps(); } catch(e) {} }, 50);
     };
 
     const closeAllModals = () => {
-        document.querySelectorAll('.modal-backdrop').forEach((m) => m.classList.remove('is-open'));
+        document.querySelectorAll('dialog[open]').forEach((d) => d.close());
+        document.querySelectorAll('.modal-backdrop.is-open').forEach((m) => m.classList.remove('is-open'));
         document.body.style.overflow = '';
     };
 
     document.addEventListener('click', (e) => {
         if (e.target.closest('[data-close-modal]')) { closeAllModals(); return; }
+        if (e.target.tagName === 'DIALOG') { e.target.close(); document.body.style.overflow = ''; }
         if (e.target.classList.contains('modal-backdrop')) { closeAllModals(); }
+        if (e.target.closest('[data-auth-contact]')) { showAuthModal(); return; }
     });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllModals(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { document.body.style.overflow = ''; } });
+    document.querySelectorAll('dialog').forEach((d) => d.addEventListener('close', () => { document.body.style.overflow = ''; }));
 
     const bindDashboardActions = () => {
         if (!root) return;
@@ -887,9 +1926,33 @@
         document.querySelector('[data-open-product-form]')?.addEventListener('click',  () => openModal('[data-product-form]'));
         document.querySelector('[data-open-baratto-form]')?.addEventListener('click',  () => openModal('[data-baratto-form]'));
 
+        // Adoptable trees: view toggle (map ↔ list)
+        root.querySelectorAll('[data-view-toggle]').forEach((btn) => {
+            if (btn.closest('[data-slot="mercato-map"]') || btn.closest('[data-slot="baratto-map"]')) return;
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.viewToggle;
+                btn.closest('.section-heading, article')?.querySelectorAll('[data-view-toggle]').forEach((b) => {
+                    b.classList.toggle('active', b === btn);
+                    b.classList.toggle('ghost', b !== btn);
+                });
+                const mapSlot  = root.querySelector('[data-slot="adoptable-map"]');
+                const listSlot = root.querySelector('[data-slot="adoptable-trees"]');
+                if (!mapSlot || !listSlot) return;
+                if (view === 'map') {
+                    mapSlot.style.display  = '';
+                    listSlot.style.display = 'none';
+                    if (adoptableLeafletMap) setTimeout(() => adoptableLeafletMap.invalidateSize(), 80);
+                } else {
+                    mapSlot.style.display  = 'none';
+                    listSlot.style.display = '';
+                }
+            });
+        });
+
         document.addEventListener('click', async (event) => {
             const requestButton = event.target.closest('[data-request-adoption]');
             if (requestButton) {
+                if (!window.AgriSaas.userId) { showAuthModal(); return; }
                 requestButton.disabled = true;
                 await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: requestButton.dataset.requestAdoption }) });
                 requestButton.textContent = 'In attesa';
@@ -898,7 +1961,7 @@
             }
             const followButton = event.target.closest('[data-follow-farm]');
             if (followButton) {
-                if (!window.AgriSaas.userId) { window.location.href = followButton.dataset.loginUrl || appUrl(''); return; }
+                if (!window.AgriSaas.userId) { showAuthModal(); return; }
                 followButton.disabled = true;
                 const method = followButton.dataset.following === '1' ? 'DELETE' : 'POST';
                 await apiFetch(`/farms/${followButton.dataset.farmId}/follow`, { method, body: JSON.stringify({}) });
@@ -988,7 +2051,24 @@
                 btn.disabled = true;
                 if (statusEl) statusEl.textContent = '';
                 try {
-                    const payload = Object.fromEntries(new FormData(form).entries());
+                    const fd = new FormData(form);
+                    const payload = {};
+                    fd.forEach((v, k) => {
+                        if (k !== 'photo' && k !== 'price_option') payload[k] = v;
+                    });
+                    // price_option: "su_richiesta" or "prezzo_variabile" — overrides price
+                    const priceOpt = fd.get('price_option');
+                    if (priceOpt) { payload.price = null; payload.unit = priceOpt === 'su_richiesta' ? 'su richiesta' : 'prezzo variabile'; }
+                    // Handle photo upload
+                    const fileInput = form.querySelector('input[type="file"][name="photo"]');
+                    if (fileInput?.files?.length) {
+                        const uploadData = new FormData();
+                        uploadData.append('photo', fileInput.files[0]);
+                        const upload = await apiFetch('/media/photo', { method: 'POST', body: uploadData });
+                        payload.media_url = upload.url;
+                    }
+                    // publish_update checkbox: FormData gives 'on' when checked
+                    if (payload.publish_update) payload.publish_update = true;
                     await apiFetch(endpoint, { method: 'POST', body: JSON.stringify(payload) });
                     closeAllModals();
                     window.location.reload();
@@ -1005,15 +2085,20 @@
     const bindRegistration = () => {
         const panels = document.querySelectorAll('[data-registration-panel]');
         if (!panels.length) return;
+        const openRegTab = (type) => {
+            panels.forEach((panel) => { panel.hidden = panel.dataset.registrationPanel !== type; });
+            document.querySelectorAll('[data-registration-tab]').forEach((btn) => btn.classList.toggle('ghost', btn !== btn.closest('[data-registration-tab]') || btn.dataset.registrationTab !== type));
+            initCoordinateMaps();
+            refreshCoordinateMaps();
+        };
         document.querySelectorAll('[data-registration-tab]').forEach((tab) => {
-            tab.addEventListener('click', () => {
-                const type = tab.dataset.registrationTab;
-                panels.forEach((panel) => { panel.hidden = panel.dataset.registrationPanel !== type; });
-                document.querySelectorAll('[data-registration-tab]').forEach((btn) => btn.classList.toggle('ghost', btn !== tab));
-                initCoordinateMaps();
-                refreshCoordinateMaps();
-            });
+            tab.addEventListener('click', () => openRegTab(tab.dataset.registrationTab));
         });
+        // Auto-open from ?type= URL param
+        const urlType = new URLSearchParams(window.location.search).get('type');
+        if (urlType === 'client' || urlType === 'farm') {
+            openRegTab(urlType);
+        }
         document.querySelectorAll('[data-registration-form]').forEach((form) => {
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
@@ -1032,6 +2117,58 @@
         });
     };
 
+    // ── Mobile hamburger drawer ────────────────────────────────────
+    const hamburger = document.getElementById('nav-hamburger');
+    const navDrawer  = document.getElementById('nav-drawer');
+    const navOverlay = document.getElementById('nav-overlay');
+    const navClose   = document.getElementById('nav-close');
+
+    const openDrawer = () => {
+        navDrawer?.classList.add('is-open');
+        navOverlay?.classList.add('is-visible');
+        navDrawer?.setAttribute('aria-hidden', 'false');
+        hamburger?.setAttribute('aria-expanded', 'true');
+        hamburger?.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    };
+    const closeDrawer = () => {
+        navDrawer?.classList.remove('is-open');
+        navOverlay?.classList.remove('is-visible');
+        navDrawer?.setAttribute('aria-hidden', 'true');
+        hamburger?.setAttribute('aria-expanded', 'false');
+        hamburger?.classList.remove('is-open');
+        document.body.style.overflow = '';
+    };
+
+    hamburger?.addEventListener('click', openDrawer);
+    navClose?.addEventListener('click', closeDrawer);
+    navOverlay?.addEventListener('click', closeDrawer);
+    navDrawer?.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeDrawer));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+
+    // Catalog list/map toggle
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.catalog-toggle-btn[data-catalog-view]');
+        if (!btn) return;
+        const view = btn.dataset.catalogView;
+        // Buttons may be inside .section-heading which is a sibling of .pub-catalog-view —
+        // walk up to the nearest card/article ancestor that contains both
+        const container = btn.closest('article, .card, [data-agri-endpoint]');
+        if (!container) return;
+        container.querySelectorAll('.catalog-toggle-btn').forEach((b) => b.classList.toggle('active', b === btn));
+        container.querySelectorAll('[data-catalog-panel]').forEach((p) => { p.hidden = p.dataset.catalogPanel !== view; });
+        if (view === 'map') {
+            setTimeout(() => {
+                if (adoptableLeafletMap) {
+                    adoptableLeafletMap.invalidateSize();
+                } else {
+                    _initAdoptableLeafletMap();
+                }
+            }, 150);
+        }
+    });
+
+    window._agriShowAuthModal = showAuthModal;
     bindCoordinateButtons();
     bindRegistration();
     bindDashboardActions();

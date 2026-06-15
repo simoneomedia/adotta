@@ -12,6 +12,80 @@ function agri_saas_register_api_routes(): void
         'permission_callback' => '__return_true',
     ]);
 
+    register_rest_route('agri-saas/v1', '/auth/login', [
+        'methods'             => WP_REST_Server::CREATABLE,
+        'callback'            => 'agri_saas_api_login',
+        'permission_callback' => '__return_true',
+    ]);
+
+    register_rest_route('agri-saas/v1', '/admin/overview', [
+        'methods'             => WP_REST_Server::READABLE,
+        'callback'            => 'agri_saas_api_admin_overview',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+    ]);
+
+    register_rest_route('agri-saas/v1', '/admin/farms/(?P<id>\d+)/verify', [
+        'methods'             => 'POST',
+        'callback'            => 'agri_saas_api_admin_toggle_verify',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
+    register_rest_route('agri-saas/v1', '/admin/adoptions/(?P<id>\d+)/status', [
+        'methods'             => 'POST',
+        'callback'            => 'agri_saas_api_admin_adoption_status',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
+    register_rest_route('agri-saas/v1', '/admin/trees/(?P<id>\d+)', [
+        'methods'             => WP_REST_Server::DELETABLE,
+        'callback'            => 'agri_saas_api_admin_delete_tree',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
+    register_rest_route('agri-saas/v1', '/admin/products/(?P<id>\d+)', [
+        'methods'             => WP_REST_Server::DELETABLE,
+        'callback'            => 'agri_saas_api_admin_delete_product',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
+    register_rest_route('agri-saas/v1', '/admin/baratti/(?P<id>\d+)', [
+        'methods'             => WP_REST_Server::DELETABLE,
+        'callback'            => 'agri_saas_api_admin_delete_baratto',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
+    register_rest_route('agri-saas/v1', '/admin/impersonate/(?P<id>\d+)', [
+        'methods'             => 'POST',
+        'callback'            => 'agri_saas_api_admin_impersonate',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
+    register_rest_route('agri-saas/v1', '/admin/reset-all-content', [
+        'methods'             => 'POST',
+        'callback'            => 'agri_saas_api_admin_reset_content',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+    ]);
+
+    register_rest_route('agri-saas/v1', '/admin/wp-users', [
+        'methods'             => WP_REST_Server::READABLE,
+        'callback'            => 'agri_saas_api_admin_wp_users',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+    ]);
+
+    // Admin creation endpoints (bypass owner check, accept farm_id directly)
+    $admin_perm = function () { return current_user_can('manage_options'); };
+    register_rest_route('agri-saas/v1', '/admin/create/farm',    ['methods' => 'POST', 'callback' => 'agri_saas_api_admin_create_farm',    'permission_callback' => $admin_perm]);
+    register_rest_route('agri-saas/v1', '/admin/create/tree',    ['methods' => 'POST', 'callback' => 'agri_saas_api_admin_create_tree',    'permission_callback' => $admin_perm]);
+    register_rest_route('agri-saas/v1', '/admin/create/product', ['methods' => 'POST', 'callback' => 'agri_saas_api_admin_create_product', 'permission_callback' => $admin_perm]);
+    register_rest_route('agri-saas/v1', '/admin/create/baratto', ['methods' => 'POST', 'callback' => 'agri_saas_api_admin_create_baratto', 'permission_callback' => $admin_perm]);
+    register_rest_route('agri-saas/v1', '/admin/create/update',  ['methods' => 'POST', 'callback' => 'agri_saas_api_admin_create_update',  'permission_callback' => $admin_perm]);
+
     register_rest_route('agri-saas/v1', '/dashboard/client', [
         'methods'             => WP_REST_Server::READABLE,
         'callback'            => 'agri_saas_api_client_dashboard',
@@ -54,7 +128,7 @@ function agri_saas_register_api_routes(): void
     register_rest_route('agri-saas/v1', '/catalog/trees', [
         'methods'             => WP_REST_Server::READABLE,
         'callback'            => 'agri_saas_api_adoptable_trees',
-        'permission_callback' => 'is_user_logged_in',
+        'permission_callback' => '__return_true',
     ]);
 
     register_rest_route('agri-saas/v1', '/adoption-requests', [
@@ -118,7 +192,7 @@ function agri_saas_register_api_routes(): void
     register_rest_route('agri-saas/v1', '/trees/(?P<id>\d+)', [
         'methods'             => WP_REST_Server::READABLE,
         'callback'            => 'agri_saas_api_tree_detail',
-        'permission_callback' => 'is_user_logged_in',
+        'permission_callback' => '__return_true',
         'args'                => ['id' => ['sanitize_callback' => 'absint']],
     ]);
 
@@ -132,7 +206,7 @@ function agri_saas_register_api_routes(): void
         [
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => 'agri_saas_api_updates',
-            'permission_callback' => 'is_user_logged_in',
+            'permission_callback' => '__return_true',
         ],
         [
             'methods'             => WP_REST_Server::CREATABLE,
@@ -743,6 +817,21 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
     $visible_updates = agri_saas_attach_reactions($visible_updates, $user_id);
     $photos          = array_values(array_filter(array_map(static fn(array $u): string => (string) ($u['media_url'] ?? ''), $visible_updates)));
 
+    $products = $wpdb->get_results($wpdb->prepare(
+        "SELECT id, name, description, price, unit, media_url FROM {$tables['products']} WHERE farm_id = %d AND is_active = 1 ORDER BY created_at DESC LIMIT 12",
+        $farm_id
+    ), ARRAY_A);
+
+    $baratti = $wpdb->get_results($wpdb->prepare(
+        "SELECT id, offer_title, wants_title, media_url FROM {$tables['baratti']} WHERE farm_id = %d AND is_active = 1 ORDER BY created_at DESC LIMIT 12",
+        $farm_id
+    ), ARRAY_A);
+
+    $logged_in = is_user_logged_in();
+    if (!$logged_in) {
+        unset($farm['contact_whatsapp'], $farm['contact_phone'], $farm['contact_email']);
+    }
+
     return rest_ensure_response([
         'farm'        => $farm,
         'stats'       => [
@@ -752,12 +841,15 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
             'followers'     => $fc,
         ],
         'isFollowing' => agri_saas_is_farm_follower($farm_id, $user_id),
-        'canFollow'   => is_user_logged_in() && (int) $farm['owner_user_id'] !== $user_id,
+        'canFollow'   => $logged_in && (int) $farm['owner_user_id'] !== $user_id,
         'loginUrl'    => wp_login_url(home_url('/farms/' . $farm_id . '/')),
         'trees'       => $trees ?: [],
         'updates'     => $visible_updates,
         'photos'      => $photos,
         'rewards'     => $rewards,
+        'products'    => $products ?: [],
+        'baratti'     => $baratti ?: [],
+        'logged_in'   => $logged_in,
     ]);
 }
 
@@ -841,7 +933,7 @@ function agri_saas_api_adoptable_trees(WP_REST_Request $request): WP_REST_Respon
     $params[] = $limit + 1;
     $params[] = $offset;
 
-    $sql = "SELECT t.id, t.species, t.code, t.status, t.planted_at, t.planted_display,
+    $sql = "SELECT t.id, t.species, t.type, t.code, t.status, t.planted_at, t.planted_display,
                 COALESCE(t.latitude, f.latitude) AS map_latitude,
                 COALESCE(t.longitude, f.longitude) AS map_longitude,
                 CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN 'tree' ELSE 'farm' END AS coordinate_source,
@@ -1305,7 +1397,27 @@ function agri_saas_api_tree_detail(WP_REST_Request $request): WP_REST_Response|W
     $visible = agri_saas_filter_visible_updates($updates ?: [], $user_id);
     $visible = agri_saas_attach_reactions($visible, $user_id);
 
-    return rest_ensure_response(['tree' => $tree, 'updates' => $visible, 'rewards' => $rewards ?: []]);
+    $user_adoption = $user_id ? $wpdb->get_row($wpdb->prepare(
+        "SELECT id, status FROM {$tables['adoptions']} WHERE tree_id = %d AND adopter_user_id = %d ORDER BY requested_at DESC LIMIT 1",
+        $tree_id, $user_id
+    ), ARRAY_A) : null;
+
+    // Other available elements from same farm
+    $farm_id = (int) ($tree['farm_id'] ?? 0);
+    $farm_trees = $farm_id ? $wpdb->get_results($wpdb->prepare(
+        "SELECT t.id, t.species, t.type, t.code, t.status, t.media_url,
+                f.name AS farm_name, f.location,
+                (SELECT u2.media_url FROM {$tables['updates']} u2
+                 WHERE u2.farm_id = f.id AND u2.media_url != ''
+                 ORDER BY u2.created_at DESC LIMIT 1) AS farm_photo
+         FROM {$tables['trees']} t
+         LEFT JOIN {$tables['farms']} f ON f.id = t.farm_id
+         WHERE t.farm_id = %d AND t.id != %d AND t.status = 'available'
+         ORDER BY t.id DESC LIMIT 6",
+        $farm_id, $tree_id
+    ), ARRAY_A) : [];
+
+    return rest_ensure_response(['tree' => $tree, 'updates' => $visible, 'rewards' => $rewards ?: [], 'user_adoption' => $user_adoption ?: null, 'farm_trees' => $farm_trees ?: []]);
 }
 
 
@@ -1842,7 +1954,8 @@ function agri_saas_api_mercato(): WP_REST_Response
 
     $products = $wpdb->get_results(
         "SELECT p.id, p.farm_id, p.name, p.description, p.price, p.unit, p.media_url, p.is_active, p.created_at,
-                f.name AS farm_name, f.location, f.contact_whatsapp, f.contact_phone, f.contact_email
+                f.name AS farm_name, f.location, f.contact_whatsapp, f.contact_phone, f.contact_email,
+                f.latitude AS map_latitude, f.longitude AS map_longitude
          FROM {$tables['products']} p
          INNER JOIN {$tables['farms']} f ON f.id = p.farm_id
          WHERE p.is_active = 1
@@ -1859,10 +1972,19 @@ function agri_saas_api_mercato(): WP_REST_Response
         ));
     }
 
+    $logged_in = is_user_logged_in();
+    if (!$logged_in) {
+        $products = array_map(static function ($p) {
+            unset($p['contact_whatsapp'], $p['contact_phone'], $p['contact_email']);
+            return $p;
+        }, $products ?: []);
+    }
+
     return rest_ensure_response([
         'products'   => $products ?: [],
         'is_farmer'  => $is_farmer,
         'my_farm_id' => $my_farm_id,
+        'logged_in'  => $logged_in,
     ]);
 }
 
@@ -1900,7 +2022,22 @@ function agri_saas_api_create_product(WP_REST_Request $request): WP_REST_Respons
         return new WP_Error('agri_saas_product_failed', __('Impossibile creare il prodotto.', 'agri-saas'), ['status' => 500]);
     }
 
-    return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
+    $product_id = (int) $wpdb->insert_id;
+
+    if (!empty($request->get_param('publish_update'))) {
+        $wpdb->insert($tables['updates'], [
+            'farm_id'        => $farm_id,
+            'author_user_id' => $user_id,
+            'title'          => sprintf('Nuovo prodotto: %s', $name),
+            'body'           => sanitize_textarea_field($request->get_param('description') ?? ''),
+            'media_url'      => esc_url_raw($request->get_param('media_url') ?? '') ?: null,
+            'visibility'     => 'public',
+            'created_at'     => current_time('mysql'),
+        ], ['%d', '%d', '%s', '%s', '%s', '%s', '%s']);
+        agri_saas_invalidate_farm_cache($farm_id);
+    }
+
+    return rest_ensure_response(['id' => $product_id]);
 }
 
 // ── Baratto ────────────────────────────────────────────────────────────────
@@ -1912,7 +2049,8 @@ function agri_saas_api_baratto(): WP_REST_Response
 
     $baratti = $wpdb->get_results(
         "SELECT b.id, b.farm_id, b.offer_title, b.offer_description, b.wants_title, b.wants_description, b.media_url, b.is_active, b.created_at,
-                f.name AS farm_name, f.location, f.contact_whatsapp, f.contact_phone, f.contact_email
+                f.name AS farm_name, f.location, f.contact_whatsapp, f.contact_phone, f.contact_email,
+                f.latitude AS map_latitude, f.longitude AS map_longitude
          FROM {$tables['baratti']} b
          INNER JOIN {$tables['farms']} f ON f.id = b.farm_id
          WHERE b.is_active = 1
@@ -1929,10 +2067,19 @@ function agri_saas_api_baratto(): WP_REST_Response
         ));
     }
 
+    $logged_in = is_user_logged_in();
+    if (!$logged_in) {
+        $baratti = array_map(static function ($b) {
+            unset($b['contact_whatsapp'], $b['contact_phone'], $b['contact_email']);
+            return $b;
+        }, $baratti ?: []);
+    }
+
     return rest_ensure_response([
         'baratti'    => $baratti ?: [],
         'is_farmer'  => $is_farmer,
         'my_farm_id' => $my_farm_id,
+        'logged_in'  => $logged_in,
     ]);
 }
 
@@ -1972,7 +2119,22 @@ function agri_saas_api_create_baratto(WP_REST_Request $request): WP_REST_Respons
         return new WP_Error('agri_saas_baratto_failed', __('Impossibile creare il baratto.', 'agri-saas'), ['status' => 500]);
     }
 
-    return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
+    $baratto_id = (int) $wpdb->insert_id;
+
+    if (!empty($request->get_param('publish_update'))) {
+        $wpdb->insert($tables['updates'], [
+            'farm_id'        => $farm_id,
+            'author_user_id' => $user_id,
+            'title'          => sprintf('Nuovo baratto: %s', $offer_title),
+            'body'           => sanitize_textarea_field($request->get_param('offer_description') ?? ''),
+            'media_url'      => esc_url_raw($request->get_param('media_url') ?? '') ?: null,
+            'visibility'     => 'public',
+            'created_at'     => current_time('mysql'),
+        ], ['%d', '%d', '%s', '%s', '%s', '%s', '%s']);
+        agri_saas_invalidate_farm_cache($farm_id);
+    }
+
+    return rest_ensure_response(['id' => $baratto_id]);
 }
 
 // ── Web Push delivery ──────────────────────────────────────────────────────
@@ -2094,6 +2256,373 @@ function agri_saas_der_to_raw_ecdsa(string $der): string|false
     }
 
     return $r . $s;
+}
+
+function agri_saas_api_login(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    $username = sanitize_text_field($request->get_param('username') ?? '');
+    $password = $request->get_param('password') ?? '';
+    $remember = (bool) ($request->get_param('remember') ?? false);
+
+    if (!$username || !$password) {
+        return new WP_Error('missing_credentials', __('Email e password sono obbligatori.', 'agri-saas'), ['status' => 400]);
+    }
+
+    add_filter('send_auth_cookies', '__return_true');
+
+    $user = wp_signon([
+        'user_login'    => $username,
+        'user_password' => $password,
+        'remember'      => $remember,
+    ], is_ssl());
+
+    if (is_wp_error($user)) {
+        return new WP_Error('login_failed', __('Email o password non validi.', 'agri-saas'), ['status' => 401]);
+    }
+
+    wp_set_current_user($user->ID);
+
+    $redirect = agri_saas_user_home_url();
+    if (in_array('farm_manager', (array) $user->roles, true) || user_can($user->ID, 'manage_options')) {
+        $redirect = home_url('/farm-dashboard/');
+    }
+
+    return rest_ensure_response(['redirect' => $redirect, 'user_id' => $user->ID]);
+}
+
+function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Response
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+
+    $farms = $wpdb->get_results(
+        "SELECT f.id, f.name, f.location, f.crop_focus, f.is_verified,
+                u.display_name AS owner_name, u.user_email AS owner_email,
+                COUNT(DISTINCT t.id) AS tree_count,
+                COUNT(DISTINCT a.id) AS adoption_count
+         FROM {$tables['farms']} f
+         LEFT JOIN {$wpdb->users} u ON u.ID = f.owner_user_id
+         LEFT JOIN {$tables['trees']} t ON t.farm_id = f.id
+         LEFT JOIN {$tables['adoptions']} a ON a.tree_id = t.id AND a.status = 'active'
+         GROUP BY f.id ORDER BY f.id DESC",
+        ARRAY_A
+    ) ?: [];
+
+    $adoptions = $wpdb->get_results(
+        "SELECT a.id, a.status, a.requested_at,
+                t.species, t.code, t.type,
+                f.name AS farm_name,
+                u.display_name AS adopter_name, u.user_email AS adopter_email,
+                um_wa.meta_value AS adopter_whatsapp,
+                um_ph.meta_value AS adopter_phone
+         FROM {$tables['adoptions']} a
+         LEFT JOIN {$tables['trees']} t ON t.id = a.tree_id
+         LEFT JOIN {$tables['farms']} f ON f.id = t.farm_id
+         LEFT JOIN {$wpdb->users} u ON u.ID = a.adopter_user_id
+         LEFT JOIN {$wpdb->usermeta} um_wa ON um_wa.user_id = a.adopter_user_id AND um_wa.meta_key = 'contact_whatsapp'
+         LEFT JOIN {$wpdb->usermeta} um_ph ON um_ph.user_id = a.adopter_user_id AND um_ph.meta_key = 'contact_phone'
+         ORDER BY a.requested_at DESC LIMIT 200",
+        ARRAY_A
+    ) ?: [];
+
+    $products = $wpdb->get_results(
+        "SELECT p.id, p.name, p.price, p.unit, p.price_note, p.created_at,
+                f.name AS farm_name, f.location,
+                u.display_name AS owner_name
+         FROM {$tables['products']} p
+         LEFT JOIN {$tables['farms']} f ON f.id = p.farm_id
+         LEFT JOIN {$wpdb->users} u ON u.ID = f.owner_user_id
+         ORDER BY p.created_at DESC LIMIT 200",
+        ARRAY_A
+    ) ?: [];
+
+    $baratti = $wpdb->get_results(
+        "SELECT b.id, b.offer_title, b.wants_title, b.created_at,
+                f.name AS farm_name, f.location,
+                u.display_name AS owner_name
+         FROM {$tables['baratti']} b
+         LEFT JOIN {$tables['farms']} f ON f.id = b.farm_id
+         LEFT JOIN {$wpdb->users} u ON u.ID = f.owner_user_id
+         ORDER BY b.created_at DESC LIMIT 200",
+        ARRAY_A
+    ) ?: [];
+
+    $users = $wpdb->get_results(
+        "SELECT u.ID AS id, u.display_name, u.user_email, u.user_registered,
+                um_wa.meta_value AS whatsapp,
+                um_ph.meta_value AS phone,
+                (SELECT COUNT(*) FROM {$tables['adoptions']} a WHERE a.adopter_user_id = u.ID AND a.status = 'active') AS active_adoptions,
+                (SELECT COUNT(*) FROM {$tables['farms']} f WHERE f.owner_user_id = u.ID) AS farms_count
+         FROM {$wpdb->users} u
+         LEFT JOIN {$wpdb->usermeta} um_wa ON um_wa.user_id = u.ID AND um_wa.meta_key = 'contact_whatsapp'
+         LEFT JOIN {$wpdb->usermeta} um_ph ON um_ph.user_id = u.ID AND um_ph.meta_key = 'contact_phone'
+         ORDER BY u.user_registered DESC LIMIT 500",
+        ARRAY_A
+    ) ?: [];
+
+    return rest_ensure_response(compact('farms', 'adoptions', 'products', 'baratti', 'users'));
+}
+
+function agri_saas_api_admin_toggle_verify(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $farm_id = absint($request['id']);
+    $current = (int) $wpdb->get_var($wpdb->prepare("SELECT is_verified FROM {$tables['farms']} WHERE id = %d", $farm_id));
+    $new_val = $current ? 0 : 1;
+    $wpdb->update($tables['farms'], ['is_verified' => $new_val], ['id' => $farm_id]);
+    return rest_ensure_response(['id' => $farm_id, 'is_verified' => $new_val]);
+}
+
+function agri_saas_api_admin_adoption_status(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $id     = absint($request['id']);
+    $status = sanitize_key($request->get_param('status'));
+    $valid  = ['pending', 'active', 'cancelled', 'cancel_requested'];
+    if (!in_array($status, $valid, true)) {
+        return new WP_Error('invalid_status', 'Stato non valido.', ['status' => 400]);
+    }
+    // If activating, set adopted_at and adopter_user_id on the tree
+    if ($status === 'active') {
+        $adoption = $wpdb->get_row($wpdb->prepare(
+            "SELECT tree_id, adopter_user_id FROM {$tables['adoptions']} WHERE id = %d", $id
+        ), ARRAY_A);
+        if ($adoption) {
+            $wpdb->update($tables['trees'],
+                ['status' => 'adopted', 'adopter_user_id' => $adoption['adopter_user_id'], 'adopted_at' => current_time('mysql')],
+                ['id' => $adoption['tree_id']]
+            );
+        }
+    }
+    if ($status === 'cancelled') {
+        $adoption = $wpdb->get_row($wpdb->prepare(
+            "SELECT tree_id FROM {$tables['adoptions']} WHERE id = %d", $id
+        ), ARRAY_A);
+        if ($adoption) {
+            $wpdb->update($tables['trees'], ['status' => 'available', 'adopter_user_id' => null, 'adopted_at' => null], ['id' => $adoption['tree_id']]);
+        }
+    }
+    $wpdb->update($tables['adoptions'], ['status' => $status], ['id' => $id]);
+    return rest_ensure_response(['id' => $id, 'status' => $status]);
+}
+
+function agri_saas_api_admin_delete_tree(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $tree_id = absint($request['id']);
+    $wpdb->delete($tables['tree_rewards'], ['tree_id' => $tree_id]);
+    $wpdb->delete($tables['adoptions'],   ['tree_id' => $tree_id]);
+    $wpdb->delete($tables['trees'],       ['id'      => $tree_id]);
+    return rest_ensure_response(['deleted' => true, 'id' => $tree_id]);
+}
+
+function agri_saas_api_admin_delete_product(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $id     = absint($request['id']);
+    $wpdb->delete($tables['products'], ['id' => $id]);
+    return rest_ensure_response(['deleted' => true, 'id' => $id]);
+}
+
+function agri_saas_api_admin_delete_baratto(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $id     = absint($request['id']);
+    $wpdb->delete($tables['baratti'], ['id' => $id]);
+    return rest_ensure_response(['deleted' => true, 'id' => $id]);
+}
+
+function agri_saas_api_admin_impersonate(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    $target_id = absint($request['id']);
+    $user      = get_user_by('id', $target_id);
+    if (!$user) {
+        return new WP_Error('user_not_found', 'Utente non trovato.', ['status' => 404]);
+    }
+    // Store original admin ID in session meta so we can restore
+    $current_admin_id = get_current_user_id();
+    update_user_meta($target_id, '_agri_impersonated_by', $current_admin_id);
+    wp_clear_auth_cookie();
+    wp_set_current_user($target_id);
+    wp_set_auth_cookie($target_id, true);
+    return rest_ensure_response(['success' => true, 'redirect' => home_url('/dashboard/')]);
+}
+
+// ── Admin creation handlers ────────────────────────────────────────────────
+
+function agri_saas_api_admin_create_farm(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables   = agri_saas_tables();
+    $name     = sanitize_text_field($request->get_param('name'));
+    $location = sanitize_text_field($request->get_param('location'));
+    $owner_id = absint($request->get_param('owner_user_id'));
+    if (!$name || !$location || !$owner_id) {
+        return new WP_Error('missing_fields', 'Nome, luogo e proprietario sono obbligatori.', ['status' => 400]);
+    }
+    $wpdb->insert($tables['farms'], [
+        'owner_user_id'    => $owner_id,
+        'name'             => $name,
+        'location'         => $location,
+        'acreage'          => (float) ($request->get_param('acreage') ?? 0),
+        'crop_focus'       => sanitize_text_field($request->get_param('crop_focus') ?? ''),
+        'latitude'         => agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90),
+        'longitude'        => agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180),
+        'description'      => wp_kses_post($request->get_param('description') ?? ''),
+        'contact_email'    => sanitize_email($request->get_param('contact_email') ?? ''),
+        'contact_whatsapp' => sanitize_text_field($request->get_param('contact_whatsapp') ?? ''),
+        'contact_phone'    => sanitize_text_field($request->get_param('contact_phone') ?? ''),
+        'is_verified'      => absint($request->get_param('is_verified') ?? 0),
+    ], ['%d', '%s', '%s', '%f', '%s', '%f', '%f', '%s', '%s', '%s', '%s', '%d']);
+    if (!$wpdb->insert_id) return new WP_Error('db_error', 'Errore durante la creazione.', ['status' => 500]);
+    return rest_ensure_response(['id' => (int) $wpdb->insert_id, 'name' => $name]);
+}
+
+function agri_saas_api_admin_create_tree(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $farm_id = absint($request->get_param('farm_id'));
+    $species = sanitize_text_field($request->get_param('species'));
+    $code    = sanitize_text_field($request->get_param('code'));
+    if (!$farm_id || !$species || !$code) {
+        return new WP_Error('missing_fields', 'Azienda, specie e codice sono obbligatori.', ['status' => 400]);
+    }
+    $type = sanitize_text_field($request->get_param('type') ?: 'albero');
+    if (!in_array($type, ['albero','orto','animale','alveare','bosco','vite','olivo','altro'], true)) $type = 'albero';
+    $status = sanitize_key($request->get_param('status') ?: 'available');
+    if (!in_array($status, ['available','adopted','maintenance'], true)) $status = 'available';
+    $raw_planted = sanitize_text_field($request->get_param('planted_at') ?? '');
+    $parsed = $raw_planted ? agri_saas_parse_planted_input($raw_planted) : ['display' => null, 'date' => null];
+    $wpdb->insert($tables['trees'], [
+        'farm_id'         => $farm_id,
+        'species'         => $species,
+        'code'            => $code,
+        'type'            => $type,
+        'latitude'        => agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90),
+        'longitude'       => agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180),
+        'status'          => $status,
+        'planted_at'      => $parsed['date'] ?: null,
+        'planted_display' => $parsed['display'] ?: null,
+        'media_url'       => esc_url_raw($request->get_param('media_url') ?? '') ?: null,
+        'description'     => sanitize_textarea_field($request->get_param('description') ?? ''),
+    ], ['%d','%s','%s','%s','%f','%f','%s','%s','%s','%s','%s']);
+    if (!$wpdb->insert_id) return new WP_Error('db_error', 'Errore durante la creazione. Il codice potrebbe essere duplicato.', ['status' => 500]);
+    agri_saas_invalidate_farm_cache($farm_id);
+    return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
+}
+
+function agri_saas_api_admin_create_product(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $farm_id = absint($request->get_param('farm_id'));
+    $name    = sanitize_text_field($request->get_param('name'));
+    if (!$farm_id || !$name) return new WP_Error('missing_fields', 'Azienda e nome sono obbligatori.', ['status' => 400]);
+    $wpdb->insert($tables['products'], [
+        'farm_id'     => $farm_id,
+        'name'        => $name,
+        'description' => sanitize_textarea_field($request->get_param('description') ?? ''),
+        'price'       => is_numeric($request->get_param('price')) ? (float) $request->get_param('price') : null,
+        'unit'        => sanitize_text_field($request->get_param('unit') ?: 'unità'),
+        'price_note'  => sanitize_text_field($request->get_param('price_note') ?? ''),
+        'media_url'   => esc_url_raw($request->get_param('media_url') ?? '') ?: null,
+        'is_active'   => 1,
+    ], ['%d','%s','%s','%f','%s','%s','%s','%d']);
+    if (!$wpdb->insert_id) return new WP_Error('db_error', 'Errore durante la creazione.', ['status' => 500]);
+    agri_saas_invalidate_farm_cache($farm_id);
+    return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
+}
+
+function agri_saas_api_admin_create_baratto(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables      = agri_saas_tables();
+    $farm_id     = absint($request->get_param('farm_id'));
+    $offer_title = sanitize_text_field($request->get_param('offer_title'));
+    $wants_title = sanitize_text_field($request->get_param('wants_title'));
+    if (!$farm_id || !$offer_title || !$wants_title) return new WP_Error('missing_fields', 'Azienda, offro e cerco sono obbligatori.', ['status' => 400]);
+    $wpdb->insert($tables['baratti'], [
+        'farm_id'           => $farm_id,
+        'offer_title'       => $offer_title,
+        'offer_description' => sanitize_textarea_field($request->get_param('offer_description') ?? ''),
+        'wants_title'       => $wants_title,
+        'wants_description' => sanitize_textarea_field($request->get_param('wants_description') ?? ''),
+        'media_url'         => esc_url_raw($request->get_param('media_url') ?? '') ?: null,
+        'is_active'         => 1,
+    ], ['%d','%s','%s','%s','%s','%s','%d']);
+    if (!$wpdb->insert_id) return new WP_Error('db_error', 'Errore durante la creazione.', ['status' => 500]);
+    agri_saas_invalidate_farm_cache($farm_id);
+    return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
+}
+
+function agri_saas_api_admin_create_update(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $farm_id = absint($request->get_param('farm_id'));
+    $title   = sanitize_text_field($request->get_param('title'));
+    $body    = sanitize_textarea_field($request->get_param('body') ?? '');
+    if (!$farm_id || !$title) return new WP_Error('missing_fields', 'Azienda e titolo sono obbligatori.', ['status' => 400]);
+    $visibility = sanitize_key($request->get_param('visibility') ?: 'public');
+    if (!in_array($visibility, ['public','adopters','private'], true)) $visibility = 'public';
+    $wpdb->insert($tables['updates'], [
+        'farm_id'        => $farm_id,
+        'tree_id'        => absint($request->get_param('tree_id') ?? 0) ?: null,
+        'author_user_id' => get_current_user_id(),
+        'title'          => $title,
+        'body'           => $body,
+        'media_url'      => esc_url_raw($request->get_param('media_url') ?? '') ?: null,
+        'visibility'     => $visibility,
+        'created_at'     => current_time('mysql'),
+    ], ['%d','%d','%d','%s','%s','%s','%s','%s']);
+    if (!$wpdb->insert_id) return new WP_Error('db_error', 'Errore durante la creazione.', ['status' => 500]);
+    agri_saas_invalidate_farm_cache($farm_id);
+    return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
+}
+
+function agri_saas_api_admin_reset_content(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $confirm = sanitize_text_field($request->get_param('confirm'));
+    if ($confirm !== 'ELIMINA_TUTTO') {
+        return new WP_Error('confirm_required', 'Conferma richiesta non valida.', ['status' => 400]);
+    }
+    $tables = agri_saas_tables();
+    // Delete in dependency order (children first)
+    $order = ['tree_rewards', 'update_reactions', 'farm_followers', 'push_subscriptions', 'adoptions', 'rewards', 'updates', 'products', 'baratti', 'trees', 'farms'];
+    $counts = [];
+    foreach ($order as $key) {
+        $table = $tables[$key] ?? null;
+        if (!$table) continue;
+        $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+        $wpdb->query("TRUNCATE TABLE {$table}");
+        $counts[$key] = $count;
+    }
+    // Also remove farm_manager role from all users (optional, keep user accounts)
+    $farm_managers = get_users(['role' => 'farm_manager']);
+    foreach ($farm_managers as $u) {
+        $u->remove_role('farm_manager');
+        $u->add_role('subscriber');
+    }
+    return rest_ensure_response(['reset' => true, 'deleted' => $counts]);
+}
+
+function agri_saas_api_admin_wp_users(WP_REST_Request $request): WP_REST_Response
+{
+    global $wpdb;
+    $users = $wpdb->get_results(
+        "SELECT u.ID AS id, u.display_name, u.user_email
+         FROM {$wpdb->users} u
+         ORDER BY u.display_name ASC LIMIT 500",
+        ARRAY_A
+    ) ?: [];
+    return rest_ensure_response($users);
 }
 
 function agri_saas_api_get_profile(): WP_REST_Response {
