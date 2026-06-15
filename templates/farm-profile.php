@@ -64,6 +64,8 @@ get_header();
                 <?php agri_saas_empty_state("Le foto degli aggiornamenti dell'azienda appariranno qui."); ?>
             </div>
         </aside>
+
+        <article class="card span-3" data-slot="farm-reviews"><p><?php esc_html_e('Caricamento recensioni…', 'agri-saas'); ?></p></article>
     </section>
 </main>
 <?php

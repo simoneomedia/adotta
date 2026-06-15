@@ -125,6 +125,11 @@ function agri_saas_register_api_routes(): void
         'args'                => ['id' => ['sanitize_callback' => 'absint']],
     ]);
 
+    register_rest_route('agri-saas/v1', '/farms/(?P<id>\d+)/reviews', [
+        ['methods' => WP_REST_Server::READABLE,  'callback' => 'agri_saas_api_get_farm_reviews',    'permission_callback' => '__return_true', 'args' => ['id' => ['sanitize_callback' => 'absint']]],
+        ['methods' => WP_REST_Server::CREATABLE, 'callback' => 'agri_saas_api_create_farm_review', 'permission_callback' => 'is_user_logged_in', 'args' => ['id' => ['sanitize_callback' => 'absint']]],
+    ]);
+
     register_rest_route('agri-saas/v1', '/catalog/trees', [
         'methods'             => WP_REST_Server::READABLE,
         'callback'            => 'agri_saas_api_adoptable_trees',
@@ -1523,17 +1528,43 @@ function agri_saas_api_updates(WP_REST_Request $request): WP_REST_Response
 
     // Over-fetch to compensate for visibility filtering — fetch up to 5× the requested limit.
     $batch_size = $limit * 5;
-    $raw = $wpdb->get_results($wpdb->prepare(
-        "SELECT u.id, u.farm_id, u.tree_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
-                f.owner_user_id, f.name AS farm_name, t.code AS tree_code, t.adopter_user_id AS tree_adopter_user_id
-         FROM {$tables['updates']} u
-         LEFT JOIN {$tables['farms']} f ON f.id = u.farm_id
-         LEFT JOIN {$tables['trees']} t ON t.id = u.tree_id
-         ORDER BY u.created_at DESC
-         LIMIT %d OFFSET %d",
-        $batch_size,
-        $offset
-    ), ARRAY_A);
+    $mine = $request->get_param('mine') === '1' && $user_id;
+    if ($mine) {
+        $mine_subquery = $wpdb->prepare(
+            "u.farm_id IN (
+                SELECT DISTINCT t.farm_id FROM {$tables['trees']} t
+                JOIN {$tables['adoptions']} a ON a.tree_id = t.id AND a.adopter_user_id = %d AND a.status = 'active'
+                UNION
+                SELECT farm_id FROM {$tables['farm_followers']} WHERE follower_user_id = %d
+            )",
+            $user_id,
+            $user_id
+        );
+        $raw = $wpdb->get_results($wpdb->prepare(
+            "SELECT u.id, u.farm_id, u.tree_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
+                    f.owner_user_id, f.name AS farm_name, t.code AS tree_code, t.adopter_user_id AS tree_adopter_user_id
+             FROM {$tables['updates']} u
+             LEFT JOIN {$tables['farms']} f ON f.id = u.farm_id
+             LEFT JOIN {$tables['trees']} t ON t.id = u.tree_id
+             WHERE {$mine_subquery}
+             ORDER BY u.created_at DESC
+             LIMIT %d OFFSET %d",
+            $batch_size,
+            $offset
+        ), ARRAY_A);
+    } else {
+        $raw = $wpdb->get_results($wpdb->prepare(
+            "SELECT u.id, u.farm_id, u.tree_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
+                    f.owner_user_id, f.name AS farm_name, t.code AS tree_code, t.adopter_user_id AS tree_adopter_user_id
+             FROM {$tables['updates']} u
+             LEFT JOIN {$tables['farms']} f ON f.id = u.farm_id
+             LEFT JOIN {$tables['trees']} t ON t.id = u.tree_id
+             ORDER BY u.created_at DESC
+             LIMIT %d OFFSET %d",
+            $batch_size,
+            $offset
+        ), ARRAY_A);
+    }
 
     $all_visible = agri_saas_filter_visible_updates($raw ?: [], $user_id);
     $visible     = array_slice($all_visible, 0, $limit);
@@ -2672,4 +2703,40 @@ function agri_saas_api_update_profile(WP_REST_Request $request): WP_REST_Respons
     update_user_meta($user_id, 'contact_whatsapp', $whatsapp);
     update_user_meta($user_id, 'contact_phone', $phone);
     return rest_ensure_response(['updated' => true, 'display_name' => $display_name ?: wp_get_current_user()->display_name]);
+}
+
+function agri_saas_api_get_farm_reviews(WP_REST_Request $request): WP_REST_Response
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $farm_id = absint($request->get_param('id'));
+    $reviews = $wpdb->get_results($wpdb->prepare(
+        "SELECT r.id, r.rating, r.comment, r.created_at, u.display_name
+         FROM {$tables['farm_reviews']} r
+         JOIN {$wpdb->users} u ON u.ID = r.user_id
+         WHERE r.farm_id = %d
+         ORDER BY r.created_at DESC LIMIT 50",
+        $farm_id
+    ), ARRAY_A) ?: [];
+    $avg = $reviews ? round(array_sum(array_column($reviews, 'rating')) / count($reviews), 1) : null;
+    return rest_ensure_response(['reviews' => $reviews, 'avg' => $avg, 'count' => count($reviews)]);
+}
+
+function agri_saas_api_create_farm_review(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $farm_id = absint($request->get_param('id'));
+    $user_id = get_current_user_id();
+    $rating  = max(1, min(5, absint($request->get_param('rating') ?: 0)));
+    $comment = sanitize_textarea_field($request->get_param('comment') ?? '');
+    if (!$rating) return new WP_Error('invalid_rating', 'Rating 1-5 richiesto', ['status' => 400]);
+    $wpdb->replace($tables['farm_reviews'], [
+        'farm_id'    => $farm_id,
+        'user_id'    => $user_id,
+        'rating'     => $rating,
+        'comment'    => $comment,
+        'created_at' => current_time('mysql'),
+    ], ['%d', '%d', '%d', '%s', '%s']);
+    return rest_ensure_response(['saved' => true]);
 }

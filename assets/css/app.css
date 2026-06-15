@@ -1810,3 +1810,19 @@ a.ig-farm-name:hover { color: var(--brand); }
 .dash-content-tab.active { background: var(--brand); border-color: var(--brand); color: #fff; box-shadow: 0 2px 10px rgba(59,109,17,.25); }
 
 .product-img--small { width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-xs); flex-shrink: 0; }
+
+/* ── Farm reviews ────────────────────────────────────────────────── */
+.reviews-avg { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.reviews-avg-score { font-size: 2rem; font-weight: 300; font-family: 'Fraunces', Georgia, serif; color: var(--brand); }
+.reviews-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+.review-item { border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+.review-item:last-child { border-bottom: none; }
+.review-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.review-author { font-weight: 600; font-size: .9rem; }
+.review-date { color: var(--muted); font-size: .78rem; }
+.review-clovers { font-size: 1rem; letter-spacing: 1px; }
+.review-comment { font-size: .9rem; color: var(--text); }
+.review-form { display: grid; gap: 14px; border-top: 1.5px solid var(--border); padding-top: 20px; margin-top: 8px; }
+.clover-picker { display: flex; gap: 6px; font-size: 1.5rem; cursor: pointer; }
+.clover-picker span { opacity: .3; transition: opacity .15s; }
+.clover-picker span.active { opacity: 1; }

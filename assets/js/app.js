@@ -802,13 +802,13 @@
                 <div class="adoption-step-num">${_step > 1 ? '✓' : '1'}</div>
                 <div class="adoption-step-body">
                     <div class="adoption-step-title">Richiedi l'adozione</div>
-                    <div class="adoption-step-desc">Clicca su "Adotta" e invia la tua richiesta al produttore.</div>
+                    <div class="adoption-step-desc">Clicca su "Adotta" e invia la tua richiesta al farmer.</div>
                 </div>
             </div>
             <div class="adoption-step ${_step > 2 ? 'done' : _step === 2 ? 'active' : ''}">
                 <div class="adoption-step-num">${_step > 2 ? '✓' : '2'}</div>
                 <div class="adoption-step-body">
-                    <div class="adoption-step-title">Mettiti d'accordo con il produttore</div>
+                    <div class="adoption-step-title">Mettiti d'accordo con il farmer</div>
                     <div class="adoption-step-desc">Concordate modalità di pagamento e raccolta dei prodotti.</div>
                 </div>
             </div>
@@ -907,7 +907,7 @@
         slot.innerHTML = `
             <div class="section-heading">
                 <div>
-                    <p class="eyebrow">Stesso produttore</p>
+                    <p class="eyebrow">Stesso farmer</p>
                     <h2>Altre adozioni disponibili da <a href="${appUrl(`farms/${farmId}/`)}" style="color:var(--brand);">${escapeHtml(farmName)}</a></h2>
                 </div>
             </div>
@@ -970,6 +970,88 @@
                 </div>
             </article>`;
         }).join('');
+    };
+
+    // RECENSIONI AZIENDA
+    const renderFarmReviews = async (farmId, container) => {
+        const slot = container?.querySelector('[data-slot="farm-reviews"]');
+        if (!slot) return;
+        const clovers = (n, total = 5) => Array.from({ length: total }, (_, i) =>
+            i < n ? '🍀' : '<span style="opacity:.3">🍀</span>'
+        ).join('');
+        try {
+            const data = await apiFetch(`/farms/${farmId}/reviews`);
+            const { reviews, avg, count } = data;
+            const avgHtml = count
+                ? `<div class="reviews-avg">
+                    <span class="reviews-avg-score">${avg}</span>
+                    <span class="review-clovers">${clovers(Math.round(avg))}</span>
+                    <span style="color:var(--muted);font-size:.85rem;">${count} recension${count === 1 ? 'e' : 'i'}</span>
+                  </div>`
+                : '<p style="color:var(--muted);font-size:.9rem;">Nessuna recensione ancora. Sii il primo!</p>';
+            const listHtml = reviews.length
+                ? `<div class="reviews-list">${reviews.map((r) => `
+                    <div class="review-item">
+                        <div class="review-meta">
+                            <span class="review-author">${escapeHtml(r.display_name)}</span>
+                            <span class="review-clovers">${clovers(Number(r.rating))}</span>
+                            <span class="review-date">${timeAgo(r.created_at)}</span>
+                        </div>
+                        ${r.comment ? `<p class="review-comment">${escapeHtml(r.comment)}</p>` : ''}
+                    </div>`).join('')}</div>`
+                : '';
+            const formHtml = window.AgriSaas?.userId
+                ? `<form class="review-form" data-review-form="${farmId}">
+                    <strong style="font-size:.95rem;">Lascia una recensione</strong>
+                    <div class="clover-picker" data-clover-picker>
+                        ${Array.from({ length: 5 }, (_, i) => `<span data-val="${i + 1}">🍀</span>`).join('')}
+                    </div>
+                    <input type="hidden" name="rating" value="0">
+                    <textarea name="comment" rows="3" placeholder="Scrivi un commento (opzionale)…" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:.9rem;resize:vertical;"></textarea>
+                    <button class="button" type="submit">Invia recensione</button>
+                    <p class="review-form-status" style="font-size:.85rem;"></p>
+                   </form>`
+                : '';
+            slot.innerHTML = `
+                <div class="section-heading"><div>
+                    <p class="eyebrow">Opinioni dei clienti</p>
+                    <h2>Recensioni</h2>
+                </div></div>
+                ${avgHtml}
+                ${listHtml}
+                ${formHtml}`;
+            const form = slot.querySelector('[data-review-form]');
+            if (form) {
+                const picker = form.querySelector('[data-clover-picker]');
+                const ratingInput = form.querySelector('input[name="rating"]');
+                picker?.querySelectorAll('span').forEach((span) => {
+                    span.addEventListener('click', () => {
+                        const val = Number(span.dataset.val);
+                        ratingInput.value = val;
+                        picker.querySelectorAll('span').forEach((s, i) => {
+                            s.classList.toggle('active', i < val);
+                        });
+                    });
+                });
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const rating = Number(ratingInput.value);
+                    if (!rating) { form.querySelector('.review-form-status').textContent = 'Seleziona un punteggio.'; return; }
+                    const comment = form.querySelector('textarea[name="comment"]').value;
+                    const btn = form.querySelector('button[type="submit"]');
+                    btn.disabled = true;
+                    try {
+                        await apiFetch(`/farms/${farmId}/reviews`, { method: 'POST', body: JSON.stringify({ rating, comment }) });
+                        renderFarmReviews(farmId, container);
+                    } catch (_) {
+                        form.querySelector('.review-form-status').textContent = 'Errore durante l\'invio. Riprova.';
+                        btn.disabled = false;
+                    }
+                });
+            }
+        } catch (_) {
+            if (slot) slot.innerHTML = '<p style="color:var(--muted);">Impossibile caricare le recensioni.</p>';
+        }
     };
 
     // MAPPA PROFILO AZIENDA (cluster)
@@ -1067,6 +1149,7 @@
 
         renderFarmProfileMap(data.trees || []);
         renderUpdates(data.updates || [], farm.id);
+        renderFarmReviews(data.farm.id, root);
 
         // Products
         const productsSection = root.querySelector('[data-profile-section="products"]');
@@ -1808,7 +1891,35 @@
         'client-dashboard': renderClientDashboard,
         'farm-dashboard':   renderFarmDashboard,
         'tree-detail':      renderTreeDetail,
-        'updates-feed':     (data) => renderUpdates(data.updates || []),
+        'updates-feed':     (data) => {
+            renderUpdates(data.updates || []);
+            if (window.AgriSaas && window.AgriSaas.userId) {
+                const updatesCard = root?.querySelector('[data-slot="updates"]')?.closest('.card');
+                if (updatesCard && !updatesCard.querySelector('.updates-toggle')) {
+                    const toggle = document.createElement('div');
+                    toggle.className = 'updates-toggle dashboard-content-tabs';
+                    toggle.innerHTML = `
+                        <button class="dash-content-tab active" data-updates-filter="all">Tutti gli aggiornamenti</button>
+                        <button class="dash-content-tab" data-updates-filter="mine">I miei aggiornamenti</button>`;
+                    updatesCard.querySelector('.section-heading')?.insertAdjacentElement('afterend', toggle);
+                    toggle.addEventListener('click', async (e) => {
+                        const btn = e.target.closest('[data-updates-filter]');
+                        if (!btn) return;
+                        toggle.querySelectorAll('.dash-content-tab').forEach((b) => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        const mine = btn.dataset.updatesFilter === 'mine';
+                        const slot = root.querySelector('[data-slot="updates"]');
+                        if (slot) slot.innerHTML = '<div class="card empty-state">Caricamento…</div>';
+                        try {
+                            const result = await apiFetch('/updates' + (mine ? '?mine=1' : ''));
+                            renderUpdates(result.updates || []);
+                        } catch (_) {
+                            if (slot) slot.innerHTML = '<div class="card empty-state" style="color:#c62828;">Errore nel caricamento aggiornamenti.</div>';
+                        }
+                    });
+                }
+            }
+        },
         'farm-profile':     renderFarmProfile,
         'mercato':          renderMercato,
         'baratto':          renderBaratto,
