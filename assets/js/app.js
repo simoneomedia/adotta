@@ -741,16 +741,108 @@
         }
         root.querySelector('[data-slot="farm-trees"]').innerHTML = data.trees.length
             ? data.trees.map((tree) => `
-                <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
-                    <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(plantedDisplay(tree) || 'Data di messa a dimora non disponibile')}</small></div>
-                    <span class="badge">${escapeHtml(tree.code)} · ${escapeHtml(tree.status)}</span>
-                </a>`).join('')
+                <div class="tree-row tree-row--manageable">
+                    <a class="tree-row-link" href="${appUrl(`trees/${tree.id}/`)}">
+                        <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(plantedDisplay(tree) || 'Data non disponibile')}</small></div>
+                        <span class="badge">${escapeHtml(tree.code)} · ${escapeHtml(tree.status)}</span>
+                    </a>
+                    <div class="tree-row-actions">
+                        <button class="button ghost" style="padding:6px 12px;font-size:.8rem;" data-edit-tree="${tree.id}">✏️ Modifica</button>
+                        ${!tree.adopter_user_id ? `<button class="button ghost" style="padding:6px 12px;font-size:.8rem;color:var(--error);border-color:var(--error);" data-delete-tree="${tree.id}">🗑</button>` : ''}
+                    </div>
+                </div>`).join('')
             : '<div class="card empty-state">Nessun albero pubblicato. Usa "+ Albero" per renderlo disponibile.</div>';
         renderAdoptionRequests(data.requests || []);
         // Attach rewards to the single farm and pre-populate reward checkboxes
         const farmWithRewards = farm ? { ...farm, rewards: data.rewards || [] } : null;
         _farmsData = farmWithRewards ? [farmWithRewards] : [];
         if (farmWithRewards) updateTreeRewardOptions(farmWithRewards.id);
+
+        // Edit tree button handler
+        root.querySelector('[data-slot="farm-trees"]')?.addEventListener('click', async (ev) => {
+            const editBtn   = ev.target.closest('[data-edit-tree]');
+            const deleteBtn = ev.target.closest('[data-delete-tree]');
+
+            if (editBtn) {
+                const treeId = Number(editBtn.dataset.editTree);
+                const tree   = data.trees.find((t) => t.id === treeId);
+                if (!tree) return;
+                const modal = document.querySelector('[data-edit-tree-form]');
+                const form  = modal?.querySelector('[data-agri-edit-tree-form]');
+                if (!form) return;
+                form.querySelector('[name="tree_id"]').value    = tree.id;
+                form.querySelector('[name="species"]').value    = tree.species || '';
+                form.querySelector('[name="code"]').value       = tree.code || '';
+                form.querySelector('[name="planted_at"]').value = tree.planted_at || '';
+                form.querySelector('[name="latitude"]').value   = tree.map_latitude || '';
+                form.querySelector('[name="longitude"]').value  = tree.map_longitude || '';
+                form.querySelector('[data-edit-tree-media-url]').value = tree.media_url || '';
+                const typeEl = form.querySelector('[name="type"]');
+                if (typeEl) typeEl.value = tree.type || 'albero';
+                const statusEl = form.querySelector('[name="status"]');
+                if (statusEl) statusEl.value = tree.status || 'available';
+                // Populate reward checkboxes
+                const rewards = farmWithRewards?.rewards || [];
+                const currentRewardIds = (tree.rewards || []).map((r) => String(r.id || r));
+                const checkboxDiv = form.querySelector('[data-edit-tree-reward-checkboxes]');
+                if (checkboxDiv) {
+                    checkboxDiv.innerHTML = rewards.length
+                        ? rewards.map((r) => `<label style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+                            <input type="checkbox" name="reward_ids[]" value="${r.id}" ${currentRewardIds.includes(String(r.id)) ? 'checked' : ''}>
+                            <span>${escapeHtml(r.name)}</span></label>`).join('')
+                        : '<p style="color:var(--muted);font-size:.85rem;">Nessun premio configurato per questa azienda.</p>';
+                }
+                form.querySelector('[data-edit-tree-form-status]').textContent = '';
+                modal.classList.add('active');
+            }
+
+            if (deleteBtn) {
+                const treeId = Number(deleteBtn.dataset.deleteTree);
+                const tree   = data.trees.find((t) => t.id === treeId);
+                if (!confirm(`Eliminare "${tree?.species || 'questo elemento'}"? Questa azione non può essere annullata.`)) return;
+                deleteBtn.disabled = true;
+                try {
+                    await apiFetch(`/trees/${treeId}`, { method: 'DELETE' });
+                    window.location.reload();
+                } catch (err) {
+                    alert(err.message || 'Errore durante l\'eliminazione.');
+                    deleteBtn.disabled = false;
+                }
+            }
+        });
+
+        // Edit tree form submit
+        document.querySelector('[data-agri-edit-tree-form]')?.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const form       = ev.currentTarget;
+            const statusEl   = form.querySelector('[data-edit-tree-form-status]');
+            const photoInput = form.querySelector('[data-edit-tree-photo-input]');
+            const mediaUrlEl = form.querySelector('[data-edit-tree-media-url]');
+            const submitBtn  = form.querySelector('[type="submit"]');
+            statusEl.textContent = '';
+            submitBtn.disabled = true;
+            try {
+                if (photoInput?.files?.length) {
+                    statusEl.textContent = 'Ottimizzazione foto…';
+                    const fd = new FormData();
+                    fd.append('photo', photoInput.files[0]);
+                    const up = await apiFetch('/media/photo', { method: 'POST', body: fd });
+                    mediaUrlEl.value = up.url;
+                }
+                const formData = new FormData(form);
+                const treeId   = formData.get('tree_id');
+                const payload  = Object.fromEntries(formData.entries());
+                delete payload.tree_photo;
+                delete payload.tree_id;
+                const rewardIds = formData.getAll('reward_ids[]').map(Number).filter(Boolean);
+                payload.reward_ids = rewardIds;
+                await apiFetch(`/trees/${treeId}`, { method: 'PUT', body: JSON.stringify(payload) });
+                window.location.reload();
+            } catch (err) {
+                statusEl.textContent = err.message || 'Errore durante il salvataggio.';
+                submitBtn.disabled = false;
+            }
+        });
     };
 
     // DETTAGLIO ALBERO
@@ -1652,6 +1744,7 @@
                         <label>Email contatto <input name="contact_email" type="email"></label>
                         <label>WhatsApp <input name="contact_whatsapp" type="tel"></label>
                     </div>
+                    <label>Foto azienda <input name="farm_photo" type="file" accept="image/*" data-admin-photo-input><input type="hidden" name="media_url" data-admin-media-url><span class="map-note" data-admin-upload-status></span></label>
                     <label class="checkbox-label"><input type="checkbox" name="is_verified" value="1"> Segna come verificata subito</label>
                     <button class="button" type="submit">Crea azienda</button>
                     <p class="form-status" data-form-status></p>
@@ -1715,7 +1808,7 @@
                         <label>Note prezzo <input name="price_note" placeholder="es. Su richiesta"></label>
                     </div>
                     <label>Descrizione <textarea name="description" rows="3"></textarea></label>
-                    <label>URL foto <input name="media_url" type="url"></label>
+                    <label>Foto prodotto <input name="farm_photo" type="file" accept="image/*" data-admin-photo-input><input type="hidden" name="media_url" data-admin-media-url><span class="map-note" data-admin-upload-status></span></label>
                     <button class="button" type="submit">Crea prodotto</button>
                     <p class="form-status" data-form-status></p>
                 </form>
@@ -1735,7 +1828,7 @@
                         <label>Descrizione offerta <textarea name="offer_description" rows="2"></textarea></label>
                         <label>Descrizione richiesta <textarea name="wants_description" rows="2"></textarea></label>
                     </div>
-                    <label>URL foto <input name="media_url" type="url"></label>
+                    <label>Foto baratto <input name="farm_photo" type="file" accept="image/*" data-admin-photo-input><input type="hidden" name="media_url" data-admin-media-url><span class="map-note" data-admin-upload-status></span></label>
                     <button class="button" type="submit">Crea baratto</button>
                     <p class="form-status" data-form-status></p>
                 </form>
@@ -1777,11 +1870,32 @@
                     const type   = form.dataset.adminForm;
                     const status = form.querySelector('[data-form-status]');
                     const btn    = form.querySelector('button[type="submit"]');
-                    const data   = Object.fromEntries(new FormData(form));
+                    btn.disabled = true;
+                    // Upload photo if file input present
+                    const photoInput  = form.querySelector('[data-admin-photo-input]');
+                    const mediaUrlEl  = form.querySelector('[data-admin-media-url]');
+                    const uploadStatus = form.querySelector('[data-admin-upload-status]');
+                    if (photoInput?.files?.length) {
+                        if (uploadStatus) uploadStatus.textContent = 'Caricamento foto…';
+                        const fd = new FormData();
+                        fd.append('photo', photoInput.files[0]);
+                        try {
+                            const up = await apiFetch('/media/photo', { method: 'POST', body: fd });
+                            if (mediaUrlEl) mediaUrlEl.value = up.url;
+                            if (uploadStatus) uploadStatus.textContent = `Foto caricata (${Math.round((up.size || 0) / 1024)} KB)`;
+                        } catch (_) { status.textContent = '❌ Errore durante il caricamento della foto.'; btn.disabled = false; return; }
+                    }
+                    // Require photo for farm, product, baratto
+                    if (['farm','product','baratto'].includes(type) && !form.querySelector('[data-admin-media-url]')?.value) {
+                        status.style.color = 'var(--error)';
+                        status.textContent = '❌ La foto è obbligatoria.';
+                        btn.disabled = false; return;
+                    }
+                    const data = Object.fromEntries(new FormData(form));
+                    delete data.farm_photo;
                     // checkbox: if unchecked it won't appear in FormData
                     if (type === 'farm') data.is_verified = form.querySelector('[name="is_verified"]')?.checked ? 1 : 0;
                     status.textContent = 'Salvataggio…';
-                    btn.disabled = true;
                     try {
                         const res = await _adminPost(`/admin/create/${type}`, data);
                         status.style.color = 'var(--brand)';
@@ -2054,11 +2168,16 @@
                     if (uploadStatus) uploadStatus.textContent = `Foto caricata (${Math.round(upload.size / 1024)} KB).`;
                 }
 
+                const mediaUrl = form.querySelector('[data-tree-media-url]')?.value?.trim();
+                if (!mediaUrl) { if (statusEl) statusEl.textContent = '❌ Carica una foto prima di pubblicare.'; submitBtn.disabled = false; return; }
+
                 const formData = new FormData(form);
                 const payload = Object.fromEntries(formData.entries());
                 delete payload.tree_photo;
                 const rewardIds = formData.getAll('reward_ids[]').map(Number).filter(Boolean);
-                if (rewardIds.length) payload.reward_ids = rewardIds;
+                const hasRewards = form.querySelectorAll('[data-tree-reward-checkboxes] input[type="checkbox"]').length > 0;
+                if (hasRewards && !rewardIds.length) { if (statusEl) statusEl.textContent = '❌ Seleziona almeno un premio da associare all\'elemento.'; submitBtn.disabled = false; return; }
+                payload.reward_ids = rewardIds;
 
                 await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
                 window.location.reload();

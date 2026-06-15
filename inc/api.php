@@ -195,10 +195,9 @@ function agri_saas_register_api_routes(): void
     ]);
 
     register_rest_route('agri-saas/v1', '/trees/(?P<id>\d+)', [
-        'methods'             => WP_REST_Server::READABLE,
-        'callback'            => 'agri_saas_api_tree_detail',
-        'permission_callback' => '__return_true',
-        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+        ['methods' => WP_REST_Server::READABLE, 'callback' => 'agri_saas_api_tree_detail',       'permission_callback' => '__return_true',       'args' => ['id' => ['sanitize_callback' => 'absint']]],
+        ['methods' => 'PUT',                     'callback' => 'agri_saas_api_update_tree',       'permission_callback' => 'is_user_logged_in',   'args' => ['id' => ['sanitize_callback' => 'absint']]],
+        ['methods' => WP_REST_Server::DELETABLE,  'callback' => 'agri_saas_api_delete_tree_owner','permission_callback' => 'is_user_logged_in',   'args' => ['id' => ['sanitize_callback' => 'absint']]],
     ]);
 
     register_rest_route('agri-saas/v1', '/media/photo', [
@@ -1234,6 +1233,8 @@ function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|W
     $latitude  = agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90);
     $longitude = agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180);
 
+    $media_url = esc_url_raw($request->get_param('media_url') ?? '');
+
     $wpdb->insert($tables['farms'], [
         'owner_user_id'    => get_current_user_id(),
         'name'             => $name,
@@ -1247,7 +1248,8 @@ function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|W
         'contact_whatsapp' => sanitize_text_field($request->get_param('contact_whatsapp')),
         'contact_phone'    => sanitize_text_field($request->get_param('contact_phone')),
         'description'      => wp_kses_post($request->get_param('description')),
-    ], ['%d', '%s', '%s', '%f', '%s', '%d', '%f', '%f', '%s', '%s', '%s', '%s']);
+        'media_url'        => $media_url,
+    ], ['%d', '%s', '%s', '%f', '%s', '%d', '%f', '%f', '%s', '%s', '%s', '%s', '%s']);
 
     if (!$wpdb->insert_id) {
         return new WP_Error('agri_saas_farm_failed', __('Unable to create farm.', 'agri-saas'), ['status' => 500]);
@@ -2739,4 +2741,79 @@ function agri_saas_api_create_farm_review(WP_REST_Request $request): WP_REST_Res
         'created_at' => current_time('mysql'),
     ], ['%d', '%d', '%d', '%s', '%s']);
     return rest_ensure_response(['saved' => true]);
+}
+
+function agri_saas_api_update_tree(WP_REST_Request $request): WP_REST_Response|WP_Error {
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $user_id = get_current_user_id();
+    $tree_id = absint($request->get_param('id'));
+
+    $tree = $wpdb->get_row($wpdb->prepare(
+        "SELECT t.*, f.owner_user_id FROM {$tables['trees']} t JOIN {$tables['farms']} f ON f.id = t.farm_id WHERE t.id = %d",
+        $tree_id
+    ), ARRAY_A);
+    if (!$tree) return new WP_Error('not_found', 'Elemento non trovato', ['status' => 404]);
+    if ((int) $tree['owner_user_id'] !== $user_id && !current_user_can('manage_options'))
+        return new WP_Error('forbidden', 'Non autorizzato', ['status' => 403]);
+
+    $species     = sanitize_text_field($request->get_param('species') ?? $tree['species']);
+    $code        = sanitize_text_field($request->get_param('code') ?? $tree['code']);
+    $type        = sanitize_key($request->get_param('type') ?? $tree['type']);
+    $status      = sanitize_key($request->get_param('status') ?? $tree['status']);
+    $media_url   = esc_url_raw($request->get_param('media_url') ?? $tree['media_url']);
+    $lat         = agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90);
+    $lng         = agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180);
+    $planted_at  = $request->get_param('planted_at') !== null
+        ? agri_saas_parse_planted_input($request->get_param('planted_at'))
+        : $tree['planted_at'];
+    $description = sanitize_textarea_field($request->get_param('description') ?? ($tree['description'] ?? ''));
+
+    $wpdb->update($tables['trees'], [
+        'species'       => $species,
+        'code'          => $code,
+        'type'          => $type,
+        'status'        => $status,
+        'media_url'     => $media_url,
+        'map_latitude'  => $lat ?? $tree['map_latitude'],
+        'map_longitude' => $lng ?? $tree['map_longitude'],
+        'planted_at'    => $planted_at,
+        'description'   => $description,
+    ], ['id' => $tree_id], ['%s','%s','%s','%s','%s','%s','%s','%s','%s'], ['%d']);
+
+    $reward_ids = $request->get_param('reward_ids');
+    if (is_array($reward_ids)) {
+        $wpdb->delete($tables['tree_rewards'], ['tree_id' => $tree_id], ['%d']);
+        foreach (array_map('absint', $reward_ids) as $rid) {
+            if ($rid) $wpdb->insert($tables['tree_rewards'], ['tree_id' => $tree_id, 'reward_id' => $rid], ['%d', '%d']);
+        }
+    }
+
+    return rest_ensure_response(['updated' => true]);
+}
+
+function agri_saas_api_delete_tree_owner(WP_REST_Request $request): WP_REST_Response|WP_Error {
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $user_id = get_current_user_id();
+    $tree_id = absint($request->get_param('id'));
+
+    $tree = $wpdb->get_row($wpdb->prepare(
+        "SELECT t.*, f.owner_user_id FROM {$tables['trees']} t JOIN {$tables['farms']} f ON f.id = t.farm_id WHERE t.id = %d",
+        $tree_id
+    ), ARRAY_A);
+    if (!$tree) return new WP_Error('not_found', 'Elemento non trovato', ['status' => 404]);
+    if ((int) $tree['owner_user_id'] !== $user_id && !current_user_can('manage_options'))
+        return new WP_Error('forbidden', 'Non autorizzato', ['status' => 403]);
+
+    $active = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM {$tables['adoptions']} WHERE tree_id = %d AND status IN ('active','pending')",
+        $tree_id
+    ));
+    if ($active > 0)
+        return new WP_Error('has_adoptions', 'Questo elemento ha adozioni attive o in attesa. Annullale prima di eliminare.', ['status' => 409]);
+
+    $wpdb->delete($tables['tree_rewards'], ['tree_id' => $tree_id], ['%d']);
+    $wpdb->delete($tables['trees'], ['id' => $tree_id], ['%d']);
+    return rest_ensure_response(['deleted' => true]);
 }

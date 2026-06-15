@@ -1826,3 +1826,9 @@ a.ig-farm-name:hover { color: var(--brand); }
 .clover-picker { display: flex; gap: 6px; font-size: 1.5rem; cursor: pointer; }
 .clover-picker span { opacity: .3; transition: opacity .15s; }
 .clover-picker span.active { opacity: 1; }
+
+/* ── Farm tree management row ────────────────────────────────────── */
+.tree-row--manageable { display: flex; align-items: center; border-bottom: 1px solid var(--border); }
+.tree-row--manageable:last-child { border-bottom: none; }
+.tree-row--manageable .tree-row-link { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; text-decoration: none; color: var(--text); }
+.tree-row-actions { display: flex; gap: 6px; padding: 6px 0 6px 10px; flex-shrink: 0; }
