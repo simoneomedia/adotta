@@ -19,9 +19,9 @@ function agri_saas_register_routes(): void
     add_rewrite_rule('^profilo/?$', 'index.php?agri_saas_route=profilo', 'top');
 
     // Flush rewrite rules when route set changes
-    if (get_option('agri_saas_routes_version') !== '5') {
+    if (get_option('agri_saas_routes_version') !== '6') {
         flush_rewrite_rules();
-        update_option('agri_saas_routes_version', '5');
+        update_option('agri_saas_routes_version', '6');
     }
 }
 
