@@ -129,7 +129,7 @@ function agri_saas_nav_items(): array
     }
 
     if (current_user_can('manage_options')) {
-        $items[] = ['label' => __('Admin', 'agri-saas'), 'url' => home_url('/wido-admin/'), 'icon' => '⚙️'];
+        $items[] = ['label' => __('Admin', 'agri-saas'), 'url' => add_query_arg('agri_saas_route', 'wido-admin', home_url('/')), 'icon' => '⚙️'];
     }
 
     return $items;
