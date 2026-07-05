@@ -188,6 +188,12 @@ function agri_saas_register_api_routes(): void
         'permission_callback' => 'agri_saas_can_manage_farms',
     ]);
 
+    register_rest_route('agri-saas/v1', '/farms/become', [
+        'methods'             => WP_REST_Server::CREATABLE,
+        'callback'            => 'agri_saas_api_become_farmer',
+        'permission_callback' => 'is_user_logged_in',
+    ]);
+
     register_rest_route('agri-saas/v1', '/trees', [
         'methods'             => WP_REST_Server::CREATABLE,
         'callback'            => 'agri_saas_api_create_tree',
@@ -341,9 +347,11 @@ function agri_saas_api_register_user(WP_REST_Request $request): WP_REST_Response
         return new WP_Error('agri_saas_already_logged_in', __('You are already registered and logged in.', 'agri-saas'), ['status' => 400]);
     }
 
-    $account_type = sanitize_key($request->get_param('account_type'));
+    // Registrazione unica: tutti gli account nascono come utenti semplici.
+    // Il profilo produttore si crea dopo il login (POST /farms/become).
+    $account_type = sanitize_key($request->get_param('account_type')) ?: 'client';
     if (!in_array($account_type, ['client', 'farm'], true)) {
-        return new WP_Error('agri_saas_registration_type', __('Choose client or farm registration.', 'agri-saas'), ['status' => 400]);
+        $account_type = 'client';
     }
 
     $email        = sanitize_email($request->get_param('email'));
@@ -1256,6 +1264,62 @@ function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|W
     }
 
     return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
+}
+
+function agri_saas_api_become_farmer(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $user_id = get_current_user_id();
+
+    $existing = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM {$tables['farms']} WHERE owner_user_id = %d LIMIT 1",
+        $user_id
+    ));
+    if ($existing) {
+        return new WP_Error('agri_saas_farm_exists', __('Hai già un profilo produttore.', 'agri-saas'), ['status' => 409]);
+    }
+
+    $name      = sanitize_text_field($request->get_param('name'));
+    $location  = sanitize_text_field($request->get_param('location'));
+    $latitude  = agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90);
+    $longitude = agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180);
+
+    if (!$name || !$location) {
+        return new WP_Error('agri_saas_farm_required_fields', __('Nome attività e località sono obbligatori.', 'agri-saas'), ['status' => 400]);
+    }
+    if ($latitude === null || $longitude === null) {
+        return new WP_Error('agri_saas_farm_coords_required', __('Le coordinate del luogo di produzione sono obbligatorie.', 'agri-saas'), ['status' => 400]);
+    }
+
+    $user = wp_get_current_user();
+
+    $wpdb->insert($tables['farms'], [
+        'owner_user_id'    => $user_id,
+        'name'             => $name,
+        'location'         => $location,
+        'acreage'          => (float) $request->get_param('acreage'),
+        'crop_focus'       => sanitize_text_field($request->get_param('crop_focus')),
+        'health_score'     => 0,
+        'latitude'         => $latitude,
+        'longitude'        => $longitude,
+        'contact_email'    => sanitize_email($request->get_param('contact_email') ?: $user->user_email),
+        'contact_whatsapp' => sanitize_text_field($request->get_param('contact_whatsapp') ?: get_user_meta($user_id, 'agri_contact_whatsapp', true)),
+        'contact_phone'    => sanitize_text_field($request->get_param('contact_phone') ?: get_user_meta($user_id, 'agri_contact_phone', true)),
+        'description'      => wp_kses_post($request->get_param('description')),
+        'media_url'        => esc_url_raw($request->get_param('media_url') ?? ''),
+    ], ['%d', '%s', '%s', '%f', '%s', '%d', '%f', '%f', '%s', '%s', '%s', '%s', '%s']);
+
+    if (!$wpdb->insert_id) {
+        return new WP_Error('agri_saas_farm_failed', __('Impossibile creare il profilo produttore.', 'agri-saas'), ['status' => 500]);
+    }
+
+    $user->add_role('farm_manager');
+
+    return rest_ensure_response([
+        'id'       => (int) $wpdb->insert_id,
+        'redirect' => home_url('/farm-dashboard/'),
+    ]);
 }
 
 function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|WP_Error

@@ -1348,21 +1348,17 @@
             if (btn) btn.style.display = '';
         }
 
-        // View toggle
+        // View toggle (mobile): switches data-view on the layout; desktop shows both
+        const layout = root.querySelector('[data-market-layout]');
         root.querySelectorAll('[data-view-toggle]').forEach((btn) => {
             btn.addEventListener('click', () => {
                 const view = btn.dataset.viewToggle;
                 root.querySelectorAll('[data-view-toggle]').forEach((b) => b.classList.toggle('active', b === btn));
-                if (view === 'map') {
-                    slot.style.display = 'none';
-                    if (mapSlot) mapSlot.style.display = '';
-                    renderMercatoMap(data.products || []);
-                } else {
-                    slot.style.display = '';
-                    if (mapSlot) mapSlot.style.display = 'none';
-                }
+                if (layout) layout.dataset.view = view;
+                if (view === 'map') renderMercatoMap(data.products || []);
             });
         });
+        renderMercatoMap(data.products || []);
 
         const waLink = (p) => {
             if (!data.logged_in) return `<button class="button ghost" type="button" data-auth-contact>🔒 Accedi per contattare</button>`;
@@ -1401,21 +1397,17 @@
             if (btn) btn.style.display = '';
         }
 
-        // View toggle
+        // View toggle (mobile): switches data-view on the layout; desktop shows both
+        const layout = root.querySelector('[data-market-layout]');
         root.querySelectorAll('[data-view-toggle]').forEach((btn) => {
             btn.addEventListener('click', () => {
                 const view = btn.dataset.viewToggle;
                 root.querySelectorAll('[data-view-toggle]').forEach((b) => b.classList.toggle('active', b === btn));
-                if (view === 'map') {
-                    slot.style.display = 'none';
-                    if (mapSlot) mapSlot.style.display = '';
-                    renderBarattoMap(data.baratti || []);
-                } else {
-                    slot.style.display = '';
-                    if (mapSlot) mapSlot.style.display = 'none';
-                }
+                if (layout) layout.dataset.view = view;
+                if (view === 'map') renderBarattoMap(data.baratti || []);
             });
         });
+        renderBarattoMap(data.baratti || []);
 
         const waLink = (b) => {
             if (!data.logged_in) return `<button class="button ghost" type="button" data-auth-contact>🔒 Accedi per contattare</button>`;
@@ -2115,6 +2107,7 @@
         document.querySelector('[data-open-tree-form]')?.addEventListener('click',     () => openModal('[data-tree-form]'));
         document.querySelector('[data-open-update-form]')?.addEventListener('click',   () => openModal('[data-update-form]'));
         document.querySelector('[data-open-product-form]')?.addEventListener('click',  () => openModal('[data-product-form]'));
+        document.querySelector('[data-open-become-producer]')?.addEventListener('click', () => openModal('[data-become-producer-form]'));
         document.querySelector('[data-open-baratto-form]')?.addEventListener('click',  () => openModal('[data-baratto-form]'));
 
         // Adoptable trees: view toggle (map ↔ list)
@@ -2276,6 +2269,29 @@
         };
         bindSimpleModal('[data-agri-product-form]', '/mercato');
         bindSimpleModal('[data-agri-baratto-form]', '/baratto');
+
+        // Diventa produttore
+        const bpForm = document.querySelector('[data-agri-become-producer-form]');
+        if (bpForm) {
+            bpForm.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                const btn = bpForm.querySelector('button[type="submit"]');
+                const statusEl = bpForm.querySelector('[data-form-status]');
+                btn.disabled = true;
+                if (statusEl) statusEl.textContent = '';
+                try {
+                    const fd = new FormData(bpForm);
+                    const payload = {};
+                    fd.forEach((v, k) => { payload[k] = v; });
+                    const res = await apiFetch('/farms/become', { method: 'POST', body: JSON.stringify(payload) });
+                    if (statusEl) statusEl.textContent = '✅ Profilo produttore creato! Reindirizzamento…';
+                    window.location.href = res.redirect || appUrl('farm-dashboard/');
+                } catch (err) {
+                    if (statusEl) statusEl.textContent = err.message || 'Errore. Riprova.';
+                    btn.disabled = false;
+                }
+            });
+        }
     };
 
     const bindRegistration = () => {

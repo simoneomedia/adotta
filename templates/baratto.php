@@ -15,8 +15,15 @@ agri_saas_render_shell(__('Baratto', 'agri-saas'), function (): void {
                 </div>
                 <button class="button" type="button" data-open-baratto-form style="display:none;"><?php esc_html_e('+ Baratto', 'agri-saas'); ?></button>
             </div>
-            <div data-slot="baratti">
-                <div class="card empty-state"><?php esc_html_e('Caricamento baratti…', 'agri-saas'); ?></div>
+            <div class="view-toggle-bar">
+                <button class="dash-content-tab active" type="button" data-view-toggle="list"><?php esc_html_e('📋 Lista', 'agri-saas'); ?></button>
+                <button class="dash-content-tab" type="button" data-view-toggle="map"><?php esc_html_e('🗺️ Mappa', 'agri-saas'); ?></button>
+            </div>
+            <div class="market-layout" data-market-layout data-view="list">
+                <div class="market-map" data-slot="baratto-map"></div>
+                <div class="market-list" data-slot="baratti">
+                    <div class="card empty-state"><?php esc_html_e('Caricamento baratti…', 'agri-saas'); ?></div>
+                </div>
             </div>
         </article>
     </section>

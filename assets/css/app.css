@@ -1832,3 +1832,20 @@ a.ig-farm-name:hover { color: var(--brand); }
 .tree-row--manageable:last-child { border-bottom: none; }
 .tree-row--manageable .tree-row-link { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; text-decoration: none; color: var(--text); }
 .tree-row-actions { display: flex; gap: 6px; padding: 6px 0 6px 10px; flex-shrink: 0; }
+
+/* ── Market/Baratto map+list layout ─────────────────────── */
+.view-toggle-bar { display: none; gap: 8px; margin: 12px 0; }
+.market-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); gap: 16px; align-items: start; margin-top: 12px; }
+.market-layout .market-map { position: sticky; top: 16px; min-height: 340px; }
+.market-layout .market-map .leaflet-map { height: calc(100vh - 220px) !important; min-height: 340px; }
+.market-list { max-height: calc(100vh - 220px); overflow-y: auto; padding-right: 4px; }
+.market-list .product-grid { grid-template-columns: 1fr; }
+@media (max-width: 900px) {
+    .view-toggle-bar { display: flex; }
+    .market-layout { grid-template-columns: 1fr; }
+    .market-layout .market-map { position: static; }
+    .market-layout .market-map .leaflet-map { height: 60vh !important; }
+    .market-list { max-height: none; overflow: visible; }
+    .market-layout[data-view="list"] .market-map { display: none; }
+    .market-layout[data-view="map"] .market-list { display: none; }
+}
