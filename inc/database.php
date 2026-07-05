@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AGRI_SAAS_DB_VERSION', '10');
+define('AGRI_SAAS_DB_VERSION', '11');
 
 add_action('init', 'agri_saas_maybe_upgrade_db');
 function agri_saas_maybe_upgrade_db(): void
@@ -194,6 +194,7 @@ function agri_saas_install_tables(): void
         description TEXT DEFAULT NULL,
         price DECIMAL(10,2) DEFAULT NULL,
         unit VARCHAR(40) NOT NULL DEFAULT 'unità',
+        price_note VARCHAR(191) NOT NULL DEFAULT '',
         media_url TEXT DEFAULT NULL,
         is_active TINYINT UNSIGNED NOT NULL DEFAULT 1,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
