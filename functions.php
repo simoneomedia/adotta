@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AGRI_SAAS_VERSION', '2.0.2');
+define('AGRI_SAAS_VERSION', wp_get_theme(basename(get_template_directory()))->get('Version') ?: '2.0.2');
 define('AGRI_SAAS_THEME_SLUG', basename(get_template_directory()));
 define('AGRI_SAAS_PATH', get_template_directory());
 define('AGRI_SAAS_URI', get_template_directory_uri());
