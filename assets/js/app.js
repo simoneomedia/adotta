@@ -20,8 +20,8 @@
                     <a class="auth-option" href="${window.AgriSaas.homeUrl}?type=client">
                         <span class="auth-option-icon">🌱</span>
                         <div class="auth-option-text">
-                            <strong>Sono un Cliente</strong>
-                            <small>Adotta alberi, segui il loro percorso, ricevi prodotti dall'azienda</small>
+                            <strong>Sono un Utente</strong>
+                            <small>Adotta alberi, segui il loro percorso, ricevi prodotti dal produttore</small>
                         </div>
                         <span class="auth-option-arrow">→</span>
                     </a>
@@ -568,7 +568,7 @@
         }
     };
 
-    // DASHBOARD CLIENTE
+    // DASHBOARD UTENTE
     const renderClientDashboard = (data) => {
         _statCardIdx = 0;
         root.querySelector('[data-slot="stats"]').innerHTML = [
@@ -665,7 +665,7 @@
         const rewards = farm?.rewards || [];
         slot.style.display = '';
         if (!rewards.length) {
-            box.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">⚠️ Nessun premio configurato per questa azienda. Chiedi all\'admin di aggiungerne prima di creare elementi.</p>';
+            box.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">⚠️ Nessun premio configurato per questo produttore. Chiedi all\'admin di aggiungerne prima di creare elementi.</p>';
             return;
         }
         box.innerHTML = rewards.map((r) => `
@@ -680,7 +680,7 @@
         document.querySelectorAll('[data-farm-options]').forEach((select) => {
             select.innerHTML = farms.length
                 ? farms.map((farm) => `<option value="${escapeHtml(farm.id)}">${escapeHtml(farm.name)} · ${escapeHtml(farm.location)}</option>`).join('')
-                : '<option value="">Crea prima un\'azienda</option>';
+                : '<option value="">Crea prima un produttore</option>';
             select.disabled = !farms.length;
         });
         const treeFormFarmSelect = document.querySelector('[data-agri-tree-form] [data-farm-options]');
@@ -733,13 +733,13 @@
         slot.innerHTML = html || '<div class="card empty-state">Nessuna richiesta in sospeso.</div>';
     };
 
-    // DASHBOARD AZIENDA
+    // DASHBOARD PRODUTTORE
     const renderFarmDashboard = (data) => {
         _statCardIdx = 0;
         const farm = (data.farms || [])[0] || null;
         root.querySelector('[data-slot="stats"]').innerHTML = [
             statCard('Alberi disponibili', data.stats.availableTrees, "Pronti per l'adozione"),
-            statCard('Alberi adottati', data.stats.adoptedTrees, 'Sponsorizzati dai clienti'),
+            statCard('Alberi adottati', data.stats.adoptedTrees, 'Sponsorizzati dai utenti'),
         ].join('');
         const nameEl = root.querySelector('[data-slot="farm-name"]');
         if (nameEl) nameEl.textContent = farm ? farm.name : '—';
@@ -754,7 +754,7 @@
                         <span class="badge">${escapeHtml(farm.health_score)} salute</span>
                         ${shareButtons(appUrl(`farms/${farm.id}/`), `🌾 ${farm.name} — Adotta un albero!`)}
                     </div>
-                </div>` : '<div class="card empty-state">Profilo azienda non trovato.</div>';
+                </div>` : '<div class="card empty-state">Profilo produttore non trovato.</div>';
         }
         root.querySelector('[data-slot="farm-trees"]').innerHTML = data.trees.length
             ? data.trees.map((tree) => `
@@ -807,7 +807,7 @@
                         ? rewards.map((r) => `<label style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
                             <input type="checkbox" name="reward_ids[]" value="${r.id}" ${currentRewardIds.includes(String(r.id)) ? 'checked' : ''}>
                             <span>${escapeHtml(r.name)}</span></label>`).join('')
-                        : '<p style="color:var(--muted);font-size:.85rem;">Nessun premio configurato per questa azienda.</p>';
+                        : '<p style="color:var(--muted);font-size:.85rem;">Nessun premio configurato per questo produttore.</p>';
                 }
                 form.querySelector('[data-edit-tree-form-status]').textContent = '';
                 modal.classList.add('active');
@@ -898,7 +898,7 @@
         } else if (isPending) {
             adoptionHtml = `<div style="margin-top:16px;"><span class="badge-pending">⏳ Richiesta di adozione inviata — in attesa di conferma</span></div>`;
         } else if (isAdopter && isCancelReq) {
-            adoptionHtml = `<div style="margin-top:16px;"><span class="badge-warning">⏳ Richiesta di cancellazione in attesa di conferma dall'azienda</span></div>`;
+            adoptionHtml = `<div style="margin-top:16px;"><span class="badge-warning">⏳ Richiesta di cancellazione in attesa di conferma dal produttore</span></div>`;
         } else if (isAdopter && adoption?.status === 'active') {
             adoptionHtml = `<div style="margin-top:16px;"><button class="button ghost" type="button" style="font-size:.82rem;" data-request-cancel="${escapeHtml(adoption.id)}">Richiedi cancellazione adozione</button></div>`;
         }
@@ -1059,8 +1059,8 @@
                         : `<div class="ig-avatar">🌿</div>`}
                     <div class="ig-card-meta">
                         ${farmUrl
-                            ? `<a class="ig-farm-name" href="${escapeHtml(farmUrl)}">${escapeHtml(update.farm_name || 'Azienda')}</a>`
-                            : `<strong class="ig-farm-name">${escapeHtml(update.farm_name || 'Azienda')}</strong>`}
+                            ? `<a class="ig-farm-name" href="${escapeHtml(farmUrl)}">${escapeHtml(update.farm_name || 'Produttore')}</a>`
+                            : `<strong class="ig-farm-name">${escapeHtml(update.farm_name || 'Produttore')}</strong>`}
                         <span class="ig-timestamp">${timeAgo(update.created_at)}</span>
                     </div>
                     <span class="ig-visibility">${visibilityLabel(update.visibility)}</span>
@@ -1081,7 +1081,7 @@
         }).join('');
     };
 
-    // RECENSIONI AZIENDA
+    // RECENSIONI PRODUTTORE
     const renderFarmReviews = async (farmId, container) => {
         const slot = container?.querySelector('[data-slot="farm-reviews"]');
         if (!slot) return;
@@ -1123,7 +1123,7 @@
                 : '';
             slot.innerHTML = `
                 <div class="section-heading"><div>
-                    <p class="eyebrow">Opinioni dei clienti</p>
+                    <p class="eyebrow">Opinioni dei utenti</p>
                     <h2>Recensioni</h2>
                 </div></div>
                 ${avgHtml}
@@ -1163,7 +1163,7 @@
         }
     };
 
-    // MAPPA PROFILO AZIENDA (cluster)
+    // MAPPA PROFILO PRODUTTORE (cluster)
     const renderFarmProfileMap = (trees) => {
         const slot = root?.querySelector('[data-slot="farm-profile-map"]');
         if (!slot) return;
@@ -1196,7 +1196,7 @@
 
     const contactButton = (href, label) => href ? `<a class="button ghost" href="${escapeHtml(href)}">${escapeHtml(label)}</a>` : '';
 
-    // PROFILO AZIENDA
+    // PROFILO PRODUTTORE
     const renderFarmProfile = (data) => {
         _statCardIdx = 0;
         const farm = data.farm;
@@ -1206,7 +1206,7 @@
         const shellH1 = document.querySelector('.app-topbar h1');
         if (shellH1) shellH1.textContent = farm.name;
         root.querySelector('[data-slot="farm-summary"]').innerHTML =
-            `${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus || 'Produzione mista')}<br>${escapeHtml(farm.description || "Questa azienda usa il suo profilo come vetrina pubblica per alberi, foto e aggiornamenti dal campo.")}`;
+            `${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus || 'Produzione mista')}<br>${escapeHtml(farm.description || "Questo produttore usa il suo profilo come vetrina pubblica per alberi, foto e aggiornamenti dal campo.")}`;
         if (!data.logged_in) {
             root.querySelector('[data-slot="farm-contacts"]').innerHTML =
                 `<button class="button ghost" type="button" data-auth-contact>🔒 Accedi per vedere i contatti</button>`;
@@ -1224,7 +1224,7 @@
             followButton.dataset.farmId = farm.id;
             followButton.dataset.following = data.isFollowing ? '1' : '0';
             followButton.textContent = data.canFollow
-                ? (data.isFollowing ? 'Stai seguendo ✓' : 'Segui azienda')
+                ? (data.isFollowing ? 'Stai seguendo ✓' : 'Segui produttore')
                 : 'Accedi per seguire';
             followButton.classList.toggle('ghost', Boolean(data.isFollowing));
             followButton.dataset.loginUrl = data.loginUrl || '';
@@ -1238,7 +1238,7 @@
         root.querySelector('[data-slot="farm-profile-stats"]').innerHTML = [
             statCard('Alberi', data.stats.trees, 'Tutti visibili nella vetrina'),
             statCard('Adottati', data.stats.adoptedTrees, 'Già sponsorizzati'),
-            statCard('Follower', data.stats.followers, 'Clienti che seguono gli aggiornamenti'),
+            statCard('Follower', data.stats.followers, 'Utenti che seguono gli aggiornamenti'),
         ].join('');
 
         root.querySelector('[data-slot="farm-profile-trees"]').innerHTML = data.trees.length
@@ -1246,14 +1246,14 @@
                 <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
                     <div>
                         <strong>${escapeHtml(tree.species)}</strong><br>
-                        <small>${escapeHtml(tree.code)} · ${escapeHtml(tree.planted_at || 'Data N/D')} · coord. ${escapeHtml(tree.coordinate_source || 'azienda')}</small>
+                        <small>${escapeHtml(tree.code)} · ${escapeHtml(tree.planted_at || 'Data N/D')} · coord. ${escapeHtml(tree.coordinate_source || 'produttore')}</small>
                     </div>
                     <span class="badge">${escapeHtml(tree.status)}${tree.adopter_name ? ` · ${escapeHtml(tree.adopter_name)}` : ''}</span>
                 </a>`).join('')
-            : '<div class="card empty-state">Nessun albero pubblicato da questa azienda.</div>';
+            : '<div class="card empty-state">Nessun albero pubblicato da questo produttore.</div>';
 
         root.querySelector('[data-slot="farm-photos"]').innerHTML = data.photos.length
-            ? data.photos.slice(0, 6).map((url) => `<a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Foto dell'azienda" loading="lazy"></a>`).join('')
+            ? data.photos.slice(0, 6).map((url) => `<a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Foto del produttore" loading="lazy"></a>`).join('')
             : '<div class="card empty-state">Nessuna foto ancora.</div>';
 
         renderFarmProfileMap(data.trees || []);
@@ -1568,7 +1568,7 @@
                     ${cell(r.id)}${cell(r.name)}${cell(r.location)}${cell(r.crop_focus)}${cell(r.owner_name)}${cell(r.owner_email)}${cell(r.tree_count)}${cell(r.adoption_count)}
                     <td><button class="admin-verify-btn ${verified ? 'verified' : ''}" data-farm-id="${e(String(r.id))}" data-verified="${verified ? '1' : '0'}">${verified ? '✅ Verificata' : '⬜ Verifica'}</button></td>
                 </tr>`;
-            }).join('') || '<tr><td colspan="9">Nessuna azienda</td></tr>';
+            }).join('') || '<tr><td colspan="9">Nessun produttore</td></tr>';
 
             const adoptionStatuses = ['pending', 'active', 'cancelled', 'cancel_requested'];
             root.querySelector('[data-slot="admin-adoptions"]').innerHTML = (d.adoptions || []).map((r) =>
@@ -1615,7 +1615,7 @@
         const resetBtn = root.querySelector('[data-admin-reset]');
         if (resetBtn) {
             resetBtn.addEventListener('click', async () => {
-                const first = confirm('⚠️ ATTENZIONE: questa operazione elimina TUTTE le aziende, elementi, adozioni, prodotti, baratti e aggiornamenti. Gli account utente restano intatti.\n\nSei sicuro di voler continuare?');
+                const first = confirm('⚠️ ATTENZIONE: questa operazione elimina TUTTI i produttori, elementi, adozioni, prodotti, baratti e aggiornamenti. Gli account utente restano intatti.\n\nSei sicuro di voler continuare?');
                 if (!first) return;
                 const code = prompt('Digita ELIMINA_TUTTO per confermare:');
                 if (code !== 'ELIMINA_TUTTO') { alert('Operazione annullata.'); return; }
@@ -1744,21 +1744,21 @@
 
             slot.innerHTML = `
             <div class="admin-create-tabs">
-                <button class="admin-create-tab active" data-create-tab="farm">🏡 Azienda</button>
+                <button class="admin-create-tab active" data-create-tab="farm">🏡 Produttore</button>
                 <button class="admin-create-tab" data-create-tab="tree">🌱 Elemento</button>
                 <button class="admin-create-tab" data-create-tab="product">🛒 Prodotto</button>
                 <button class="admin-create-tab" data-create-tab="baratto">🤝 Baratto</button>
                 <button class="admin-create-tab" data-create-tab="update">📣 Aggiornamento</button>
             </div>
 
-            <!-- FORM AZIENDA -->
+            <!-- FORM PRODUTTORE -->
             <div class="admin-create-form card" data-create-panel="farm">
-                <p class="eyebrow">Nuova azienda</p>
-                <h2 style="margin-bottom:20px;">Crea azienda</h2>
+                <p class="eyebrow">Nuova produttore</p>
+                <h2 style="margin-bottom:20px;">Crea produttore</h2>
                 <form data-admin-form="farm" class="admin-form-grid">
                     <label>Proprietario (utente) <select name="owner_user_id" required><option value="">Seleziona…</option>${userOptions}</select></label>
                     <div class="form-grid-2">
-                        <label>Nome azienda <input name="name" required></label>
+                        <label>Nome produttore <input name="name" required></label>
                         <label>Località <input name="location" required></label>
                     </div>
                     <div class="form-grid-2">
@@ -1774,9 +1774,9 @@
                         <label>Email contatto <input name="contact_email" type="email"></label>
                         <label>WhatsApp <input name="contact_whatsapp" type="tel"></label>
                     </div>
-                    <label>Foto azienda <input name="farm_photo" type="file" accept="image/*" data-admin-photo-input><input type="hidden" name="media_url" data-admin-media-url><span class="map-note" data-admin-upload-status></span></label>
+                    <label>Foto produttore <input name="farm_photo" type="file" accept="image/*" data-admin-photo-input><input type="hidden" name="media_url" data-admin-media-url><span class="map-note" data-admin-upload-status></span></label>
                     <label class="checkbox-label"><input type="checkbox" name="is_verified" value="1"> Segna come verificata subito</label>
-                    <button class="button" type="submit">Crea azienda</button>
+                    <button class="button" type="submit">Crea produttore</button>
                     <p class="form-status" data-form-status></p>
                 </form>
             </div>
@@ -1786,7 +1786,7 @@
                 <p class="eyebrow">Nuovo elemento</p>
                 <h2 style="margin-bottom:20px;">Crea elemento adottabile</h2>
                 <form data-admin-form="tree" class="admin-form-grid">
-                    <label>Azienda <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
+                    <label>Produttore <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
                     <div class="form-grid-2">
                         <label>Specie / nome <input name="species" required placeholder="es. Oliva Taggiasca"></label>
                         <label>Codice univoco <input name="code" required placeholder="es. OLV-001"></label>
@@ -1828,7 +1828,7 @@
                 <p class="eyebrow">Nuovo prodotto</p>
                 <h2 style="margin-bottom:20px;">Crea prodotto mercato</h2>
                 <form data-admin-form="product" class="admin-form-grid">
-                    <label>Azienda <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
+                    <label>Produttore <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
                     <div class="form-grid-2">
                         <label>Nome prodotto <input name="name" required></label>
                         <label>Unità <input name="unit" placeholder="es. kg, litro, confezione"></label>
@@ -1849,7 +1849,7 @@
                 <p class="eyebrow">Nuovo baratto</p>
                 <h2 style="margin-bottom:20px;">Crea offerta baratto</h2>
                 <form data-admin-form="baratto" class="admin-form-grid">
-                    <label>Azienda <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
+                    <label>Produttore <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
                     <div class="form-grid-2">
                         <label>Offro (titolo) <input name="offer_title" required placeholder="es. Olio EVO 5L"></label>
                         <label>Cerco (titolo) <input name="wants_title" required placeholder="es. Miele artigianale"></label>
@@ -1869,7 +1869,7 @@
                 <p class="eyebrow">Nuovo aggiornamento</p>
                 <h2 style="margin-bottom:20px;">Pubblica aggiornamento</h2>
                 <form data-admin-form="update" class="admin-form-grid">
-                    <label>Azienda <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
+                    <label>Produttore <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
                     <label>Titolo <input name="title" required></label>
                     <label>Testo <textarea name="body" rows="4"></textarea></label>
                     <div class="form-grid-2">
@@ -1987,7 +1987,7 @@
             <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">
                 <div class="profile-stat"><span class="profile-stat-num">${stats.activeAdoptions || 0}</span><span>Adozioni attive</span></div>
                 <div class="profile-stat"><span class="profile-stat-num">${stats.adoptedTrees || 0}</span><span>Elementi adottati</span></div>
-                ${stats.farms ? `<div class="profile-stat"><span class="profile-stat-num">${stats.farms}</span><span>Aziende gestite</span></div>` : ''}
+                ${stats.farms ? `<div class="profile-stat"><span class="profile-stat-num">${stats.farms}</span><span>Attività gestite</span></div>` : ''}
             </div>`;
 
         const statusLabel = { active: '✅ Attiva', pending: '⏳ In attesa', cancelled: '❌ Cancellata', cancel_requested: '⚠️ Cancellazione richiesta' };
@@ -2162,7 +2162,7 @@
             }
             const cancelButton = event.target.closest('[data-request-cancel]');
             if (cancelButton) {
-                if (!confirm('Sei sicuro di voler richiedere la cancellazione di questa adozione? Il gestore dell\'azienda dovrà confermare.')) return;
+                if (!confirm('Sei sicuro di voler richiedere la cancellazione di questa adozione? Il produttore dovrà confermare.')) return;
                 cancelButton.disabled = true;
                 await apiFetch(`/adoption-requests/${cancelButton.dataset.requestCancel}/request-cancel`, { method: 'POST', body: JSON.stringify({}) });
                 loadRoot();

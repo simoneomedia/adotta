@@ -5,17 +5,17 @@ if (!defined('ABSPATH')) {
 require_once AGRI_SAAS_PATH . '/components/layout.php';
 require_once AGRI_SAAS_PATH . '/components/cards.php';
 
-agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
+agri_saas_render_shell(__('Area Produttore', 'agri-saas'), function (): void {
     ?>
     <section class="dashboard-grid" data-agri-endpoint="/dashboard/farm" data-render="farm-dashboard">
         <div class="stats-grid" data-slot="stats">
             <?php agri_saas_stat_card(__('Alberi disponibili', 'agri-saas'), '—', __("Pronti per l'adozione", 'agri-saas')); ?>
-            <?php agri_saas_stat_card(__('Alberi adottati', 'agri-saas'), '—', __('Sponsorizzati dai clienti', 'agri-saas')); ?>
+            <?php agri_saas_stat_card(__('Alberi adottati', 'agri-saas'), '—', __('Sponsorizzati dai utenti', 'agri-saas')); ?>
         </div>
         <article class="card span-2">
             <div class="section-heading">
                 <div>
-                    <p class="eyebrow"><?php esc_html_e('La mia azienda', 'agri-saas'); ?></p>
+                    <p class="eyebrow"><?php esc_html_e('La mia attività', 'agri-saas'); ?></p>
                     <h2 data-slot="farm-name"><?php esc_html_e('—', 'agri-saas'); ?></h2>
                 </div>
                 <div class="button-group">
@@ -29,7 +29,7 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
             <div class="section-heading">
                 <div>
                     <p class="eyebrow"><?php esc_html_e('Catalogo adozione', 'agri-saas'); ?></p>
-                    <h2><?php esc_html_e('Alberi pronti per i clienti', 'agri-saas'); ?></h2>
+                    <h2><?php esc_html_e('Alberi pronti per i utenti', 'agri-saas'); ?></h2>
                 </div>
             </div>
             <div class="card-list" data-slot="farm-trees">
@@ -40,11 +40,11 @@ agri_saas_render_shell(__('Area Azienda', 'agri-saas'), function (): void {
             <div class="section-heading">
                 <div>
                     <p class="eyebrow"><?php esc_html_e('Richieste di adozione', 'agri-saas'); ?></p>
-                    <h2><?php esc_html_e('Richieste clienti in sospeso', 'agri-saas'); ?></h2>
+                    <h2><?php esc_html_e('Richieste utenti in sospeso', 'agri-saas'); ?></h2>
                 </div>
             </div>
             <div class="card-list" data-slot="adoption-requests">
-                <?php agri_saas_empty_state(__('Le richieste in sospeso appariranno qui quando i clienti chiederanno di adottare un albero.', 'agri-saas')); ?>
+                <?php agri_saas_empty_state(__('Le richieste in sospeso appariranno qui quando i utenti chiederanno di adottare un albero.', 'agri-saas')); ?>
             </div>
         </article>
     </section>

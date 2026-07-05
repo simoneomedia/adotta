@@ -16,7 +16,7 @@ agri_saas_render_shell(sprintf(__('Albero #%d', 'agri-saas'), $tree_id), functio
         <aside class="card map-card" data-slot="tree-map">
             <p class="eyebrow"><?php esc_html_e('Posizione', 'agri-saas'); ?></p>
             <div class="map-placeholder">&#9678;</div>
-            <p><?php esc_html_e("Le coordinate e il contesto dell'azienda sono forniti dall'API.", 'agri-saas'); ?></p>
+            <p><?php esc_html_e("Le coordinate e il contesto del produttore sono forniti dall'API.", 'agri-saas'); ?></p>
         </aside>
         <article class="card span-3">
             <div class="section-heading"><h2><?php esc_html_e("Aggiornamenti sull'albero", 'agri-saas'); ?></h2></div>

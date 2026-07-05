@@ -10,7 +10,7 @@ agri_saas_render_shell(__('Baratto', 'agri-saas'), function (): void {
         <article class="card span-3">
             <div class="section-heading">
                 <div>
-                    <p class="eyebrow"><?php esc_html_e('Scambi tra agricoltori e clienti', 'agri-saas'); ?></p>
+                    <p class="eyebrow"><?php esc_html_e('Scambi tra produttori e utenti', 'agri-saas'); ?></p>
                     <h2><?php esc_html_e('Baratto', 'agri-saas'); ?></h2>
                 </div>
                 <button class="button" type="button" data-open-baratto-form style="display:none;"><?php esc_html_e('+ Baratto', 'agri-saas'); ?></button>

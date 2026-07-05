@@ -19,25 +19,25 @@ get_header();
             <span class="brand-mark">A</span>
             <span>Adotta</span>
         </a>
-        <p class="reg-tagline"><?php esc_html_e('Adotta un albero vero. Supporta l\'agricoltura sostenibile.', 'agri-saas'); ?></p>
+        <p class="reg-tagline"><?php esc_html_e('Adotta un albero vero. Sostieni i piccoli produttori agricoli.', 'agri-saas'); ?></p>
     </div>
 
     <!-- Type-choice cards -->
     <div class="reg-type-grid" role="tablist" aria-label="<?php esc_attr_e('Tipo di registrazione', 'agri-saas'); ?>">
         <div class="reg-type-card" role="tab" tabindex="0" data-registration-tab="client">
             <span class="rtc-icon">🌱</span>
-            <h3><?php esc_html_e('Sono un cliente', 'agri-saas'); ?></h3>
-            <p><?php esc_html_e('Adotta alberi, segui il loro percorso, ricevi prodotti dall\'azienda.', 'agri-saas'); ?></p>
+            <h3><?php esc_html_e('Sono un utente', 'agri-saas'); ?></h3>
+            <p><?php esc_html_e('Adotta alberi, segui il loro percorso, ricevi prodotti dal produttore.', 'agri-saas'); ?></p>
             <button class="button" type="button" data-registration-tab="client" style="margin-top:14px;width:100%;">
-                <?php esc_html_e('Registrati come cliente', 'agri-saas'); ?>
+                <?php esc_html_e('Registrati come utente', 'agri-saas'); ?>
             </button>
         </div>
         <div class="reg-type-card" role="tab" tabindex="0" data-registration-tab="farm">
             <span class="rtc-icon">🚜</span>
-            <h3><?php esc_html_e('Sono un agricoltore', 'agri-saas'); ?></h3>
-            <p><?php esc_html_e('Pubblica i tuoi alberi adottabili, condividi aggiornamenti e connettiti con i sostenitori.', 'agri-saas'); ?></p>
+            <h3><?php esc_html_e('Sono un produttore', 'agri-saas'); ?></h3>
+            <p><?php esc_html_e('Sei un piccolo produttore o una micro impresa agricola? Pubblica le tue adozioni, condividi aggiornamenti e scambia prodotti con altre piccole realtà.', 'agri-saas'); ?></p>
             <button class="button ghost" type="button" data-registration-tab="farm" style="margin-top:14px;width:100%;">
-                <?php esc_html_e('Registrati come agricoltore', 'agri-saas'); ?>
+                <?php esc_html_e('Registrati come produttore', 'agri-saas'); ?>
             </button>
         </div>
     </div>
@@ -52,8 +52,8 @@ get_header();
     <section class="registration-grid">
 
         <article class="card registration-panel" data-registration-panel="client" hidden>
-            <p class="eyebrow"><?php esc_html_e('Registrazione cliente', 'agri-saas'); ?></p>
-            <h2><?php esc_html_e('Crea il tuo account cliente', 'agri-saas'); ?></h2>
+            <p class="eyebrow"><?php esc_html_e('Registrazione utente', 'agri-saas'); ?></p>
+            <h2><?php esc_html_e('Crea il tuo account utente', 'agri-saas'); ?></h2>
             <form data-registration-form="client">
                 <label><?php esc_html_e('Nome visualizzato', 'agri-saas'); ?><input name="display_name" required autocomplete="name"></label>
                 <label><?php esc_html_e('Email', 'agri-saas'); ?><input name="email" type="email" required autocomplete="email"></label>
@@ -62,14 +62,14 @@ get_header();
                     <label><?php esc_html_e('Telefono', 'agri-saas'); ?><input name="contact_phone" type="tel" autocomplete="tel"></label>
                 </div>
                 <label><?php esc_html_e('Password', 'agri-saas'); ?><input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
-                <button class="button" type="submit"><?php esc_html_e('Registrami come cliente', 'agri-saas'); ?></button>
+                <button class="button" type="submit"><?php esc_html_e('Registrami come utente', 'agri-saas'); ?></button>
                 <p class="form-status" data-form-status></p>
             </form>
         </article>
 
         <article class="card registration-panel" data-registration-panel="farm" hidden>
-            <p class="eyebrow"><?php esc_html_e('Registrazione farm', 'agri-saas'); ?></p>
-            <h2><?php esc_html_e('Crea account e farm', 'agri-saas'); ?></h2>
+            <p class="eyebrow"><?php esc_html_e('Registrazione produttore', 'agri-saas'); ?></p>
+            <h2><?php esc_html_e('Crea il tuo profilo produttore', 'agri-saas'); ?></h2>
             <form data-registration-form="farm">
                 <div class="form-grid-2">
                     <label><?php esc_html_e('Nome referente', 'agri-saas'); ?><input name="display_name" required autocomplete="name"></label>
@@ -81,12 +81,12 @@ get_header();
                     <label><?php esc_html_e('Telefono', 'agri-saas'); ?><input name="contact_phone" type="tel" autocomplete="tel"></label>
                 </div>
                 <div class="form-grid-2">
-                    <label><?php esc_html_e('Nome farm', 'agri-saas'); ?><input name="farm_name" required></label>
+                    <label><?php esc_html_e('Nome attività', 'agri-saas'); ?><input name="farm_name" required></label>
                     <label><?php esc_html_e('Località', 'agri-saas'); ?><input name="location" required></label>
                 </div>
                 <div class="form-grid-2">
-                    <label><?php esc_html_e('Latitudine farm', 'agri-saas'); ?><input name="latitude" type="number" step="0.0000001" min="-90" max="90" data-marker-lat></label>
-                    <label><?php esc_html_e('Longitudine farm', 'agri-saas'); ?><input name="longitude" type="number" step="0.0000001" min="-180" max="180" data-marker-lng></label>
+                    <label><?php esc_html_e('Latitudine', 'agri-saas'); ?><input name="latitude" type="number" step="0.0000001" min="-90" max="90" data-marker-lat></label>
+                    <label><?php esc_html_e('Longitudine', 'agri-saas'); ?><input name="longitude" type="number" step="0.0000001" min="-180" max="180" data-marker-lng></label>
                 </div>
                 <button class="button ghost" type="button" data-set-marker><?php esc_html_e('Imposta marcatore', 'agri-saas'); ?></button>
                 <div class="coordinate-map" data-coordinate-map aria-label="<?php esc_attr_e('Farm coordinate map', 'agri-saas'); ?>"></div>
@@ -96,7 +96,7 @@ get_header();
                     <label><?php esc_html_e('Ettari', 'agri-saas'); ?><input name="acreage" type="number" min="0" step="0.01"></label>
                     <label><?php esc_html_e('Coltura principale', 'agri-saas'); ?><input name="crop_focus"></label>
                 </div>
-                <button class="button" type="submit"><?php esc_html_e('Registrami come farm', 'agri-saas'); ?></button>
+                <button class="button" type="submit"><?php esc_html_e('Registrami come produttore', 'agri-saas'); ?></button>
                 <p class="form-status" data-form-status></p>
             </form>
         </article>

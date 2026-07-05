@@ -112,7 +112,7 @@ function agri_saas_nav_items(): array
     $is_fm     = $logged_in && (in_array('farm_manager', (array) $user->roles, true) || current_user_can('manage_options'));
 
     $items = [
-        ['label' => $logged_in ? __('Area Cliente', 'agri-saas') : __('Home', 'agri-saas'),
+        ['label' => $logged_in ? __('Area Utente', 'agri-saas') : __('Home', 'agri-saas'),
          'url'   => $logged_in ? home_url('/dashboard/') : home_url('/'),
          'icon'  => '🌱'],
         ['label' => __('Aggiornamenti', 'agri-saas'), 'url' => home_url('/updates/'),  'icon' => '🛰️'],
@@ -121,7 +121,7 @@ function agri_saas_nav_items(): array
     ];
 
     if ($is_fm) {
-        array_splice($items, 1, 0, [['label' => __('Area Azienda', 'agri-saas'), 'url' => home_url('/farm-dashboard/'), 'icon' => '🚜']]);
+        array_splice($items, 1, 0, [['label' => __('Area Produttore', 'agri-saas'), 'url' => home_url('/farm-dashboard/'), 'icon' => '🚜']]);
     }
 
     if ($logged_in) {

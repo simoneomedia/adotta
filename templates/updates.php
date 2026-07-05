@@ -12,11 +12,11 @@ agri_saas_render_shell(__('Aggiornamenti', 'agri-saas'), function (): void {
             <div class="section-heading">
                 <div>
                     <p class="eyebrow"><?php esc_html_e('Dal campo', 'agri-saas'); ?></p>
-                    <h2><?php esc_html_e('Ultimi aggiornamenti dalle aziende', 'agri-saas'); ?></h2>
+                    <h2><?php esc_html_e('Ultimi aggiornamenti dai produttori', 'agri-saas'); ?></h2>
                 </div>
             </div>
             <div class="timeline" data-slot="updates">
-                <?php agri_saas_empty_state(__('Gli aggiornamenti appariranno qui non appena i gestori delle aziende li pubblicheranno.', 'agri-saas')); ?>
+                <?php agri_saas_empty_state(__('Gli aggiornamenti appariranno qui non appena i produttori li pubblicheranno.', 'agri-saas')); ?>
             </div>
         </article>
     </section>

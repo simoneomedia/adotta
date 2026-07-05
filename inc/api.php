@@ -1121,7 +1121,7 @@ function agri_saas_api_gift_adoption(WP_REST_Request $request): WP_REST_Response
     }
 
     if ((int) $tree['owner_user_id'] === $user_id) {
-        return new WP_Error('agri_saas_own_tree_gift', __('Non puoi regalare un albero della tua azienda.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_own_tree_gift', __('Non puoi regalare un albero della tua produzione.', 'agri-saas'), ['status' => 400]);
     }
 
     // Serialize concurrent gifts for the same tree with a transaction + row-level lock.
@@ -1277,7 +1277,7 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
     ));
 
     if (!$farm_id) {
-        return new WP_Error('agri_saas_farm_not_found', __('Nessuna azienda trovata per questo account.', 'agri-saas'), ['status' => 403]);
+        return new WP_Error('agri_saas_farm_not_found', __('Nessun profilo produttore trovato per questo account.', 'agri-saas'), ['status' => 403]);
     }
 
     $status = sanitize_key($request->get_param('status') ?: 'available');
@@ -1619,7 +1619,7 @@ function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response
             $user_id
         ));
         if (!$farm_id) {
-            return new WP_Error('agri_saas_farm_not_found', __('Nessuna azienda trovata per questo account.', 'agri-saas'), ['status' => 403]);
+            return new WP_Error('agri_saas_farm_not_found', __('Nessun profilo produttore trovato per questo account.', 'agri-saas'), ['status' => 403]);
         }
     }
 
@@ -1753,7 +1753,7 @@ function agri_saas_api_create_reward(WP_REST_Request $request): WP_REST_Response
     $guidelines    = sanitize_textarea_field($request->get_param('guidelines') ?? '');
 
     if (!$farm_id || !$name || !$description) {
-        return new WP_Error('agri_saas_reward_required', __('Azienda, nome e descrizione sono obbligatori.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_reward_required', __('Produttore, nome e descrizione sono obbligatori.', 'agri-saas'), ['status' => 400]);
     }
 
     $valid_types = ['physical', 'digital', 'experience', 'surprise'];
@@ -1772,7 +1772,7 @@ function agri_saas_api_create_reward(WP_REST_Request $request): WP_REST_Response
     ));
 
     if (!$owns) {
-        return new WP_Error('agri_saas_farm_forbidden', __('Non puoi aggiungere premi a questa azienda.', 'agri-saas'), ['status' => 403]);
+        return new WP_Error('agri_saas_farm_forbidden', __('Non puoi aggiungere premi a questo produttore.', 'agri-saas'), ['status' => 403]);
     }
 
     $wpdb->insert($tables['rewards'], [
@@ -2033,7 +2033,7 @@ function agri_saas_api_create_product(WP_REST_Request $request): WP_REST_Respons
     ));
 
     if (!$farm_id) {
-        return new WP_Error('agri_saas_farm_not_found', __('Nessuna azienda trovata per questo account.', 'agri-saas'), ['status' => 403]);
+        return new WP_Error('agri_saas_farm_not_found', __('Nessun profilo produttore trovato per questo account.', 'agri-saas'), ['status' => 403]);
     }
 
     $name = sanitize_text_field($request->get_param('name'));
@@ -2128,7 +2128,7 @@ function agri_saas_api_create_baratto(WP_REST_Request $request): WP_REST_Respons
     ));
 
     if (!$farm_id) {
-        return new WP_Error('agri_saas_farm_not_found', __('Nessuna azienda trovata per questo account.', 'agri-saas'), ['status' => 403]);
+        return new WP_Error('agri_saas_farm_not_found', __('Nessun profilo produttore trovato per questo account.', 'agri-saas'), ['status' => 403]);
     }
 
     $offer_title = sanitize_text_field($request->get_param('offer_title'));
@@ -2553,7 +2553,7 @@ function agri_saas_api_admin_create_tree(WP_REST_Request $request): WP_REST_Resp
     $species = sanitize_text_field($request->get_param('species'));
     $code    = sanitize_text_field($request->get_param('code'));
     if (!$farm_id || !$species || !$code) {
-        return new WP_Error('missing_fields', 'Azienda, specie e codice sono obbligatori.', ['status' => 400]);
+        return new WP_Error('missing_fields', 'Produttore, specie e codice sono obbligatori.', ['status' => 400]);
     }
     $type = sanitize_text_field($request->get_param('type') ?: 'albero');
     if (!in_array($type, ['albero','orto','animale','alveare','bosco','vite','olivo','altro'], true)) $type = 'albero';
@@ -2585,7 +2585,7 @@ function agri_saas_api_admin_create_product(WP_REST_Request $request): WP_REST_R
     $tables  = agri_saas_tables();
     $farm_id = absint($request->get_param('farm_id'));
     $name    = sanitize_text_field($request->get_param('name'));
-    if (!$farm_id || !$name) return new WP_Error('missing_fields', 'Azienda e nome sono obbligatori.', ['status' => 400]);
+    if (!$farm_id || !$name) return new WP_Error('missing_fields', 'Produttore e nome sono obbligatori.', ['status' => 400]);
     $wpdb->insert($tables['products'], [
         'farm_id'     => $farm_id,
         'name'        => $name,
@@ -2608,7 +2608,7 @@ function agri_saas_api_admin_create_baratto(WP_REST_Request $request): WP_REST_R
     $farm_id     = absint($request->get_param('farm_id'));
     $offer_title = sanitize_text_field($request->get_param('offer_title'));
     $wants_title = sanitize_text_field($request->get_param('wants_title'));
-    if (!$farm_id || !$offer_title || !$wants_title) return new WP_Error('missing_fields', 'Azienda, offro e cerco sono obbligatori.', ['status' => 400]);
+    if (!$farm_id || !$offer_title || !$wants_title) return new WP_Error('missing_fields', 'Produttore, offro e cerco sono obbligatori.', ['status' => 400]);
     $wpdb->insert($tables['baratti'], [
         'farm_id'           => $farm_id,
         'offer_title'       => $offer_title,
@@ -2630,7 +2630,7 @@ function agri_saas_api_admin_create_update(WP_REST_Request $request): WP_REST_Re
     $farm_id = absint($request->get_param('farm_id'));
     $title   = sanitize_text_field($request->get_param('title'));
     $body    = sanitize_textarea_field($request->get_param('body') ?? '');
-    if (!$farm_id || !$title) return new WP_Error('missing_fields', 'Azienda e titolo sono obbligatori.', ['status' => 400]);
+    if (!$farm_id || !$title) return new WP_Error('missing_fields', 'Produttore e titolo sono obbligatori.', ['status' => 400]);
     $visibility = sanitize_key($request->get_param('visibility') ?: 'public');
     if (!in_array($visibility, ['public','adopters','private'], true)) $visibility = 'public';
     $wpdb->insert($tables['updates'], [

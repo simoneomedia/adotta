@@ -21,7 +21,7 @@ agri_saas_render_shell(__('Pannello Admin', 'agri-saas'), function (): void {
             </div>
 
             <div class="admin-tabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
-                <button class="button active" data-admin-tab="farms"><?php esc_html_e('🏡 Aziende', 'agri-saas'); ?></button>
+                <button class="button active" data-admin-tab="farms"><?php esc_html_e('🏡 Produttori', 'agri-saas'); ?></button>
                 <button class="button ghost" data-admin-tab="adoptions"><?php esc_html_e('🌱 Adozioni', 'agri-saas'); ?></button>
                 <button class="button ghost" data-admin-tab="users"><?php esc_html_e('👤 Utenti', 'agri-saas'); ?></button>
                 <button class="button ghost" data-admin-tab="products"><?php esc_html_e('🛒 Prodotti', 'agri-saas'); ?></button>
@@ -58,8 +58,8 @@ agri_saas_render_shell(__('Pannello Admin', 'agri-saas'), function (): void {
                             <th><?php esc_html_e('Specie', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Tipo', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Codice', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Azienda', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Cliente', 'agri-saas'); ?></th>
+                            <th><?php esc_html_e('Produttore', 'agri-saas'); ?></th>
+                            <th><?php esc_html_e('Utente', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Email', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('WhatsApp', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Telefono', 'agri-saas'); ?></th>
@@ -83,7 +83,7 @@ agri_saas_render_shell(__('Pannello Admin', 'agri-saas'), function (): void {
                             <th><?php esc_html_e('WhatsApp', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Telefono', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Adozioni attive', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Aziende', 'agri-saas'); ?></th>
+                            <th><?php esc_html_e('Produttori', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Registrato', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Azioni', 'agri-saas'); ?></th>
                         </tr></thead>
@@ -103,7 +103,7 @@ agri_saas_render_shell(__('Pannello Admin', 'agri-saas'), function (): void {
                             <th><?php esc_html_e('Prezzo', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Unità', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Note prezzo', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Azienda', 'agri-saas'); ?></th>
+                            <th><?php esc_html_e('Produttore', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Località', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Referente', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Data', 'agri-saas'); ?></th>
@@ -123,7 +123,7 @@ agri_saas_render_shell(__('Pannello Admin', 'agri-saas'), function (): void {
                             <th><?php esc_html_e('ID', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Offro', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Cerco', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Azienda', 'agri-saas'); ?></th>
+                            <th><?php esc_html_e('Produttore', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Località', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Referente', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Data', 'agri-saas'); ?></th>

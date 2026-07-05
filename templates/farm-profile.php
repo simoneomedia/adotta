@@ -10,13 +10,13 @@ get_header();
 <main class="farm-profile-shell" data-agri-endpoint="/farms/<?php echo esc_attr((string) $farm_id); ?>/profile" data-render="farm-profile">
     <section class="farm-hero card">
         <div>
-            <p class="eyebrow"><?php esc_html_e('Vetrina azienda', 'agri-saas'); ?></p>
-            <h1 data-slot="farm-title"><?php esc_html_e('Profilo azienda', 'agri-saas'); ?></h1>
-            <p data-slot="farm-summary"><?php esc_html_e("Caricamento informazioni sull'azienda, alberi, aggiornamenti e foto.", 'agri-saas'); ?></p>
+            <p class="eyebrow"><?php esc_html_e('Vetrina produttore', 'agri-saas'); ?></p>
+            <h1 data-slot="farm-title"><?php esc_html_e('Profilo produttore', 'agri-saas'); ?></h1>
+            <p data-slot="farm-summary"><?php esc_html_e("Caricamento informazioni sul produttore, alberi, aggiornamenti e foto.", 'agri-saas'); ?></p>
             <div class="contact-actions" data-slot="farm-contacts"></div>
         </div>
         <div class="farm-hero-actions">
-            <button class="button" type="button" data-follow-farm hidden><?php esc_html_e('Segui azienda', 'agri-saas'); ?></button>
+            <button class="button" type="button" data-follow-farm hidden><?php esc_html_e('Segui produttore', 'agri-saas'); ?></button>
             <a class="button ghost" href="<?php echo esc_url(home_url('/')); ?>"><?php esc_html_e('Adotta un albero', 'agri-saas'); ?></a>
         </div>
     </section>
@@ -36,11 +36,11 @@ get_header();
                 </div>
             </div>
             <div class="catalog-layout">
-                <div class="catalog-map" data-slot="farm-profile-map" aria-label="<?php esc_attr_e('Mappa alberi azienda', 'agri-saas'); ?>">
+                <div class="catalog-map" data-slot="farm-profile-map" aria-label="<?php esc_attr_e('Mappa alberi produttore', 'agri-saas'); ?>">
                     <span class="map-placeholder">&#9678;</span>
                 </div>
                 <div class="card-list" data-slot="farm-profile-trees">
-                    <?php agri_saas_empty_state("Gli alberi dell'azienda appariranno qui."); ?>
+                    <?php agri_saas_empty_state("Gli alberi del produttore appariranno qui."); ?>
                 </div>
             </div>
         </article>
@@ -53,15 +53,15 @@ get_header();
                 </div>
             </div>
             <div class="timeline" data-slot="updates">
-                <?php agri_saas_empty_state("Gli aggiornamenti pubblici dell'azienda appariranno qui."); ?>
+                <?php agri_saas_empty_state("Gli aggiornamenti pubblici del produttore appariranno qui."); ?>
             </div>
         </article>
 
         <aside class="card">
             <p class="eyebrow"><?php esc_html_e('Galleria', 'agri-saas'); ?></p>
-            <h2><?php esc_html_e("Foto dell'azienda", 'agri-saas'); ?></h2>
+            <h2><?php esc_html_e("Foto del produttore", 'agri-saas'); ?></h2>
             <div class="photo-grid" data-slot="farm-photos">
-                <?php agri_saas_empty_state("Le foto degli aggiornamenti dell'azienda appariranno qui."); ?>
+                <?php agri_saas_empty_state("Le foto degli aggiornamenti del produttore appariranno qui."); ?>
             </div>
         </aside>
 
