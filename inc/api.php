@@ -2328,16 +2328,21 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
     global $wpdb;
     $tables = agri_saas_tables();
 
+    // Some MySQL installs run with ONLY_FULL_GROUP_BY, which rejects grouped
+    // queries that select non-aggregated columns. Relax it for this request so
+    // the overview queries can't silently return empty result sets.
+    $wpdb->query("SET SESSION sql_mode = REPLACE(REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', ''), ',,', ',')");
+
     $farms = $wpdb->get_results(
         "SELECT f.id, f.name, f.location, f.crop_focus, f.is_verified,
                 u.display_name AS owner_name, u.user_email AS owner_email,
-                COUNT(DISTINCT t.id) AS tree_count,
-                COUNT(DISTINCT a.id) AS adoption_count
+                (SELECT COUNT(*) FROM {$tables['trees']} t WHERE t.farm_id = f.id) AS tree_count,
+                (SELECT COUNT(*) FROM {$tables['adoptions']} a
+                    JOIN {$tables['trees']} t2 ON t2.id = a.tree_id
+                    WHERE t2.farm_id = f.id AND a.status = 'active') AS adoption_count
          FROM {$tables['farms']} f
          LEFT JOIN {$wpdb->users} u ON u.ID = f.owner_user_id
-         LEFT JOIN {$tables['trees']} t ON t.farm_id = f.id
-         LEFT JOIN {$tables['adoptions']} a ON a.tree_id = t.id AND a.status = 'active'
-         GROUP BY f.id ORDER BY f.id DESC",
+         ORDER BY f.id DESC",
         ARRAY_A
     ) ?: [];
 
