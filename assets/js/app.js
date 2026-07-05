@@ -164,10 +164,13 @@
     };
 
     // API
+    const bust = (path) => `${path}${path.includes('?') ? '&' : '?'}_ts=${Date.now()}`;
+
     const apiFetch = async (path, options = {}) => {
         const { headers: optionHeaders = {}, ...fetchOptions } = options;
         const headers = options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' };
-        const response = await fetch(`${window.AgriSaas.apiBase}${path}`, {
+        const response = await fetch(`${window.AgriSaas.apiBase}${bust(path)}`, {
+            cache: 'no-store',
             credentials: 'same-origin',
             ...fetchOptions,
             headers: { ...headers, 'X-WP-Nonce': window.AgriSaas.nonce, ...optionHeaders },
@@ -622,7 +625,7 @@
                         const listSlot = root.querySelector('[data-slot="adoptable-trees"]');
                         if (mapSlot) mapSlot.innerHTML = '<div class="map-placeholder"><small>Caricamento mercato…</small></div>';
                         try {
-                            const res  = await fetch(`${window.AgriSaas.apiBase}/mercato`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
+                            const res  = await fetch(`${window.AgriSaas.apiBase}${bust('/mercato')}`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
                             const data = await res.json();
                             renderMercatoInline(data.products || [], mapSlot, listSlot);
                         } catch (_) {}
@@ -631,7 +634,7 @@
                         const listSlot = root.querySelector('[data-slot="adoptable-trees"]');
                         if (mapSlot) mapSlot.innerHTML = '<div class="map-placeholder"><small>Caricamento baratto…</small></div>';
                         try {
-                            const res  = await fetch(`${window.AgriSaas.apiBase}/baratto`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
+                            const res  = await fetch(`${window.AgriSaas.apiBase}${bust('/baratto')}`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
                             const data = await res.json();
                             renderBarattoInline(data.baratti || [], mapSlot, listSlot);
                         } catch (_) {}
@@ -1591,7 +1594,7 @@
 
         const _refreshTables = async () => {
             try {
-                const res  = await fetch(`${window.AgriSaas.apiBase}/admin/overview`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
+                const res  = await fetch(`${window.AgriSaas.apiBase}${bust('/admin/overview')}`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
                 const fresh = await res.json();
                 _fillTables(fresh);
             } catch (_) {}
@@ -1713,8 +1716,8 @@
             let wpUsers = [], liveFarms = [];
             try {
                 const [uRes, oRes] = await Promise.all([
-                    fetch(`${window.AgriSaas.apiBase}/admin/wp-users`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } }),
-                    fetch(`${window.AgriSaas.apiBase}/admin/overview`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } }),
+                    fetch(`${window.AgriSaas.apiBase}${bust('/admin/wp-users')}`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } }),
+                    fetch(`${window.AgriSaas.apiBase}${bust('/admin/overview')}`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } }),
                 ]);
                 wpUsers   = await uRes.json();
                 const ov  = await oRes.json();
@@ -1921,7 +1924,7 @@
                         await _refreshTables();
                         if (type === 'farm') {
                             try {
-                                const oRes  = await fetch(`${window.AgriSaas.apiBase}/admin/overview`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
+                                const oRes  = await fetch(`${window.AgriSaas.apiBase}${bust('/admin/overview')}`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
                                 const fresh = await oRes.json();
                                 const newOpts = '<option value="">Seleziona…</option>' + (fresh.farms || []).map((f) =>
                                     `<option value="${escapeHtml(String(f.id))}">${escapeHtml(f.name)} (${escapeHtml(f.location)})</option>`

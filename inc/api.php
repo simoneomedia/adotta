@@ -2420,7 +2420,9 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
         'theme_ver'    => defined('AGRI_SAAS_VERSION') ? AGRI_SAAS_VERSION : '?',
     ];
 
-    return rest_ensure_response(compact('farms', 'adoptions', 'products', 'baratti', 'users', 'errors', 'debug'));
+    $response = rest_ensure_response(compact('farms', 'adoptions', 'products', 'baratti', 'users', 'errors', 'debug'));
+    $response->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    return $response;
 }
 
 function agri_saas_api_admin_toggle_verify(WP_REST_Request $request): WP_REST_Response|WP_Error
