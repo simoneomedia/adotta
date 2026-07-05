@@ -29,5 +29,6 @@ function agri_saas_enqueue_assets(): void
         'nonce'   => wp_create_nonce('wp_rest'),
         'userId'  => get_current_user_id(),
         'homeUrl' => esc_url_raw(home_url('/')),
+        'version' => AGRI_SAAS_VERSION,
     ]);
 }

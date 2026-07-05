@@ -1546,7 +1546,7 @@
                 root.querySelector('.section-heading')?.insertAdjacentElement('afterend', errBox);
             }
             const dbg = d.debug || {};
-            const dbgLine = `<p style="color:var(--muted);font-size:.75rem;margin:4px 0;">🔎 diag — js: 27.6.28 | endpoint: ${d.debug ? 'nuovo' : 'VECCHIO (niente debug — cache PHP?)'} | user_id: ${e(String(dbg.user_id ?? '?'))} | prefix: ${e(String(dbg.db_prefix ?? '?'))} | farms in DB: ${e(String(dbg.farms_rows ?? '?'))} | baratti in DB: ${e(String(dbg.baratti_rows ?? '?'))} | utenti in DB: ${e(String(dbg.users_rows ?? '?'))} | tema: ${e(String(dbg.theme_ver ?? '?'))}</p>`;
+            const dbgLine = `<p style="color:var(--muted);font-size:.75rem;margin:4px 0;">🔎 diag — tema attivo: ${e(String(window.AgriSaas?.version || '?'))} | endpoint: ${d.debug ? 'nuovo' : 'VECCHIO (niente debug — cache PHP?)'} | user_id: ${e(String(dbg.user_id ?? '?'))} | prefix: ${e(String(dbg.db_prefix ?? '?'))} | farms in DB: ${e(String(dbg.farms_rows ?? '?'))} | baratti in DB: ${e(String(dbg.baratti_rows ?? '?'))} | utenti in DB: ${e(String(dbg.users_rows ?? '?'))} | tema: ${e(String(dbg.theme_ver ?? '?'))}</p>`;
             errBox.innerHTML = dbgLine + (errs.length
                 ? `<div class="card" style="border:1px solid #c62828;color:#c62828;padding:12px;font-size:.85rem;"><strong>⚠️ Errori SQL nell'endpoint admin:</strong><br>${errs.map(([k, v]) => `<code>${e(k)}</code>: ${e(v)}`).join('<br>')}</div>`
                 : '');
