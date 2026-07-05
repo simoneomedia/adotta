@@ -2410,7 +2410,17 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
     ) ?: [];
     $track('users');
 
-    return rest_ensure_response(compact('farms', 'adoptions', 'products', 'baratti', 'users', 'errors'));
+    $debug = [
+        'user_id'      => get_current_user_id(),
+        'db_prefix'    => $wpdb->prefix,
+        'farms_table'  => $tables['farms'],
+        'farms_rows'   => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tables['farms']}"),
+        'baratti_rows' => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$tables['baratti']}"),
+        'users_rows'   => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->users}"),
+        'theme_ver'    => defined('AGRI_SAAS_VERSION') ? AGRI_SAAS_VERSION : '?',
+    ];
+
+    return rest_ensure_response(compact('farms', 'adoptions', 'products', 'baratti', 'users', 'errors', 'debug'));
 }
 
 function agri_saas_api_admin_toggle_verify(WP_REST_Request $request): WP_REST_Response|WP_Error
