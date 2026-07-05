@@ -2333,6 +2333,13 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
     // the overview queries can't silently return empty result sets.
     $wpdb->query("SET SESSION sql_mode = REPLACE(REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', ''), ',,', ',')");
 
+    $errors = [];
+    $track  = function (string $label) use ($wpdb, &$errors): void {
+        if ($wpdb->last_error) {
+            $errors[$label] = $wpdb->last_error;
+        }
+    };
+
     $farms = $wpdb->get_results(
         "SELECT f.id, f.name, f.location, f.crop_focus, f.is_verified,
                 u.display_name AS owner_name, u.user_email AS owner_email,
@@ -2345,6 +2352,7 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
          ORDER BY f.id DESC",
         ARRAY_A
     ) ?: [];
+    $track('farms');
 
     $adoptions = $wpdb->get_results(
         "SELECT a.id, a.status, a.requested_at,
@@ -2362,6 +2370,7 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
          ORDER BY a.requested_at DESC LIMIT 200",
         ARRAY_A
     ) ?: [];
+    $track('adoptions');
 
     $products = $wpdb->get_results(
         "SELECT p.id, p.name, p.price, p.unit, p.price_note, p.created_at,
@@ -2373,6 +2382,7 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
          ORDER BY p.created_at DESC LIMIT 200",
         ARRAY_A
     ) ?: [];
+    $track('products');
 
     $baratti = $wpdb->get_results(
         "SELECT b.id, b.offer_title, b.wants_title, b.created_at,
@@ -2384,6 +2394,7 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
          ORDER BY b.created_at DESC LIMIT 200",
         ARRAY_A
     ) ?: [];
+    $track('baratti');
 
     $users = $wpdb->get_results(
         "SELECT u.ID AS id, u.display_name, u.user_email, u.user_registered,
@@ -2397,8 +2408,9 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
          ORDER BY u.user_registered DESC LIMIT 500",
         ARRAY_A
     ) ?: [];
+    $track('users');
 
-    return rest_ensure_response(compact('farms', 'adoptions', 'products', 'baratti', 'users'));
+    return rest_ensure_response(compact('farms', 'adoptions', 'products', 'baratti', 'users', 'errors'));
 }
 
 function agri_saas_api_admin_toggle_verify(WP_REST_Request $request): WP_REST_Response|WP_Error

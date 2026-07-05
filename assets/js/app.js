@@ -1534,6 +1534,17 @@
         const btnDel = (type, id) => `<button class="admin-action-btn danger" data-admin-delete="${type}" data-id="${e(String(id))}" title="Elimina">🗑</button>`;
 
         const _fillTables = (d) => {
+            const errs = d.errors && typeof d.errors === 'object' ? Object.entries(d.errors) : [];
+            let errBox = root.querySelector('[data-admin-errors]');
+            if (!errBox) {
+                errBox = document.createElement('div');
+                errBox.setAttribute('data-admin-errors', '');
+                errBox.style.cssText = 'margin:12px 0;';
+                root.querySelector('.section-heading')?.insertAdjacentElement('afterend', errBox);
+            }
+            errBox.innerHTML = errs.length
+                ? `<div class="card" style="border:1px solid #c62828;color:#c62828;padding:12px;font-size:.85rem;"><strong>⚠️ Errori SQL nell'endpoint admin:</strong><br>${errs.map(([k, v]) => `<code>${e(k)}</code>: ${e(v)}`).join('<br>')}</div>`
+                : '';
             const farms = d.farms || [];
             root.querySelector('[data-slot="admin-farms"]').innerHTML = farms.map((r) => {
                 const verified = Number(r.is_verified) === 1;
