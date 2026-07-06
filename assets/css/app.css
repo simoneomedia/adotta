@@ -1835,7 +1835,7 @@ a.ig-farm-name:hover { color: var(--brand); }
 
 /* ── Market/Baratto map+list layout ─────────────────────── */
 .view-toggle-bar { display: none; gap: 8px; margin: 12px 0; }
-.market-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); gap: 16px; align-items: start; margin-top: 12px; }
+.market-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; margin-top: 12px; }
 .market-layout .market-map { position: sticky; top: 16px; min-height: 340px; }
 .market-layout .market-map .leaflet-map { height: calc(100vh - 220px) !important; min-height: 340px; }
 .market-list { max-height: calc(100vh - 220px); overflow-y: auto; padding-right: 4px; }
@@ -1849,3 +1849,11 @@ a.ig-farm-name:hover { color: var(--brand); }
     .market-layout[data-view="list"] .market-map { display: none; }
     .market-layout[data-view="map"] .market-list { display: none; }
 }
+
+.market-list .product-card { max-width: 100%; }
+.market-list .product-img { height: 150px; }
+.market-list .product-body { padding: 12px 14px; }
+.market-list .product-name { font-size: 1rem; }
+.market-list .barter-row { gap: 8px; }
+/* Vetrina produttore: prodotti e baratti */
+.farm-offer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }

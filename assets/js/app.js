@@ -1260,46 +1260,56 @@
         renderUpdates(data.updates || [], farm.id);
         renderFarmReviews(data.farm.id, root);
 
-        // Products
-        const productsSection = root.querySelector('[data-profile-section="products"]');
-        if (productsSection) {
-            const productsSlot = productsSection.querySelector('[data-slot="farm-products"]');
-            if ((data.products || []).length) {
-                productsSection.style.display = '';
-                productsSlot.innerHTML = data.products.map((p) => `
-                    <article class="product-card">
-                        <img class="product-img" src="${escapeHtml(p.media_url || 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png')}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';this.style.objectFit='contain';this.style.padding='20px';this.style.background='var(--surface-soft)'">
-                        <div class="product-body">
-                            <h3 class="product-name">${escapeHtml(p.name)}</h3>
-                            ${p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : ''}
-                            <p class="product-price">${p.price != null ? `€${Number(p.price).toFixed(2)} / ${escapeHtml(p.unit)}` : escapeHtml(p.unit)}</p>
-                        </div>
-                    </article>`).join('');
+        // Prodotti e baratti del produttore, con contatti diretti
+        const _fallbackImg = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
+        const _imgAttrs = `loading="lazy" onerror="this.onerror=null;this.src='${_fallbackImg}';this.style.objectFit='contain';this.style.padding='20px';this.style.background='var(--surface-soft)'"`;
+        const _offerContacts = (subject) => {
+            if (!data.logged_in) return `<button class="button ghost" type="button" data-auth-contact>🔒 Accedi per contattare</button>`;
+            const out = [];
+            if (farm.contact_whatsapp) {
+                const text = encodeURIComponent(subject);
+                out.push(`<a class="button" href="https://wa.me/${String(farm.contact_whatsapp).replace(/\D/g, '')}?text=${text}" target="_blank" rel="noopener">💬 WhatsApp</a>`);
             }
+            if (farm.contact_phone) out.push(`<a class="button ghost" href="tel:${escapeHtml(farm.contact_phone)}">📞</a>`);
+            return out.join('');
+        };
+
+        const productsSlot = root.querySelector('[data-slot="farm-products"]');
+        if (productsSlot) {
+            productsSlot.innerHTML = (data.products || []).length ? data.products.map((p) => `
+                <article class="product-card">
+                    <img class="product-img" src="${escapeHtml(p.media_url || _fallbackImg)}" alt="${escapeHtml(p.name)}" ${_imgAttrs}>
+                    <div class="product-body">
+                        <h3 class="product-name">${escapeHtml(p.name)}</h3>
+                        ${p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : ''}
+                        <p class="product-price">${p.price != null ? `€${Number(p.price).toFixed(2)} / ${escapeHtml(p.unit)}` : escapeHtml(p.unit)}</p>
+                        <div class="product-actions">${_offerContacts(`Ciao, sono interessato al prodotto "${p.name}" di ${farm.name}`)}</div>
+                    </div>
+                </article>`).join('')
+                : '<div class="card empty-state">Nessun prodotto pubblicato da questo produttore.</div>';
         }
-        const barattiSection = root.querySelector('[data-profile-section="baratti"]');
-        if (barattiSection) {
-            const barattiSlot = barattiSection.querySelector('[data-slot="farm-baratti"]');
-            if ((data.baratti || []).length) {
-                barattiSection.style.display = '';
-                barattiSlot.innerHTML = data.baratti.map((b) => `
-                    <article class="product-card barter-card">
-                        <img class="product-img" src="${escapeHtml(b.media_url || 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png')}" alt="${escapeHtml(b.offer_title)}" loading="lazy" onerror="this.onerror=null;this.src='https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';this.style.objectFit='contain';this.style.padding='20px';this.style.background='var(--surface-soft)'">
-                        <div class="product-body">
-                            <div class="barter-row">
-                                <div class="barter-side">
-                                    <span class="eyebrow">Offro</span>
-                                    <h3 class="product-name">${escapeHtml(b.offer_title)}</h3>
-                                </div>
-                                <div class="barter-arrow">⇄</div>
-                                <div class="barter-side">
-                                    <span class="eyebrow">Cerco</span>
-                                    <h3 class="product-name">${escapeHtml(b.wants_title)}</h3>
-                                </div>
+
+        const barattiSlot = root.querySelector('[data-slot="farm-baratti"]');
+        if (barattiSlot) {
+            barattiSlot.innerHTML = (data.baratti || []).length ? data.baratti.map((b) => `
+                <article class="product-card barter-card">
+                    <img class="product-img" src="${escapeHtml(b.media_url || _fallbackImg)}" alt="${escapeHtml(b.offer_title)}" ${_imgAttrs}>
+                    <div class="product-body">
+                        <div class="barter-row">
+                            <div class="barter-side">
+                                <span class="eyebrow">Offro</span>
+                                <h3 class="product-name">${escapeHtml(b.offer_title)}</h3>
+                            </div>
+                            <div class="barter-arrow">⇄</div>
+                            <div class="barter-side">
+                                <span class="eyebrow">Cerco</span>
+                                <h3 class="product-name">${escapeHtml(b.wants_title)}</h3>
                             </div>
                         </div>
-                    </article>`).join('');
-            }
+                        <div class="product-actions">${_offerContacts(`Ciao, ho visto il tuo baratto su Adotta: offri "${b.offer_title}" in cambio di "${b.wants_title}". Vorrei fare un'offerta.`)}</div>
+                    </div>
+                </article>`).join('')
+                : '<div class="card empty-state">Nessun baratto attivo di questo produttore.</div>';
         }
     };
 

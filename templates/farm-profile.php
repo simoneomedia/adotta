@@ -67,6 +67,30 @@ agri_saas_render_shell('', function () use ($farm_id): void {
                 </div>
             </aside>
 
+            <article class="card span-3">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow"><?php esc_html_e('Dal mercato', 'agri-saas'); ?></p>
+                        <h2><?php esc_html_e('Prodotti in vendita', 'agri-saas'); ?></h2>
+                    </div>
+                </div>
+                <div class="farm-offer-grid" data-slot="farm-products">
+                    <?php agri_saas_empty_state(__('Nessun prodotto pubblicato da questo produttore.', 'agri-saas')); ?>
+                </div>
+            </article>
+
+            <article class="card span-3">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow"><?php esc_html_e('Scambi', 'agri-saas'); ?></p>
+                        <h2><?php esc_html_e('Baratti proposti', 'agri-saas'); ?></h2>
+                    </div>
+                </div>
+                <div class="farm-offer-grid" data-slot="farm-baratti">
+                    <?php agri_saas_empty_state(__('Nessun baratto attivo di questo produttore.', 'agri-saas')); ?>
+                </div>
+            </article>
+
             <article class="card span-3" data-slot="farm-reviews"><p><?php esc_html_e('Caricamento recensioni…', 'agri-saas'); ?></p></article>
         </section>
     </div>
