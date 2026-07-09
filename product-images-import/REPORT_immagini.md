@@ -1,19 +1,25 @@
 # Report ricerca immagini ufficiali — prodotti senza immagine
 
-Data: 09/07/2026 — Fonti: fanola.it, xanitalia.it, cataloghi ufficiali Xanipro (xanitaliapro.it), amuchina.it, kiepe.it, prodotti.italchimica.it (Sanitec), roial.it, celtex.it
+Data: 09/07/2026 — Fonti: fanola.it (CDN ufficiale THRON), xanitalia.it, cataloghi ufficiali Xanipro (xanitaliapro.it), amuchina.it, kiepe.it, prodotti.italchimica.it (Sanitec), roial.it, celtex.it
 
 ## Riepilogo
 
-- **16 immagini pronte** nello zip (cartella `webp/`), già convertite in WebP quadrato, fondo bianco, q85
-- **89 match Fanola sicuri** (codice variante + EAN verificati su fanola.it) ma **immagini non scaricabili da questo ambiente**: il CDN ufficiale Fanola (`agf88holding-cdn.thron.com`) è bloccato dalla policy di rete della sessione. URL pronti in `fanola_immagini_urls.csv` + script `fanola_download_convert.py` che scarica e converte in locale con le stesse impostazioni. In alternativa: sbloccando il dominio nelle impostazioni ambiente posso completare io.
-- **6 match da verificare** (conflitto tra titolo del listing e codice prodotto ufficiale) — immagini candidate in `da_verificare/`, NON incluse nel CSV di import
-- **2 non trovati** sul sito del produttore
-- **21 non coperti** dai siti indicati (Cuki, Amedics/MD, Diversey, monouso generici...)
+- **105 immagini pronte** nella cartella `webp/` dello zip: WebP quadrato max 1200px, fondo bianco, qualità 85, nominate `{SKU}.webp`
+  - 89 Fanola: match certo per **codice variante + EAN** su fanola.it (FAN86001 → variante 1086001); nuance dei titoli verificate contro il sito
+  - 16 altri brand: Amuchina, Celtex, Sanitec, Kiepe, Xanitalia/Idema, Roial, Regea
+- **6 da verificare** (conflitto titolo listing ↔ codice ufficiale): immagini candidate in `da_verificare/`, ESCLUSE dal CSV di import
+- **2 non trovati** sul sito Fanola
+- **21 non coperti** dai siti indicati (Cuki, Amedics/MD*, Diversey, RIVIT, monouso generici)
 
-Il CSV `woocommerce_import_immagini.csv` contiene le 105 righe sicure (16 pronte + 89 Fanola) con URL `https://overcomsrl.com/wp-content/uploads/2026/07/{SKU}.webp`.
-**Nota nomi file:** oltre a `/`→`_` ho sostituito anche `,`→`_` (WordPress elimina le virgole dai nomi file al caricamento, l'URL non corrisponderebbe più). Es. `ID1500,001` → `ID1500_001.webp`.
+`woocommerce_import_immagini.csv`: 105 righe (SKU, Images) con URL `https://overcomsrl.com/wp-content/uploads/2026/07/{SKU}.webp`.
+**Nomi file:** `/`→`_` come richiesto, e anche `,`→`_` perché WordPress rimuove le virgole dai nomi al caricamento (es. `ID1500,001` → `ID1500_001.webp`). I punti restano (es. `ID930.655.webp`).
 
-## 1. Immagini pronte nello zip (16)
+## Note qualità
+
+- **25 tinte Fanola** non hanno foto propria per nuance sul sito: usato il **packshot ufficiale di linea** (astuccio identico, il numero nuance non è leggibile in foto). Elenco marcato "packshot linea" in `fanola_immagini_urls.csv`. Le altre 64 Fanola hanno il packshot fronte della singola variante.
+- 4 immagini Idema/Premium provengono dai cataloghi PDF ufficiali Xanipro (uniche versioni online): risoluzione ridotta (canvas 400-420px). Anche ROCER421 (500px), ID950.340 (620px) e ID950.313 hanno sorgenti sotto i 1200px.
+
+## 1. Immagini non-Fanola pronte (16)
 
 | SKU | File | Fonte | Note |
 |---|---|---|---|
@@ -34,39 +40,31 @@ Il CSV `woocommerce_import_immagini.csv` contiene le 105 righe sicure (16 pronte
 | ROCER421 | ROCER421.webp | roial.it | Roial cera liposolubile in cartuccia Titanio rosa (fonte 500x500px) |
 | ITM1540N-S | ITM1540N-S.webp | prodotti.italchimica.it | Sanitec BAKTERIO 1000ml pino balsamico, immagine ufficiale nominata 1540N-S |
 
-Qualità: le 4 immagini Idema/Premium estratte dai cataloghi PDF Xanipro sono a bassa risoluzione (canvas 400-420px anziché 1200): sono le uniche versioni ufficiali reperibili online. ROCER421 e ID950.340 hanno sorgente 500-620px.
+## 2. Fanola pronte (89)
 
-## 2. Fanola — match sicuri, download bloccato (89)
+Dettaglio completo (URL packshot ufficiale, variante, EAN, pagina) in `fanola_immagini_urls.csv`.
 
-Ogni SKU FAN è stato abbinato alla **variante ufficiale** su fanola.it tramite il codice interno (FAN86001 → variante 1086001) e l'EAN presente nell'URL immagine del CDN Fanola. Le nuance dichiarate nei titoli (es. 4.03, 10.1, 9.2F) coincidono tutte con la nuance della variante sul sito.
+## 3. Da verificare — NON importate (6)
 
-Elenco completo in `fanola_immagini_urls.csv`. Esempi:
+Il titolo del vostro listing e il codice prodotto ufficiale indicano prodotti diversi. Immagine candidata del CODICE in `da_verificare/`; decidete voi quale interpretazione è corretta prima di usarle.
 
-- FAN1076617: variante 1076617, EAN 8008277766171, pagina: Wonder Volume shampoo WONDER VOLUME
-- FAN1076459: variante 1076459, EAN 8008277764597, pagina: Fantouch curl passion FANTOUCH
-- FAN1096813: variante 1096813, EAN 8032947868131, pagina: Color Keratin - Viola cenere COLOR KERATIN, nuance 10.21
-
-## 3. Da verificare — NON importare senza controllo (6)
-
-Il titolo del vostro listing e il codice prodotto ufficiale indicano prodotti diversi. Immagine candidata (dove scaricabile) nella cartella `da_verificare/`, esclusa dal CSV di import.
-
-| SKU | Problema |
+| SKU | Conflitto |
 |---|---|
-| FAN86072 | sito: tinta Fanola Color 10.03 Naturali caldi — CSV: "Accessori colore 150 gr" | variante 1086072, EAN 8032947860722, pagina: Fanola Color - Naturali caldi FANOLA COLOR, nuance 10.03 |
-| FAN86163 | sito: Fanola Oxy 30 vol 1000ml (sequenza 86161=10v, 86162=20v) — CSV: "Matrix Trattamenti ricrescita 1000 ml" | variante 1086163, EAN 8032947861637, pagina: Fanola Oxy 30 vol FANOLA OXY |
-| FAN96628 | sito: No Yellow superschiarente antigiallo s.1202 — CSV: "ghd Platinum Styler" | variante 1096628, EAN 8032947866281, pagina: No Yellow - superschiarente antigiallo NO YELLOW, nuance s.1202 |
+| FAN86072 | sito: tinta Fanola Color 10.03 Naturali caldi — CSV: "Accessori colore 150 gr" |
+| FAN86163 | sito: Fanola Oxy 30 vol 1000ml (sequenza 86161=10v, 86162=20v) — CSV: "Matrix Trattamenti ricrescita 1000 ml" |
+| FAN96628 | sito: No Yellow superschiarente antigiallo s.1202 — CSV: "ghd Platinum Styler" |
 | ID920,209 | codice 920.209 sul sito = cera pelabile Brasilian System NERA; il titolo CSV dice "pellet di MIELE" (miele = 920.200). Immagine del codice 920.209 fornita in da_verificare/ |
 | ID950.313 | codice 950.313 a catalogo = Regea MICROGEL CONTORNO OCCHI 100ml; il titolo CSV dice "Siero Idratazione Profonda" (che a catalogo 2026 è 950.341). Immagine del codice 950.313 in da_verificare/ |
-| FAN86086 | sito: tinta Fanola Color 10.13 Beige — CSV: "D'Shila Plasters 250 gr" | variante 1086086, EAN 8032947860869, pagina: Fanola Color - Beige FANOLA COLOR, nuance 10.13 |
+| FAN86086 | sito: tinta Fanola Color 10.13 Beige — CSV: "D'Shila Plasters 250 gr" |
 
-## 4. Non trovati sul sito del produttore (2)
+## 4. Non trovati su fanola.it (2)
 
 - **FAN86047** (FANOLA TINTURA 6.43): nuance 6.43 presente su fanola.it (pagina Dorati rame) ma senza immagini pubblicate
 - **FAN86017** (FANOLA 8.04 - Crema colorante per capelli, biondo chiaro naturale, ram): nuance 8.04 non presente su fanola.it (fuori catalogo?)
 
 ## 5. Non coperti dai siti indicati (21)
 
-Per questi serve indicare il sito del produttore o fornire le immagini da altra fonte:
+Serve indicare il sito del produttore (es. Cuki, Amedics) o fornire immagini da altra fonte:
 
 | SKU | Prodotto | Motivo |
 |---|---|---|
