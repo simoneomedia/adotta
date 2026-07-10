@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Overcom Inventario Manager
- * Description: Importa disponibilità dal CSV gestionale, aggiorna le quantità WooCommerce e genera il file inventario Amazon con multi-pack e formule dedicate.
- * Version:     1.4
+ * Description: Importa disponibilità dal CSV gestionale, aggiorna le quantità WooCommerce e genera il file inventario Amazon con multi-pack, formule dedicate e import mappatura CSV.
+ * Version:     1.5
  * Author:      Overcom SRL
  */
 
@@ -199,7 +199,13 @@ class Overcom_Inventario_Manager {
     </div>
     <div class="oi-actions" style="margin-bottom:16px;">
       <button class="oi-btn oi-btn-red" id="btn-save-amazon" onclick="oiSaveAmazon()">💾 Salva Configurazione Amazon</button>
+      <button class="oi-btn oi-btn-outline" onclick="document.getElementById('oi-mapcsv-input').click()">📤 Importa CSV Mappatura</button>
+      <input type="file" id="oi-mapcsv-input" accept=".csv" style="display:none" onchange="oiImportMappingCsv(this.files[0])">
       <span style="color:var(--oc-muted);font-size:.9rem;" id="amazon-count"></span>
+      <span id="oi-mapcsv-status" style="font-size:.85rem;"></span>
+    </div>
+    <div class="oi-help" style="background:#f0f7ff;border-color:#bfdbfe;">
+      <b>Import rapido:</b> carica un CSV con colonne <code>SKU_SITO, SKU_AMAZON, PEZZI</code> (righe con <code>PEZZI=1</code> vengono ignorate) per popolare tutte le varianti multi-pack in un colpo solo, senza inserirle a mano. Dopo l'import ricordati di premere <b>Salva Configurazione Amazon</b>.
     </div>
     <input class="oi-search" type="text" placeholder="🔍 Cerca prodotto…" oninput="oiFilterAmazon(this.value)">
     <div id="oi-amazon-content"><div class="oi-loader"><div class="oi-spinner"></div><br>Caricamento prodotti…</div></div>
@@ -599,6 +605,79 @@ function oiFilterAmazon(q) {
   document.querySelectorAll('#oi-amazon-content tbody tr').forEach(tr => {
     tr.style.display = (tr.dataset.sku.includes(q) || tr.dataset.name.includes(q)) ? '' : 'none';
   });
+}
+
+/* ── Import CSV mappatura (SKU_SITO, SKU_AMAZON, PEZZI) ── */
+function parseCsvSimple(text) {
+  // parser CSV minimale con supporto per campi tra virgolette
+  const rows = []; let row = []; let field = ''; let inQuotes = false;
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i+1] === '"') { field += '"'; i++; } else { inQuotes = false; }
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',' || c === ';') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else field += c;
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(f => f.trim() !== ''));
+}
+
+function oiImportMappingCsv(file) {
+  if (!file) return;
+  const status = document.getElementById('oi-mapcsv-status');
+  status.textContent = '⏳ Lettura file…';
+  const reader = new FileReader();
+  reader.onload = e => {
+    ensureProducts(() => {
+      if (!OI.amazonRendered) renderAmazon();
+      const rows = parseCsvSimple(e.target.result);
+      if (!rows.length) { status.textContent = '❌ File vuoto o illeggibile'; return; }
+      const header = rows[0].map(h => h.trim().toUpperCase());
+      const iSito = header.indexOf('SKU_SITO');
+      const iAmz  = header.indexOf('SKU_AMAZON');
+      const iPz   = header.indexOf('PEZZI');
+      if (iSito < 0 || iAmz < 0 || iPz < 0) {
+        status.textContent = '❌ Colonne attese: SKU_SITO, SKU_AMAZON, PEZZI';
+        return;
+      }
+      let added = 0, skippedSingle = 0, skippedDup = 0, notFound = 0;
+      const missing = [];
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const skuSito = (r[iSito] || '').trim();
+        const skuAmz  = (r[iAmz]  || '').trim();
+        const pezzi   = Math.max(1, parseInt(r[iPz]) || 1);
+        if (!skuSito || !skuAmz) continue;
+        if (pezzi <= 1) { skippedSingle++; continue; }
+        const container = document.querySelector(`.amazon-variants[data-wc-sku="${CSS.escape(skuSito)}"]`);
+        if (!container) { notFound++; missing.push(skuSito); continue; }
+        const already = [...container.querySelectorAll('.amz-sku-input')].some(inp => inp.value.trim() === skuAmz);
+        if (already) { skippedDup++; continue; }
+        const addBtn = container.querySelector('.amz-add-btn');
+        const div = document.createElement('div');
+        div.innerHTML = renderVariantRow(skuSito, { sku_amazon: skuAmz, pezzi });
+        container.insertBefore(div.firstElementChild, addBtn);
+        added++;
+      }
+      updateAmazonCount();
+      let msg = `✅ ${added} varianti importate`;
+      if (skippedDup) msg += `, ${skippedDup} già presenti (saltate)`;
+      if (skippedSingle) msg += `, ${skippedSingle} pezzi=1 ignorate`;
+      if (notFound) msg += `, ⚠️ ${notFound} SKU_SITO non trovati sul sito`;
+      status.textContent = msg;
+      status.style.color = notFound ? 'var(--oc-warn)' : 'var(--oc-ok)';
+      if (missing.length) console.warn('SKU_SITO non trovati:', missing);
+      if (added) oiToast(`✅ ${added} varianti importate dal CSV — ricordati di salvare`, 'ok');
+    });
+  };
+  reader.readAsText(file, 'UTF-8');
 }
 
 function oiSaveAmazon() {
