@@ -16,7 +16,8 @@ Data: 09/07/2026 — Fonti: fanola.it (CDN ufficiale THRON), xanitalia.it, catal
 
 ## Note qualità
 
-- **25 tinte Fanola** non hanno foto propria per nuance sul sito: usato il **packshot ufficiale di linea** (astuccio identico, il numero nuance non è leggibile in foto). Elenco marcato "packshot linea" in `fanola_immagini_urls.csv`. Le altre 64 Fanola hanno il packshot fronte della singola variante.
+- **73 tinte Fanola / Oro Therapy**: immagine **composita** = astuccio ufficiale + ciocca colore ufficiale con il numero nuance stampato (asset e-commerce Fanola, suffisso 03). Così ogni nuance è riconoscibile a colpo d'occhio, come sui listing Amazon. Gli URL di astuccio e ciocca sono in `fanola_immagini_urls.csv`.
+- Le altre 16 Fanola (shampoo, oxy, Botugen, permanenti, ecc.) usano il packshot fronte della variante: sono già distinguibili tra loro.
 - 4 immagini Idema/Premium provengono dai cataloghi PDF ufficiali Xanipro (uniche versioni online): risoluzione ridotta (canvas 400-420px). Anche ROCER421 (500px), ID950.340 (620px) e ID950.313 hanno sorgenti sotto i 1200px.
 
 ## 1. Immagini non-Fanola pronte (16)
