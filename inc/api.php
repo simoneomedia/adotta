@@ -188,6 +188,12 @@ function agri_saas_register_api_routes(): void
         'permission_callback' => 'agri_saas_can_manage_farms',
     ]);
 
+    register_rest_route('agri-saas/v1', '/farms/map', [
+        'methods'             => WP_REST_Server::READABLE,
+        'callback'            => 'agri_saas_api_farms_map',
+        'permission_callback' => '__return_true',
+    ]);
+
     register_rest_route('agri-saas/v1', '/farms/become', [
         'methods'             => WP_REST_Server::CREATABLE,
         'callback'            => 'agri_saas_api_become_farmer',
@@ -1264,6 +1270,20 @@ function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|W
     }
 
     return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
+}
+
+function agri_saas_api_farms_map(): WP_REST_Response
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $farms = $wpdb->get_results(
+        "SELECT id, name, location, crop_focus, latitude, longitude, media_url, is_verified
+         FROM {$tables['farms']}
+         WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+         ORDER BY name ASC",
+        ARRAY_A
+    ) ?: [];
+    return rest_ensure_response(['farms' => $farms]);
 }
 
 function agri_saas_api_become_farmer(WP_REST_Request $request): WP_REST_Response|WP_Error

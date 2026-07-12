@@ -303,6 +303,7 @@
         orto:     '🥦',
         _shop:    '🛒',
         _barter:  '🤝',
+        _farm:    '🏡',
     };
     const _makeTypeIcon = (type) => {
         const emoji = _TYPE_ICONS[type] || '🌿';
@@ -614,45 +615,133 @@
             ? activeTrees.map(treeRow).join('')
             : '<div class="card empty-state">Non hai ancora adozioni attive. Adotta il tuo primo albero dalla mappa qui sopra!</div>';
 
-        loadAdoptableTrees().catch(() => {
-            root.querySelector('[data-slot="adoptable-trees"]')?.insertAdjacentHTML('beforeend', '<div class="card empty-state">Impossibile caricare gli alberi adottabili.</div>');
-        });
+        // Il caricamento del catalogo avviene tramite la vista Esplora unificata (renderExploreTab).
+
+        // ── Esplora unificato: tutto | adozioni | mercato | baratto | produttori ──
+        const WIDO_PH = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
+        const _exploreCache = {};
+        const _fetchExplore = async (kind) => {
+            if (_exploreCache[kind]) return _exploreCache[kind];
+            if (kind === 'adoptions') {
+                if (!_lastAdoptableTrees) { try { const d = await apiFetch('/catalog/trees'); _lastAdoptableTrees = d.trees || []; renderCatalogFilter(_lastAdoptableTrees); } catch (_) { _lastAdoptableTrees = []; } }
+                _exploreCache.adoptions = _lastAdoptableTrees;
+            } else if (kind === 'mercato') {
+                _exploreCache.mercato = (await apiFetch('/mercato')).products || [];
+            } else if (kind === 'baratto') {
+                _exploreCache.baratto = (await apiFetch('/baratto')).baratti || [];
+            } else if (kind === 'farms') {
+                _exploreCache.farms = (await apiFetch('/farms/map')).farms || [];
+            }
+            return _exploreCache[kind] || [];
+        };
+
+        const _exploreMarkerSpec = (kind, it) => {
+            const lat = Number(kind === 'farms' ? it.latitude : it.map_latitude);
+            const lng = Number(kind === 'farms' ? it.longitude : it.map_longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+            if (kind === 'adoptions') return { lat, lng, type: it.type, popup: `<strong>${escapeHtml(it.species)}</strong><br>${escapeHtml(it.farm_name)}<br><a href="${appUrl(`trees/${it.id}/`)}">Vedi elemento →</a>` };
+            if (kind === 'mercato')   return { lat, lng, type: '_shop', popup: `<strong>${escapeHtml(it.name)}</strong><br>${escapeHtml(it.farm_name)}<br><a href="${appUrl('mercato/')}">Vai al mercato →</a>` };
+            if (kind === 'baratto')   return { lat, lng, type: '_barter', popup: `<strong>${escapeHtml(it.offer_title)}</strong><br>Cerca: ${escapeHtml(it.wants_title)}<br><a href="${appUrl('baratto/')}">Vai al baratto →</a>` };
+            return { lat, lng, type: '_farm', popup: `<strong>${escapeHtml(it.name)}</strong><br>${escapeHtml(it.location || '')}<br><a href="${appUrl(`farms/${it.id}/`)}">Vedi vetrina →</a>` };
+        };
+
+        const _exploreRow = (kind, it) => {
+            const img = (src, alt) => `<img class="product-img product-img--small" src="${escapeHtml(src || WIDO_PH)}" alt="${escapeHtml(alt)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}'">`;
+            if (kind === 'adoptions') return `
+                <a class="tree-row tree-row--link" href="${appUrl(`trees/${it.id}/`)}">
+                    ${img(it.media_url || it.farm_photo, it.species)}
+                    <div class="tree-row-top">
+                        <div><strong>${escapeHtml(it.species)}</strong><br><small>${escapeHtml(it.farm_name)} · ${escapeHtml(it.location || '')}</small></div>
+                        <span class="badge">${escapeHtml(it.code || '🌱')}</span>
+                    </div>
+                </a>`;
+            if (kind === 'mercato') return `
+                <a class="tree-row tree-row--link" href="${appUrl('mercato/')}">
+                    ${img(it.media_url, it.name)}
+                    <div class="tree-row-top">
+                        <div><strong>${escapeHtml(it.name)}</strong><br><small>${escapeHtml(it.farm_name)} · ${escapeHtml(it.location || '')}</small></div>
+                        <span class="badge">${it.price ? `€${Number(it.price).toFixed(2)}` : '🛒'}</span>
+                    </div>
+                </a>`;
+            if (kind === 'baratto') return `
+                <a class="tree-row tree-row--link" href="${appUrl('baratto/')}">
+                    ${img(it.media_url, it.offer_title)}
+                    <div class="tree-row-top">
+                        <div><strong>${escapeHtml(it.offer_title)}</strong><br><small>Cerco: ${escapeHtml(it.wants_title)}</small><br><small>${escapeHtml(it.farm_name)}</small></div>
+                        <span class="badge">🤝</span>
+                    </div>
+                </a>`;
+            return `
+                <a class="tree-row tree-row--link" href="${appUrl(`farms/${it.id}/`)}">
+                    ${img(it.media_url, it.name)}
+                    <div class="tree-row-top">
+                        <div><strong>${escapeHtml(it.name)}</strong>${Number(it.is_verified) === 1 ? ' ✅' : ''}<br><small>${escapeHtml(it.location || '')}${it.crop_focus ? ` · ${escapeHtml(it.crop_focus)}` : ''}</small></div>
+                        <span class="badge">🏡</span>
+                    </div>
+                </a>`;
+        };
+
+        const EXPLORE_LABELS = { adoptions: '🌱 Adozioni', mercato: '🛒 Mercato', baratto: '🤝 Baratto', farms: '🏡 Produttori' };
+
+        const renderExploreTab = async (tab) => {
+            const mapSlot  = root.querySelector('[data-slot="adoptable-map"]');
+            const listSlot = root.querySelector('[data-slot="adoptable-trees"]');
+            if (!mapSlot || !listSlot) return;
+            mapSlot.innerHTML = '<div class="map-placeholder"><small>Caricamento…</small></div>';
+            const kinds = tab === 'all' ? ['adoptions', 'mercato', 'baratto', 'farms'] : [tab];
+            const datasets = await Promise.all(kinds.map((k) => _fetchExplore(k).catch(() => [])));
+            adoptableLeafletMap = null;
+            const markers = [];
+            let listHtml = '';
+            kinds.forEach((k, i) => {
+                const items = datasets[i] || [];
+                items.forEach((it) => { const m = _exploreMarkerSpec(k, it); if (m) markers.push(m); });
+                if (tab === 'all' && items.length) listHtml += `<p class="eyebrow" style="margin:12px 0 4px;">${EXPLORE_LABELS[k]}</p>`;
+                listHtml += items.map((it) => _exploreRow(k, it)).join('');
+            });
+            listSlot.innerHTML = listHtml || '<div class="card empty-state">Niente da mostrare al momento.</div>';
+            if (!markers.length) {
+                mapSlot.innerHTML = '<div class="map-placeholder">&#9678;<small>Nessuna coordinata disponibile</small></div>';
+                return;
+            }
+            mapSlot.innerHTML = '<div id="explore-leaflet-map" class="leaflet-map"></div>';
+            const map = makeClusterMap('explore-leaflet-map');
+            adoptableLeafletMap = null; // explore map is standalone; adoptions tab rebuilds its own
+            const cluster = makeClusterGroup();
+            markers.forEach((m) => L.marker([m.lat, m.lng], { icon: _makeTypeIcon(m.type) }).bindPopup(m.popup).addTo(cluster));
+            map.addLayer(cluster);
+            setTimeout(() => {
+                map.invalidateSize();
+                try {
+                    markers.length === 1
+                        ? map.setView([markers[0].lat, markers[0].lng], 12)
+                        : map.fitBounds(cluster.getBounds(), { padding: [28, 28], maxZoom: 13 });
+                } catch (_) {}
+            }, 120);
+        };
 
         // Content tab switching for dashboard
         const contentTabs = root.querySelectorAll('[data-content-tab]');
         const filterBar   = root.querySelector('[data-slot="catalog-filter"]');
+        if (filterBar) filterBar.style.display = 'none'; // default tab is "Tutto"
         if (contentTabs.length) {
             contentTabs.forEach((btn) => {
-                btn.addEventListener('click', async () => {
+                btn.addEventListener('click', () => {
                     contentTabs.forEach((b) => b.classList.toggle('active', b === btn));
                     const tab = btn.dataset.contentTab;
                     if (filterBar) filterBar.style.display = tab === 'adoptions' ? '' : 'none';
                     if (tab === 'adoptions') {
+                        adoptableLeafletMap = null;
                         renderAdoptableTrees(_filteredTrees());
-                        renderAdoptableMap(_adoptableMapTrees);
-                    } else if (tab === 'mercato') {
-                        // lazy-load mercato
-                        const mapSlot  = root.querySelector('[data-slot="adoptable-map"]');
-                        const listSlot = root.querySelector('[data-slot="adoptable-trees"]');
-                        if (mapSlot) mapSlot.innerHTML = '<div class="map-placeholder"><small>Caricamento mercato…</small></div>';
-                        try {
-                            const res  = await fetch(`${window.AgriSaas.apiBase}${bust('/mercato')}`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
-                            const data = await res.json();
-                            renderMercatoInline(data.products || [], mapSlot, listSlot);
-                        } catch (_) {}
-                    } else if (tab === 'baratto') {
-                        const mapSlot  = root.querySelector('[data-slot="adoptable-map"]');
-                        const listSlot = root.querySelector('[data-slot="adoptable-trees"]');
-                        if (mapSlot) mapSlot.innerHTML = '<div class="map-placeholder"><small>Caricamento baratto…</small></div>';
-                        try {
-                            const res  = await fetch(`${window.AgriSaas.apiBase}${bust('/baratto')}`, { headers: { 'X-WP-Nonce': window.AgriSaas.nonce } });
-                            const data = await res.json();
-                            renderBarattoInline(data.baratti || [], mapSlot, listSlot);
-                        } catch (_) {}
+                    } else {
+                        renderExploreTab(tab);
                     }
                 });
             });
         }
+
+        // Initial view: everything together, no filters
+        renderExploreTab('all');
     };
 
     let _farmsData = [];

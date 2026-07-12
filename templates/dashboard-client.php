@@ -23,9 +23,11 @@ agri_saas_render_shell('', function (): void {
             </div>
             <!-- Content filter tabs: Adozioni | Mercato | Baratto -->
             <div class="dashboard-content-tabs" role="tablist">
-                <button class="dash-content-tab active" data-content-tab="adoptions">🌱 Adozioni</button>
+                <button class="dash-content-tab active" data-content-tab="all">🌍 Tutto</button>
+                <button class="dash-content-tab" data-content-tab="adoptions">🌱 Adozioni</button>
                 <button class="dash-content-tab" data-content-tab="mercato">🛒 Mercato</button>
                 <button class="dash-content-tab" data-content-tab="baratto">🤝 Baratto</button>
+                <button class="dash-content-tab" data-content-tab="farms">🏡 Produttori</button>
             </div>
             <!-- Catalog type filter (shown only for adoptions tab) -->
             <div class="catalog-filter-bar" data-slot="catalog-filter" role="group" aria-label="<?php esc_attr_e('Filtra per tipo', 'agri-saas'); ?>"></div>
