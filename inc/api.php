@@ -350,7 +350,7 @@ function agri_saas_parse_planted_input(string $input): array
 function agri_saas_api_register_user(WP_REST_Request $request): WP_REST_Response|WP_Error
 {
     if (is_user_logged_in()) {
-        return new WP_Error('agri_saas_already_logged_in', __('You are already registered and logged in.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_already_logged_in', __('Sei già registrato e connesso.', 'agri-saas'), ['status' => 400]);
     }
 
     // Registrazione unica: tutti gli account nascono come utenti semplici.
@@ -365,11 +365,11 @@ function agri_saas_api_register_user(WP_REST_Request $request): WP_REST_Response
     $display_name = sanitize_text_field($request->get_param('display_name'));
 
     if (!$email || !is_email($email) || strlen($password) < 8 || !$display_name) {
-        return new WP_Error('agri_saas_registration_required', __('Name, valid email, and an 8+ character password are required.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_registration_required', __('Nome, email valida e una password di almeno 8 caratteri sono obbligatori.', 'agri-saas'), ['status' => 400]);
     }
 
     if (email_exists($email)) {
-        return new WP_Error('agri_saas_registration_email_exists', __('An account with this email already exists.', 'agri-saas'), ['status' => 409]);
+        return new WP_Error('agri_saas_registration_email_exists', __('Esiste già un account con questa email.', 'agri-saas'), ['status' => 409]);
     }
 
     $username_base = sanitize_user(current(explode('@', $email)), true) ?: 'agri_user';
@@ -405,7 +405,7 @@ function agri_saas_api_register_user(WP_REST_Request $request): WP_REST_Response
         if (!$farm_name || !$location) {
             require_once ABSPATH . 'wp-admin/includes/user.php';
             wp_delete_user((int) $user_id);
-            return new WP_Error('agri_saas_registration_farm_required', __('Farm name and location are required.', 'agri-saas'), ['status' => 400]);
+            return new WP_Error('agri_saas_registration_farm_required', __('Nome attività e località sono obbligatori.', 'agri-saas'), ['status' => 400]);
         }
 
         $inserted = $wpdb->insert($tables['farms'], [
@@ -426,7 +426,7 @@ function agri_saas_api_register_user(WP_REST_Request $request): WP_REST_Response
         if (!$inserted) {
             require_once ABSPATH . 'wp-admin/includes/user.php';
             wp_delete_user((int) $user_id);
-            return new WP_Error('agri_saas_registration_farm_failed', __('Unable to create the farm profile.', 'agri-saas'), ['status' => 500]);
+            return new WP_Error('agri_saas_registration_farm_failed', __('Impossibile creare il profilo produttore.', 'agri-saas'), ['status' => 500]);
         }
     }
 
@@ -778,7 +778,7 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
 
         if (!$farm) {
             agri_saas_invalidate_farm_cache($farm_id);
-            return new WP_Error('agri_saas_farm_not_found', __('Farm not found.', 'agri-saas'), ['status' => 404]);
+            return new WP_Error('agri_saas_farm_not_found', __('Produttore non trovato.', 'agri-saas'), ['status' => 404]);
         }
 
         $trees = $wpdb->get_results($wpdb->prepare(
@@ -815,7 +815,7 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
     }
 
     if (!$farm) {
-        return new WP_Error('agri_saas_farm_not_found', __('Farm not found.', 'agri-saas'), ['status' => 404]);
+        return new WP_Error('agri_saas_farm_not_found', __('Produttore non trovato.', 'agri-saas'), ['status' => 404]);
     }
 
     $updates = $wpdb->get_results($wpdb->prepare(
@@ -880,11 +880,11 @@ function agri_saas_api_follow_farm(WP_REST_Request $request): WP_REST_Response|W
 
     $owner_id = (int) $wpdb->get_var($wpdb->prepare("SELECT owner_user_id FROM {$tables['farms']} WHERE id = %d", $farm_id));
     if (!$owner_id) {
-        return new WP_Error('agri_saas_farm_not_found', __('Farm not found.', 'agri-saas'), ['status' => 404]);
+        return new WP_Error('agri_saas_farm_not_found', __('Produttore non trovato.', 'agri-saas'), ['status' => 404]);
     }
 
     if ($owner_id === $user_id) {
-        return new WP_Error('agri_saas_follow_own_farm', __('You cannot follow your own farm.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_follow_own_farm', __('Non puoi seguire il tuo stesso profilo produttore.', 'agri-saas'), ['status' => 400]);
     }
 
     $wpdb->query($wpdb->prepare(
@@ -988,7 +988,7 @@ function agri_saas_api_create_adoption_request(WP_REST_Request $request): WP_RES
     $user_id = get_current_user_id();
 
     if (!$tree_id) {
-        return new WP_Error('agri_saas_tree_required', __('Tree is required.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_tree_required', __('L\'elemento è obbligatorio.', 'agri-saas'), ['status' => 400]);
     }
 
     $tree = $wpdb->get_row($wpdb->prepare(
@@ -997,11 +997,11 @@ function agri_saas_api_create_adoption_request(WP_REST_Request $request): WP_RES
     ), ARRAY_A);
 
     if (!$tree || $tree['status'] !== 'available') {
-        return new WP_Error('agri_saas_tree_unavailable', __('This tree is not available for adoption.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_tree_unavailable', __('Questo elemento non è disponibile per l\'adozione.', 'agri-saas'), ['status' => 400]);
     }
 
     if ((int) $tree['owner_user_id'] === $user_id) {
-        return new WP_Error('agri_saas_own_tree_request', __('You cannot request adoption for your own tree.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_own_tree_request', __('Non puoi richiedere l\'adozione di un tuo elemento.', 'agri-saas'), ['status' => 400]);
     }
 
     $blocking = (int) $wpdb->get_var($wpdb->prepare(
@@ -1010,7 +1010,7 @@ function agri_saas_api_create_adoption_request(WP_REST_Request $request): WP_RES
     ));
 
     if ($blocking) {
-        return new WP_Error('agri_saas_request_exists', __('This tree already has an adoption request.', 'agri-saas'), ['status' => 409]);
+        return new WP_Error('agri_saas_request_exists', __('Questo elemento ha già una richiesta di adozione.', 'agri-saas'), ['status' => 409]);
     }
 
     $existing_id = (int) $wpdb->get_var($wpdb->prepare(
@@ -1058,11 +1058,11 @@ function agri_saas_api_decide_adoption_request(WP_REST_Request $request): WP_RES
     ), ARRAY_A);
 
     if (!$adoption || (int) $adoption['owner_user_id'] !== $user_id) {
-        return new WP_Error('agri_saas_request_not_found', __('Adoption request not found.', 'agri-saas'), ['status' => 404]);
+        return new WP_Error('agri_saas_request_not_found', __('Richiesta di adozione non trovata.', 'agri-saas'), ['status' => 404]);
     }
 
     if ($adoption['status'] !== 'pending') {
-        return new WP_Error('agri_saas_request_not_pending', __('Only pending requests can be decided.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_request_not_pending', __('Solo le richieste in sospeso possono essere gestite.', 'agri-saas'), ['status' => 400]);
     }
 
     $new_status = $decision === 'accept' ? 'active' : 'rejected';
@@ -1241,7 +1241,7 @@ function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|W
     $location = sanitize_text_field($request->get_param('location'));
 
     if (!$name || !$location) {
-        return new WP_Error('agri_saas_farm_required_fields', __('Farm name and location are required.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_farm_required_fields', __('Nome attività e località sono obbligatori.', 'agri-saas'), ['status' => 400]);
     }
 
     $latitude  = agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90);
@@ -1266,7 +1266,7 @@ function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|W
     ], ['%d', '%s', '%s', '%f', '%s', '%d', '%f', '%f', '%s', '%s', '%s', '%s', '%s']);
 
     if (!$wpdb->insert_id) {
-        return new WP_Error('agri_saas_farm_failed', __('Unable to create farm.', 'agri-saas'), ['status' => 500]);
+        return new WP_Error('agri_saas_farm_failed', __('Impossibile creare il profilo produttore.', 'agri-saas'), ['status' => 500]);
     }
 
     return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
@@ -1351,7 +1351,7 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
     $code    = sanitize_text_field($request->get_param('code'));
 
     if (!$species || !$code) {
-        return new WP_Error('agri_saas_tree_required_fields', __('Species and code are required.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_tree_required_fields', __('Specie e codice sono obbligatori.', 'agri-saas'), ['status' => 400]);
     }
 
     // Auto-resolve the farmer's single farm
@@ -1397,7 +1397,7 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
     ], ['%d', '%s', '%s', '%s', '%f', '%f', '%s', '%s', '%s', '%s']);
 
     if (!$wpdb->insert_id) {
-        return new WP_Error('agri_saas_tree_failed', __('Unable to create tree. Check that the code is unique.', 'agri-saas'), ['status' => 500]);
+        return new WP_Error('agri_saas_tree_failed', __('Impossibile creare l\'elemento. Controlla che il codice sia univoco.', 'agri-saas'), ['status' => 500]);
     }
 
     $tree_id = (int) $wpdb->insert_id;
@@ -1462,7 +1462,7 @@ function agri_saas_api_tree_detail(WP_REST_Request $request): WP_REST_Response|W
     ), ARRAY_A);
 
     if (!$tree) {
-        return new WP_Error('agri_saas_tree_not_found', __('Tree not found.', 'agri-saas'), ['status' => 404]);
+        return new WP_Error('agri_saas_tree_not_found', __('Elemento non trovato.', 'agri-saas'), ['status' => 404]);
     }
 
     $rewards = $wpdb->get_results($wpdb->prepare(
@@ -1516,13 +1516,13 @@ function agri_saas_api_upload_photo(WP_REST_Request $request): WP_REST_Response|
 {
     $files = $request->get_file_params();
     if (empty($files['photo']) || !empty($files['photo']['error'])) {
-        return new WP_Error('agri_saas_photo_required', __('Choose a photo to upload.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_photo_required', __('Scegli una foto da caricare.', 'agri-saas'), ['status' => 400]);
     }
 
     $file = $files['photo'];
     $mime = wp_check_filetype_and_ext($file['tmp_name'], $file['name']);
     if (empty($mime['type']) || !str_starts_with($mime['type'], 'image/')) {
-        return new WP_Error('agri_saas_photo_type', __('Only image uploads are supported.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_photo_type', __('Puoi caricare solo immagini.', 'agri-saas'), ['status' => 400]);
     }
 
     require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -1542,7 +1542,7 @@ function agri_saas_api_upload_photo(WP_REST_Request $request): WP_REST_Response|
         'size'     => filesize($optimized),
     ];
 
-    $attachment_id = media_handle_sideload($sideload, 0, __('Optimized farm photo', 'agri-saas'));
+    $attachment_id = media_handle_sideload($sideload, 0, __('Foto ottimizzata', 'agri-saas'));
     if (is_wp_error($attachment_id)) {
         @unlink($optimized);
         return $attachment_id;
@@ -1576,7 +1576,7 @@ function agri_saas_optimize_uploaded_photo(string $tmp_name): string|WP_Error
             $editor->set_quality($current_quality);
             $target = wp_tempnam('agri-saas-photo.jpg');
             if (!$target) {
-                return new WP_Error('agri_saas_photo_temp', __('Unable to create a temporary optimized photo.', 'agri-saas'), ['status' => 500]);
+                return new WP_Error('agri_saas_photo_temp', __('Impossibile creare la foto ottimizzata temporanea.', 'agri-saas'), ['status' => 500]);
             }
 
             $saved = $editor->save($target, 'image/jpeg');
@@ -1600,7 +1600,7 @@ function agri_saas_optimize_uploaded_photo(string $tmp_name): string|WP_Error
         $max_dimension -= 240;
     }
 
-    return new WP_Error('agri_saas_photo_too_large', __('The image could not be optimized under 100 KB. Try a smaller or less detailed photo.', 'agri-saas'), ['status' => 413]);
+    return new WP_Error('agri_saas_photo_too_large', __('Impossibile ottimizzare l\'immagine sotto i 100 KB. Prova con una foto più piccola o meno dettagliata.', 'agri-saas'), ['status' => 413]);
 }
 
 function agri_saas_api_updates(WP_REST_Request $request): WP_REST_Response
@@ -1682,7 +1682,7 @@ function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response
     }
 
     if (!$title || !$body) {
-        return new WP_Error('agri_saas_update_required', __('Title and message are required.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_update_required', __('Titolo e messaggio sono obbligatori.', 'agri-saas'), ['status' => 400]);
     }
 
     // Auto-resolve farm from tree or from the farmer's own farm
@@ -1694,7 +1694,7 @@ function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response
         ), ARRAY_A);
 
         if (!$tree_farm || (int) $tree_farm['owner_user_id'] !== $user_id) {
-            return new WP_Error('agri_saas_update_tree_forbidden', __('You can publish updates only for your trees.', 'agri-saas'), ['status' => 403]);
+            return new WP_Error('agri_saas_update_tree_forbidden', __('Puoi pubblicare aggiornamenti solo per i tuoi elementi.', 'agri-saas'), ['status' => 403]);
         }
         $farm_id = (int) $tree_farm['farm_id'];
     } else {
@@ -1708,7 +1708,7 @@ function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response
     }
 
     if ($visibility === 'tree_adopter' && !$tree_id) {
-        return new WP_Error('agri_saas_update_tree_visibility', __('Tree adopter visibility requires a specific tree.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_update_tree_visibility', __('La visibilità per l\'adottante richiede un elemento specifico.', 'agri-saas'), ['status' => 400]);
     }
 
     $inserted = $wpdb->insert($tables['updates'], [
@@ -1722,7 +1722,7 @@ function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response
     ], ['%d', '%d', '%d', '%s', '%s', '%s', '%s']);
 
     if (!$inserted) {
-        return new WP_Error('agri_saas_update_failed', __('Unable to create update.', 'agri-saas'), ['status' => 500]);
+        return new WP_Error('agri_saas_update_failed', __('Impossibile creare l\'aggiornamento.', 'agri-saas'), ['status' => 500]);
     }
 
     $update_id = (int) $wpdb->insert_id;

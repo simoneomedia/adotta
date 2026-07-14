@@ -609,22 +609,29 @@
                         <span class="badge">${escapeHtml(it.code || '🌱')}</span>
                     </div>
                 </a>`;
+            const waBtn = (subject, it2) => {
+                if (!window.AgriSaas.userId) return `<button class="button ghost" type="button" data-auth-contact onclick="event.stopPropagation()">🔒</button>`;
+                if (!it2.contact_whatsapp) return '';
+                return `<a class="button" href="https://wa.me/${String(it2.contact_whatsapp).replace(/\D/g, '')}?text=${encodeURIComponent(subject)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 WhatsApp</a>`;
+            };
             if (kind === 'mercato') return `
-                <a class="tree-row tree-row--link" href="${appUrl('mercato/')}">
+                <div class="tree-row tree-row--link" onclick="location.href='${appUrl('mercato/')}'" role="link" tabindex="0">
                     ${img(it.media_url, it.name)}
                     <div class="tree-row-top">
                         <div><strong>${escapeHtml(it.name)}</strong><br><small>${escapeHtml(it.farm_name)} · ${escapeHtml(it.location || '')}</small></div>
                         <span class="badge">${it.price ? `€${Number(it.price).toFixed(2)}` : '🛒'}</span>
                     </div>
-                </a>`;
+                    <div class="row-actions">${waBtn(`Ciao, sono interessato al prodotto "${it.name}" di ${it.farm_name}`, it)}</div>
+                </div>`;
             if (kind === 'baratto') return `
-                <a class="tree-row tree-row--link" href="${appUrl('baratto/')}">
+                <div class="tree-row tree-row--link" onclick="location.href='${appUrl('baratto/')}'" role="link" tabindex="0">
                     ${img(it.media_url, it.offer_title)}
                     <div class="tree-row-top">
                         <div><strong>${escapeHtml(it.offer_title)}</strong><br><small>Cerco: ${escapeHtml(it.wants_title)}</small><br><small>${escapeHtml(it.farm_name)}</small></div>
                         <span class="badge">🤝</span>
                     </div>
-                </a>`;
+                    <div class="row-actions">${waBtn(`Ciao, ho visto il tuo baratto su wido: offri "${it.offer_title}" in cambio di "${it.wants_title}". Vorrei fare un'offerta.`, it)}</div>
+                </div>`;
             return `
                 <a class="tree-row tree-row--link" href="${appUrl(`farms/${it.id}/`)}">
                     ${img(it.media_url, it.name)}
