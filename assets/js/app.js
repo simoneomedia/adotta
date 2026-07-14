@@ -700,7 +700,8 @@
 
     const renderClientDashboard = (data) => {
         _statCardIdx = 0;
-        root.querySelector('[data-slot="stats"]').innerHTML = [
+        const statsSlot = root.querySelector('[data-slot="stats"]');
+        if (statsSlot) statsSlot.innerHTML = [
             statCard('Adottati', data.stats.adoptedTrees, 'Nel tuo portfolio'),
             statCard('Attivi', data.stats.activeAdoptions, 'Adozioni attive'),
         ].join('');
@@ -739,7 +740,8 @@
             }
         }
 
-        root.querySelector('[data-slot="trees"]').innerHTML = activeTrees.length
+        const treesSlot = root.querySelector('[data-slot="trees"]');
+        if (treesSlot) treesSlot.innerHTML = activeTrees.length
             ? activeTrees.map(treeRow).join('')
             : '<div class="card empty-state">Non hai ancora adozioni attive. Adotta il tuo primo albero dalla mappa qui sopra!</div>';
 

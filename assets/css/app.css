@@ -1857,3 +1857,17 @@ a.ig-farm-name:hover { color: var(--brand); }
 .market-list .barter-row { gap: 8px; }
 /* Vetrina produttore: prodotti e baratti */
 .farm-offer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+
+/* ── Esplora: desktop, mappa alta e lista a 2 colonne ────── */
+@media (min-width: 901px) {
+    .catalog-map--hero,
+    .catalog-map--hero .leaflet-map { min-height: 70vh; }
+    .card--hero [data-slot="adoptable-trees"] {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        align-items: start;
+    }
+    .card--hero [data-slot="adoptable-trees"] > .eyebrow,
+    .card--hero [data-slot="adoptable-trees"] > .empty-state { grid-column: 1 / -1; }
+}

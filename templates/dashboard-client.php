@@ -13,7 +13,7 @@ agri_saas_render_shell('', function (): void {
         <article class="card span-3 card--hero">
             <div class="section-heading">
                 <div>
-                    <p class="eyebrow"><?php esc_html_e('Scopri e adotta', 'agri-saas'); ?></p>
+                    <p class="eyebrow"><?php esc_html_e('Mappa e catalogo', 'agri-saas'); ?></p>
                     <h2><?php esc_html_e('Esplora', 'agri-saas'); ?></h2>
                 </div>
                 <div class="view-toggle">
@@ -36,31 +36,6 @@ agri_saas_render_shell('', function (): void {
                 <div class="map-placeholder"><span style="font-size:2.5rem">🗺</span><small><?php esc_html_e('Caricamento mappa…', 'agri-saas'); ?></small></div>
             </div>
             <div class="card-list" data-slot="adoptable-trees" style="display:none;"></div>
-        </article>
-
-        <!-- 2. PERSONAL: level badge, stats, adoptions -->
-        <div class="span-3" data-slot="level-badge"></div>
-        <div class="stats-grid" data-slot="stats"></div>
-
-        <article class="card span-3">
-            <div class="section-heading">
-                <div>
-                    <p class="eyebrow"><?php esc_html_e('Il tuo portafoglio', 'agri-saas'); ?></p>
-                    <h2><?php esc_html_e('Le mie adozioni', 'agri-saas'); ?></h2>
-                </div>
-                <a class="button ghost" href="<?php echo esc_url(home_url('/updates/')); ?>"><?php esc_html_e('Aggiornamenti →', 'agri-saas'); ?></a>
-            </div>
-            <div class="card-list" data-slot="trees"></div>
-        </article>
-
-        <article class="card span-3 pending-section" data-profile-section="pending" hidden>
-            <div class="section-heading">
-                <div>
-                    <span class="badge-pending">⏳ <?php esc_html_e('In attesa di conferma', 'agri-saas'); ?></span>
-                    <h2 style="margin-top:8px"><?php esc_html_e('Richieste inviate', 'agri-saas'); ?></h2>
-                </div>
-            </div>
-            <div class="card-list" data-slot="trees-pending"></div>
         </article>
 
         <?php
