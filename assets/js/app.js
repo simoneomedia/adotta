@@ -570,53 +570,7 @@
     };
 
     // DASHBOARD UTENTE
-    const renderClientDashboard = (data) => {
-        _statCardIdx = 0;
-        root.querySelector('[data-slot="stats"]').innerHTML = [
-            statCard('Adottati', data.stats.adoptedTrees, 'Nel tuo portfolio'),
-            statCard('Attivi', data.stats.activeAdoptions, 'Adozioni attive'),
-        ].join('');
-        renderLevelBadge(data.stats.activeAdoptions || 0);
-
-        const treeRow = (tree) => {
-            const planted = plantedDisplay(tree);
-            const isCancelRequested = tree.adoption_status === 'cancel_requested';
-            return `
-            <a href="${appUrl(`trees/${tree.id}/`)}" class="tree-row tree-row--portfolio tree-row--link">
-                <div class="tree-row-top">
-                    <div>
-                        <strong>${escapeHtml(tree.species)}</strong>${secolareBadge(tree)}<br>
-                        <small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small>
-                        ${planted ? `<br><small>🌱 ${escapeHtml(planted)}</small>` : ''}
-                    </div>
-                    <span class="badge">${escapeHtml(tree.code)}</span>
-                </div>
-                ${rewardChips(tree.rewards)}
-                ${isCancelRequested ? `<span class="badge-warning">⏳ Cancellazione in attesa di conferma</span>` : ''}
-            </a>`;
-        };
-
-        // Pending adoptions (shown first, section hidden if empty)
-        const pendingTrees = data.trees.filter((t) => t.adoption_status === 'pending');
-        const activeTrees  = data.trees.filter((t) => t.adoption_status !== 'pending');
-
-        const pendingSection = root.querySelector('[data-profile-section="pending"]');
-        if (pendingSection) {
-            if (pendingTrees.length) {
-                pendingSection.hidden = false;
-                pendingSection.querySelector('[data-slot="trees-pending"]').innerHTML =
-                    pendingTrees.map(treeRow).join('');
-            } else {
-                pendingSection.hidden = true;
-            }
-        }
-
-        root.querySelector('[data-slot="trees"]').innerHTML = activeTrees.length
-            ? activeTrees.map(treeRow).join('')
-            : '<div class="card empty-state">Non hai ancora adozioni attive. Adotta il tuo primo albero dalla mappa qui sopra!</div>';
-
-        // Il caricamento del catalogo avviene tramite la vista Esplora unificata (renderExploreTab).
-
+    const initExplore = () => {
         // ── Esplora unificato: tutto | adozioni | mercato | baratto | produttori ──
         const WIDO_PH = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
         const _exploreCache = {};
@@ -742,6 +696,56 @@
 
         // Initial view: everything together, no filters
         renderExploreTab('all');
+    };
+
+    const renderClientDashboard = (data) => {
+        _statCardIdx = 0;
+        root.querySelector('[data-slot="stats"]').innerHTML = [
+            statCard('Adottati', data.stats.adoptedTrees, 'Nel tuo portfolio'),
+            statCard('Attivi', data.stats.activeAdoptions, 'Adozioni attive'),
+        ].join('');
+        renderLevelBadge(data.stats.activeAdoptions || 0);
+
+        const treeRow = (tree) => {
+            const planted = plantedDisplay(tree);
+            const isCancelRequested = tree.adoption_status === 'cancel_requested';
+            return `
+            <a href="${appUrl(`trees/${tree.id}/`)}" class="tree-row tree-row--portfolio tree-row--link">
+                <div class="tree-row-top">
+                    <div>
+                        <strong>${escapeHtml(tree.species)}</strong>${secolareBadge(tree)}<br>
+                        <small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small>
+                        ${planted ? `<br><small>🌱 ${escapeHtml(planted)}</small>` : ''}
+                    </div>
+                    <span class="badge">${escapeHtml(tree.code)}</span>
+                </div>
+                ${rewardChips(tree.rewards)}
+                ${isCancelRequested ? `<span class="badge-warning">⏳ Cancellazione in attesa di conferma</span>` : ''}
+            </a>`;
+        };
+
+        // Pending adoptions (shown first, section hidden if empty)
+        const pendingTrees = data.trees.filter((t) => t.adoption_status === 'pending');
+        const activeTrees  = data.trees.filter((t) => t.adoption_status !== 'pending');
+
+        const pendingSection = root.querySelector('[data-profile-section="pending"]');
+        if (pendingSection) {
+            if (pendingTrees.length) {
+                pendingSection.hidden = false;
+                pendingSection.querySelector('[data-slot="trees-pending"]').innerHTML =
+                    pendingTrees.map(treeRow).join('');
+            } else {
+                pendingSection.hidden = true;
+            }
+        }
+
+        root.querySelector('[data-slot="trees"]').innerHTML = activeTrees.length
+            ? activeTrees.map(treeRow).join('')
+            : '<div class="card empty-state">Non hai ancora adozioni attive. Adotta il tuo primo albero dalla mappa qui sopra!</div>';
+
+        // Il caricamento del catalogo avviene tramite la vista Esplora unificata (renderExploreTab).
+
+        initExplore();
     };
 
     let _farmsData = [];
@@ -2159,6 +2163,7 @@
         'mercato':          renderMercato,
         'baratto':          renderBaratto,
         'public-catalog':   renderPublicCatalog,
+        'public-explore':   (data) => { _lastAdoptableTrees = data.trees || []; renderCatalogFilter(_lastAdoptableTrees); initExplore(); },
         'admin-dashboard':  renderAdminDashboard,
         'profile':          renderProfile,
     };

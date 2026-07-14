@@ -2,42 +2,57 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+require_once AGRI_SAAS_PATH . '/components/layout.php';
 
-// Redirect logged-in users to their dashboard — index.php is registration-only
+// Logged-in users go straight to their dashboard
 if (is_user_logged_in()) {
     wp_safe_redirect(agri_saas_user_home_url());
     exit;
 }
 
-get_header();
-?>
-<main class="marketing-shell registration-shell">
+agri_saas_render_shell('', function (): void {
+    ?>
+    <section class="dashboard-grid" data-agri-endpoint="/catalog/trees" data-render="public-explore">
 
-    <!-- Brand + tagline -->
-    <div class="reg-brand-header">
-        <a class="brand reg-brand" href="<?php echo esc_url(home_url('/')); ?>">
-            <span class="brand-mark">A</span>
-            <span>Adotta</span>
-        </a>
-        <p class="reg-tagline"><?php esc_html_e('Adotta un albero vero. Sostieni i piccoli produttori agricoli.', 'agri-saas'); ?></p>
-    </div>
+        <!-- Explore: unified public map -->
+        <article class="card span-3 card--hero">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow"><?php esc_html_e('Scopri i piccoli produttori', 'agri-saas'); ?></p>
+                    <h2><?php esc_html_e('Esplora', 'agri-saas'); ?></h2>
+                </div>
+                <div class="view-toggle">
+                    <button class="button active" type="button" data-view-toggle="map">🗺 <?php esc_html_e('Mappa', 'agri-saas'); ?></button>
+                    <button class="button ghost" type="button" data-view-toggle="list">☰ <?php esc_html_e('Lista', 'agri-saas'); ?></button>
+                </div>
+            </div>
+            <div class="dashboard-content-tabs" role="tablist">
+                <button class="dash-content-tab active" data-content-tab="all">🌍 <?php esc_html_e('Tutto', 'agri-saas'); ?></button>
+                <button class="dash-content-tab" data-content-tab="adoptions">🌱 <?php esc_html_e('Adozioni', 'agri-saas'); ?></button>
+                <button class="dash-content-tab" data-content-tab="mercato">🛒 <?php esc_html_e('Mercato', 'agri-saas'); ?></button>
+                <button class="dash-content-tab" data-content-tab="baratto">🤝 <?php esc_html_e('Baratto', 'agri-saas'); ?></button>
+                <button class="dash-content-tab" data-content-tab="farms">🏡 <?php esc_html_e('Produttori', 'agri-saas'); ?></button>
+            </div>
+            <div class="catalog-filter-bar" data-slot="catalog-filter" role="group" aria-label="<?php esc_attr_e('Filtra per tipo', 'agri-saas'); ?>"></div>
+            <div class="catalog-map catalog-map--hero" data-slot="adoptable-map" aria-label="<?php esc_attr_e('Mappa', 'agri-saas'); ?>">
+                <div class="map-placeholder"><span style="font-size:2.5rem">🗺</span><small><?php esc_html_e('Caricamento mappa…', 'agri-saas'); ?></small></div>
+            </div>
+            <div class="card-list" data-slot="adoptable-trees" style="display:none;"></div>
+        </article>
 
-    <p class="reg-login-hint" style="text-align:center;margin:0 0 24px;">
-        <a href="<?php echo esc_url(wp_login_url(agri_saas_user_home_url())); ?>">
-            <?php esc_html_e('Ho già un account? Accedi →', 'agri-saas'); ?>
-        </a>
-    </p>
-
-    <!-- Single unified registration -->
-    <section class="registration-grid" style="max-width:520px;margin:0 auto;">
-
-        <article class="card registration-panel" data-registration-panel="client">
-            <p class="eyebrow"><?php esc_html_e('Registrazione', 'agri-saas'); ?></p>
-            <h2><?php esc_html_e('Crea il tuo account', 'agri-saas'); ?></h2>
-            <p style="color:var(--muted);font-size:.9rem;margin-top:4px;">
+        <!-- Registration -->
+        <article class="card span-3 registration-panel" id="registrati" data-registration-panel="client">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow"><?php esc_html_e('Unisciti a wido', 'agri-saas'); ?></p>
+                    <h2><?php esc_html_e('Crea il tuo account', 'agri-saas'); ?></h2>
+                </div>
+                <a class="button ghost" href="<?php echo esc_url(wp_login_url(home_url('/dashboard/'))); ?>"><?php esc_html_e('Ho già un account →', 'agri-saas'); ?></a>
+            </div>
+            <p style="color:var(--muted);font-size:.92rem;">
                 <?php esc_html_e('Un unico account per tutto: adotta alberi, scambia prodotti e — se sei un piccolo produttore — crea il tuo profilo produttore direttamente dalla tua area personale.', 'agri-saas'); ?>
             </p>
-            <form data-registration-form="client">
+            <form data-registration-form="client" style="max-width:520px;">
                 <label><?php esc_html_e('Nome visualizzato', 'agri-saas'); ?><input name="display_name" required autocomplete="name"></label>
                 <label><?php esc_html_e('Email', 'agri-saas'); ?><input name="email" type="email" required autocomplete="email"></label>
                 <div class="form-grid-2">
@@ -51,7 +66,5 @@ get_header();
         </article>
 
     </section>
-
-</main>
-<?php
-get_footer();
+    <?php
+});
