@@ -21,7 +21,7 @@
                         <span class="auth-option-icon">🌱</span>
                         <div class="auth-option-text">
                             <strong>Sono un Utente</strong>
-                            <small>Adotta alberi, segui il loro percorso, ricevi prodotti dal produttore</small>
+                            <small>Adotta elementi, segui il loro percorso, ricevi prodotti dal produttore</small>
                         </div>
                         <span class="auth-option-arrow">→</span>
                     </a>
@@ -29,7 +29,7 @@
                         <span class="auth-option-icon">🚜</span>
                         <div class="auth-option-text">
                             <strong>Sono un Agricoltore</strong>
-                            <small>Pubblica alberi adottabili, condividi aggiornamenti, connettiti con i sostenitori</small>
+                            <small>Pubblica elementi adottabili, condividi aggiornamenti, connettiti con i sostenitori</small>
                         </div>
                         <span class="auth-option-arrow">→</span>
                     </a>
@@ -258,7 +258,7 @@
     const secolareBadge = (tree) => {
         const age = treeAgeYears(tree);
         return age !== null && age >= 100
-            ? `<span class="badge-secolare">🏛️ Albero Secolare (${age} anni)</span>`
+            ? `<span class="badge-secolare">🏛️ Elemento Secolare (${age} anni)</span>`
             : '';
     };
 
@@ -289,7 +289,7 @@
         return `${Math.floor(mo / 12)} anni fa`;
     };
 
-    const visibilityLabel = (v) => ({ public: '🌐 Pubblico', followers: '👥 Follower', adopters: '🌱 Adottanti', tree_adopter: '🌳 Adottante albero' }[v] || v);
+    const visibilityLabel = (v) => ({ public: '🌐 Pubblico', followers: '👥 Follower', adopters: '🌱 Adottanti', tree_adopter: '🌳 Adottante elemento' }[v] || v);
 
     // TYPE-SPECIFIC MAP ICONS
     const _TYPE_ICONS = {
@@ -348,7 +348,7 @@
         const mapped = _adoptableMapTrees;
         if (!mapped.length) return;
         if (!adoptableLeafletMap) {
-            slot.innerHTML = '<div id="adoptable-leaflet-map" class="leaflet-map"></div><p class="map-note">I numeri nei cerchi indicano quanti alberi si trovano nell\'area — clicca per espandere.</p>';
+            slot.innerHTML = '<div id="adoptable-leaflet-map" class="leaflet-map"></div><p class="map-note">I numeri nei cerchi indicano quanti elementi si trovano nell\'area — clicca per espandere.</p>';
             adoptableLeafletMap = makeClusterMap('adoptable-leaflet-map');
         } else {
             clearMapLayers(adoptableLeafletMap);
@@ -408,14 +408,14 @@
                         <a class="button" href="${appUrl(`trees/${tree.id}/`)}">Info</a>
                     </div>
                 </article>`).join('')
-            : '<div class="card empty-state">Nessun albero disponibile per l\'adozione al momento.</div>';
+            : '<div class="card empty-state">Nessun elemento disponibile per l\'adozione al momento.</div>';
         renderAdoptableMap(trees);
     };
 
     // ── Catalogo filtri ───────────────────────────────────────────────
     const _CATALOG_TYPES = [
         { type: null,      label: 'Tutti',    icon: '🌿' },
-        { type: 'albero',  label: 'Alberi',   icon: '🌳' },
+        { type: 'albero',  label: 'Elementi',   icon: '🌳' },
         { type: 'olivo',   label: 'Olivi',    icon: '🫒' },
         { type: 'vite',    label: 'Viti',     icon: '🍇' },
         { type: 'orto',    label: 'Orti',     icon: '🥦' },
@@ -750,7 +750,7 @@
         const treesSlot = root.querySelector('[data-slot="trees"]');
         if (treesSlot) treesSlot.innerHTML = activeTrees.length
             ? activeTrees.map(treeRow).join('')
-            : '<div class="card empty-state">Non hai ancora adozioni attive. Adotta il tuo primo albero dalla mappa qui sopra!</div>';
+            : '<div class="card empty-state">Non hai ancora adozioni attive. Adotta il tuo primo elemento dalla mappa qui sopra!</div>';
 
         // Il caricamento del catalogo avviene tramite la vista Esplora unificata (renderExploreTab).
 
@@ -887,23 +887,75 @@
             }
         }, { once: false });
         root.querySelector('[data-slot="stats"]').innerHTML = [
-            statCard('Alberi disponibili', data.stats.availableTrees, "Pronti per l'adozione"),
-            statCard('Alberi adottati', data.stats.adoptedTrees, 'Sponsorizzati dai utenti'),
+            statCard('Elementi disponibili', data.stats.availableTrees, "Pronti per l'adozione"),
+            statCard('Elementi adottati', data.stats.adoptedTrees, 'Sponsorizzati dai utenti'),
         ].join('');
         const nameEl = root.querySelector('[data-slot="farm-name"]');
         if (nameEl) nameEl.textContent = farm ? farm.name : '—';
         const infoEl = root.querySelector('[data-slot="farm-info"]');
         if (infoEl) {
+            const brandPreview = (url, label) => url
+                ? `<img src="${escapeHtml(url)}" alt="${label}" style="width:100%;height:90px;object-fit:cover;border-radius:10px;border:1px solid var(--border);">`
+                : `<div class="map-placeholder" style="height:90px;border-radius:10px;"><small>Nessuna immagine</small></div>`;
             infoEl.innerHTML = farm ? `
                 <div class="farm-row">
                     <div>
                         <small>${escapeHtml(farm.location)}${farm.crop_focus ? ` · ${escapeHtml(farm.crop_focus)}` : ''}${farm.latitude && farm.longitude ? ` · 📍 ${escapeHtml(farm.latitude)}, ${escapeHtml(farm.longitude)}` : ''}</small>
                     </div>
                     <div class="farm-row-end">
+                        <a class="button ghost" href="${appUrl(`farms/${farm.id}/`)}" target="_blank" rel="noopener">👁 Vedi profilo pubblico</a>
                         <span class="badge">${escapeHtml(farm.health_score)} salute</span>
-                        ${shareButtons(appUrl(`farms/${farm.id}/`), `🌾 ${farm.name} — Adotta un albero!`)}
+                        ${shareButtons(appUrl(`farms/${farm.id}/`), `🌾 ${farm.name} — Adotta un elemento!`)}
+                    </div>
+                </div>
+                <div class="farm-branding" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;">
+                    <div>
+                        <p class="eyebrow" style="margin-bottom:6px;">Logo</p>
+                        <div data-brand-preview="logo">${brandPreview(farm.logo_url, 'Logo')}</div>
+                        <label style="margin-top:6px;display:block;"><input type="file" accept="image/*" data-brand-input="logo"></label>
+                    </div>
+                    <div>
+                        <p class="eyebrow" style="margin-bottom:6px;">Foto copertina</p>
+                        <div data-brand-preview="cover">${brandPreview(farm.cover_url, 'Copertina')}</div>
+                        <label style="margin-top:6px;display:block;"><input type="file" accept="image/*" data-brand-input="cover"></label>
+                    </div>
+                    <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center;">
+                        <button class="button" type="button" data-save-branding>Salva immagini profilo</button>
+                        <span class="map-note" data-branding-status></span>
                     </div>
                 </div>` : '<div class="card empty-state">Profilo produttore non trovato.</div>';
+
+            const saveBtn = infoEl.querySelector('[data-save-branding]');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', async () => {
+                    const statusEl = infoEl.querySelector('[data-branding-status]');
+                    const logoInput  = infoEl.querySelector('[data-brand-input="logo"]');
+                    const coverInput = infoEl.querySelector('[data-brand-input="cover"]');
+                    if (!logoInput?.files?.length && !coverInput?.files?.length) {
+                        statusEl.textContent = 'Seleziona almeno un\'immagine da caricare.';
+                        return;
+                    }
+                    saveBtn.disabled = true;
+                    statusEl.textContent = 'Caricamento…';
+                    try {
+                        const payload = {};
+                        for (const [key, input] of [['logo_url', logoInput], ['cover_url', coverInput]]) {
+                            if (input?.files?.length) {
+                                const fd = new FormData();
+                                fd.append('photo', input.files[0]);
+                                const up = await apiFetch('/media/photo', { method: 'POST', body: fd });
+                                payload[key] = up.url;
+                            }
+                        }
+                        await apiFetch('/farms/branding', { method: 'POST', body: JSON.stringify(payload) });
+                        statusEl.textContent = '✅ Immagini salvate!';
+                        setTimeout(() => window.location.reload(), 700);
+                    } catch (err) {
+                        statusEl.textContent = `❌ ${err.message}`;
+                        saveBtn.disabled = false;
+                    }
+                });
+            }
         }
         root.querySelector('[data-slot="farm-trees"]').innerHTML = data.trees.length
             ? data.trees.map((tree) => `
@@ -917,7 +969,7 @@
                         ${!tree.adopter_user_id ? `<button class="button ghost" style="padding:6px 12px;font-size:.8rem;color:var(--error);border-color:var(--error);" data-delete-tree="${tree.id}">🗑</button>` : ''}
                     </div>
                 </div>`).join('')
-            : '<div class="card empty-state">Nessun albero pubblicato. Usa "+ Albero" per renderlo disponibile.</div>';
+            : '<div class="card empty-state">Nessun elemento pubblicato. Usa "+ Elemento" per renderlo disponibile.</div>';
         renderAdoptionRequests(data.requests || []);
         // Attach rewards to the single farm and pre-populate reward checkboxes
         const farmWithRewards = farm ? { ...farm, rewards: data.rewards || [] } : null;
@@ -1031,7 +1083,7 @@
         _statCardIdx = 0;
         if (!data.tree) {
             console.error('[AgriSaas] renderTreeDetail: data.tree is missing. Full response:', data);
-            throw new Error(`Dati albero non trovati. Risposta API: ${JSON.stringify(Object.keys(data))}`);
+            throw new Error(`Dati elemento non trovati. Risposta API: ${JSON.stringify(Object.keys(data))}`);
         }
         const tree = data.tree;
         const treeUrl = appUrl(`trees/${tree.id}/`);
@@ -1224,7 +1276,7 @@
                     ${detailUrl ? `<div style="margin-top:8px;"><a class="ig-scopri" href="${escapeHtml(detailUrl)}">Scopri di più →</a></div>` : ''}
                 </div>
                 <div class="ig-card-footer">
-                    ${shareButtons(updateUrl, `📰 ${update.title} — Adotta un albero su Adotta!`)}
+                    ${shareButtons(updateUrl, `📰 ${update.title} — Adotta un elemento su Adotta!`)}
                 </div>
             </article>`;
         }).join('');
@@ -1318,12 +1370,12 @@
         if (!slot) return;
         const mapped = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
         if (!mapped.length) {
-            slot.innerHTML = '<div class="map-placeholder">&#9678;<small>Nessuna coordinata per gli alberi</small></div>';
+            slot.innerHTML = '<div class="map-placeholder">&#9678;<small>Nessuna coordinata per gli elementi</small></div>';
             farmProfileLeafletMap = null;
             return;
         }
         if (!farmProfileLeafletMap) {
-            slot.innerHTML = '<div id="farm-profile-leaflet-map" class="leaflet-map"></div><p class="map-note">I numeri nei cerchi indicano cluster — clicca per espandere e vedere i singoli alberi.</p>';
+            slot.innerHTML = '<div id="farm-profile-leaflet-map" class="leaflet-map"></div><p class="map-note">I numeri nei cerchi indicano cluster — clicca per espandere e vedere i singoli elementi.</p>';
             farmProfileLeafletMap = makeClusterMap('farm-profile-leaflet-map');
         } else {
             clearMapLayers(farmProfileLeafletMap);
@@ -1350,12 +1402,20 @@
         _statCardIdx = 0;
         const farm = data.farm;
         const farmUrl = appUrl(`farms/${farm.id}/`);
-        root.querySelector('[data-slot="farm-title"]').textContent = farm.name;
+        const hero = root.querySelector('.farm-hero');
+        if (hero && farm.cover_url && !hero.querySelector('.farm-cover')) {
+            hero.insertAdjacentHTML('afterbegin', `<img class="farm-cover" src="${escapeHtml(farm.cover_url)}" alt="" style="grid-column:1/-1;width:100%;height:220px;object-fit:cover;border-radius:14px;margin-bottom:14px;">`);
+        }
+        const titleEl = root.querySelector('[data-slot="farm-title"]');
+        titleEl.textContent = farm.name;
+        if (farm.logo_url && !titleEl.parentElement.querySelector('.farm-logo')) {
+            titleEl.insertAdjacentHTML('beforebegin', `<img class="farm-logo" src="${escapeHtml(farm.logo_url)}" alt="Logo ${escapeHtml(farm.name)}" style="width:64px;height:64px;object-fit:cover;border-radius:50%;border:2px solid var(--border);margin-bottom:8px;">`);
+        }
         // Also update the shell topbar h1 if present
         const shellH1 = document.querySelector('.app-topbar h1');
         if (shellH1) shellH1.textContent = farm.name;
         root.querySelector('[data-slot="farm-summary"]').innerHTML =
-            `${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus || 'Produzione mista')}<br>${escapeHtml(farm.description || "Questo produttore usa il suo profilo come vetrina pubblica per alberi, foto e aggiornamenti dal campo.")}`;
+            `${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus || 'Produzione mista')}<br>${escapeHtml(farm.description || "Questo produttore usa il suo profilo come vetrina pubblica per elementi, foto e aggiornamenti dal campo.")}`;
         if (!data.logged_in) {
             root.querySelector('[data-slot="farm-contacts"]').innerHTML =
                 `<button class="button ghost" type="button" data-auth-contact>🔒 Accedi per vedere i contatti</button>`;
@@ -1381,11 +1441,11 @@
 
         const heroActions = root.querySelector('.farm-hero-actions');
         if (heroActions && !heroActions.querySelector('.share-bar')) {
-            heroActions.insertAdjacentHTML('beforeend', shareButtons(farmUrl, `🌾 ${farm.name} — Adotta un albero su Adotta!`));
+            heroActions.insertAdjacentHTML('beforeend', shareButtons(farmUrl, `🌾 ${farm.name} — Adotta un elemento su Adotta!`));
         }
 
         root.querySelector('[data-slot="farm-profile-stats"]').innerHTML = [
-            statCard('Alberi', data.stats.trees, 'Tutti visibili nella vetrina'),
+            statCard('Elementi', data.stats.trees, 'Tutti visibili nella vetrina'),
             statCard('Adottati', data.stats.adoptedTrees, 'Già sponsorizzati'),
             statCard('Follower', data.stats.followers, 'Utenti che seguono gli aggiornamenti'),
         ].join('');
@@ -1399,7 +1459,7 @@
                     </div>
                     <span class="badge">${escapeHtml(tree.status)}${tree.adopter_name ? ` · ${escapeHtml(tree.adopter_name)}` : ''}</span>
                 </a>`).join('')
-            : '<div class="card empty-state">Nessun albero pubblicato da questo produttore.</div>';
+            : '<div class="card empty-state">Nessun elemento pubblicato da questo produttore.</div>';
 
         root.querySelector('[data-slot="farm-photos"]').innerHTML = data.photos.length
             ? data.photos.slice(0, 6).map((url) => `<a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Foto del produttore" loading="lazy"></a>`).join('')
@@ -1944,7 +2004,7 @@
                     </div>
                     <div class="form-grid-2">
                         <label>Tipo <select name="type">
-                            <option value="albero">🌳 Albero</option>
+                            <option value="albero">🌳 Elemento</option>
                             <option value="olivo">🫒 Olivo</option>
                             <option value="vite">🍇 Vite</option>
                             <option value="alveare">🐝 Alveare</option>

@@ -50,7 +50,7 @@ agri_saas_render_shell('', function (): void {
                 <a class="button ghost" href="<?php echo esc_url(wp_login_url(home_url('/dashboard/'))); ?>"><?php esc_html_e('Ho già un account →', 'agri-saas'); ?></a>
             </div>
             <p style="color:var(--muted);font-size:.92rem;">
-                <?php esc_html_e('Un unico account per tutto: adotta alberi, scambia prodotti e — se sei un piccolo produttore — crea il tuo profilo produttore direttamente dalla tua area personale.', 'agri-saas'); ?>
+                <?php esc_html_e('Un unico account per tutto: adotta elementi, scambia prodotti e — se sei un piccolo produttore — crea il tuo profilo produttore direttamente dalla tua area personale.', 'agri-saas'); ?>
             </p>
             <form data-registration-form="client" style="max-width:520px;">
                 <label><?php esc_html_e('Nome visualizzato', 'agri-saas'); ?><input name="display_name" required autocomplete="name"></label>

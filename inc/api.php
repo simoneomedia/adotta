@@ -194,6 +194,12 @@ function agri_saas_register_api_routes(): void
         'permission_callback' => '__return_true',
     ]);
 
+    register_rest_route('agri-saas/v1', '/farms/branding', [
+        'methods'             => WP_REST_Server::CREATABLE,
+        'callback'            => 'agri_saas_api_update_farm_branding',
+        'permission_callback' => 'agri_saas_can_manage_farms',
+    ]);
+
     register_rest_route('agri-saas/v1', '/farms/become', [
         'methods'             => WP_REST_Server::CREATABLE,
         'callback'            => 'agri_saas_api_become_farmer',
@@ -1147,7 +1153,7 @@ function agri_saas_api_gift_adoption(WP_REST_Request $request): WP_REST_Response
     $user_id         = get_current_user_id();
 
     if (!$tree_id) {
-        return new WP_Error('agri_saas_tree_required', __('Scegli un albero da regalare.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_tree_required', __('Scegli un elemento da regalare.', 'agri-saas'), ['status' => 400]);
     }
 
     if (!$recipient_email || !is_email($recipient_email)) {
@@ -1163,11 +1169,11 @@ function agri_saas_api_gift_adoption(WP_REST_Request $request): WP_REST_Response
     ), ARRAY_A);
 
     if (!$tree || $tree['status'] !== 'available') {
-        return new WP_Error('agri_saas_tree_unavailable', __('Questo albero non è disponibile per l\'adozione.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_tree_unavailable', __('Questo elemento non è disponibile per l\'adozione.', 'agri-saas'), ['status' => 400]);
     }
 
     if ((int) $tree['owner_user_id'] === $user_id) {
-        return new WP_Error('agri_saas_own_tree_gift', __('Non puoi regalare un albero della tua produzione.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_own_tree_gift', __('Non puoi regalare un elemento della tua produzione.', 'agri-saas'), ['status' => 400]);
     }
 
     // Serialize concurrent gifts for the same tree with a transaction + row-level lock.
@@ -1180,7 +1186,7 @@ function agri_saas_api_gift_adoption(WP_REST_Request $request): WP_REST_Response
 
     if ($blocking) {
         $wpdb->query('ROLLBACK');
-        return new WP_Error('agri_saas_request_exists', __('Questo albero ha già una richiesta di adozione in corso.', 'agri-saas'), ['status' => 409]);
+        return new WP_Error('agri_saas_request_exists', __('Questo elemento ha già una richiesta di adozione in corso.', 'agri-saas'), ['status' => 409]);
     }
 
     $token = bin2hex(random_bytes(32));
@@ -1206,7 +1212,7 @@ function agri_saas_api_gift_adoption(WP_REST_Request $request): WP_REST_Response
 
     wp_mail(
         $recipient_email,
-        "Hai ricevuto in regalo un albero! 🌱",
+        "Hai ricevuto in regalo un elemento! 🌱",
         "Ciao,\n\n{$sender_name} ti ha regalato l'adozione di {$tree['species']} ({$tree['code']}) presso {$tree['farm_name']}!{$msg_part}\n\nReclama il tuo albero:\n{$claim_url}\n\nIl link è personale e riservato a te."
     );
 
@@ -1463,8 +1469,8 @@ function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|W
         'farm_id'        => $farm_id,
         'tree_id'        => $tree_id,
         'author_user_id' => $user_id,
-        'title'          => sprintf(__('Nuovo albero disponibile: %s', 'agri-saas'), $species),
-        'body'           => sprintf(__('È disponibile un nuovo albero (%s) da %s. Adottalo oggi!', 'agri-saas'), $code, $farm_name),
+        'title'          => sprintf(__('Nuovo elemento disponibile: %s', 'agri-saas'), $species),
+        'body'           => sprintf(__('È disponibile un nuovo elemento (%s) da %s. Adottalo oggi!', 'agri-saas'), $code, $farm_name),
         'media_url'      => $media_url ?: null,
         'visibility'     => 'public',
     ], ['%d', '%d', '%d', '%s', '%s', '%s', '%s']);
@@ -3001,4 +3007,39 @@ function agri_saas_api_delete_baratto_owner(WP_REST_Request $request): WP_REST_R
     }
     $wpdb->delete($tables['baratti'], ['id' => $id]);
     return rest_ensure_response(['deleted' => $id]);
+}
+
+
+function agri_saas_api_update_farm_branding(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $user_id = get_current_user_id();
+
+    $farm_id = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM {$tables['farms']} WHERE owner_user_id = %d ORDER BY created_at DESC LIMIT 1",
+        $user_id
+    ));
+    if (!$farm_id && current_user_can('manage_options')) {
+        $farm_id = absint($request->get_param('farm_id'));
+    }
+    if (!$farm_id) {
+        return new WP_Error('agri_saas_farm_not_found', __('Nessun profilo produttore trovato per questo account.', 'agri-saas'), ['status' => 404]);
+    }
+
+    $data = [];
+    if ($request->get_param('logo_url') !== null) {
+        $data['logo_url'] = esc_url_raw((string) $request->get_param('logo_url'));
+    }
+    if ($request->get_param('cover_url') !== null) {
+        $data['cover_url'] = esc_url_raw((string) $request->get_param('cover_url'));
+    }
+    if (!$data) {
+        return new WP_Error('agri_saas_branding_empty', __('Nessuna immagine da salvare.', 'agri-saas'), ['status' => 400]);
+    }
+
+    $wpdb->update($tables['farms'], $data, ['id' => $farm_id]);
+    agri_saas_invalidate_farm_cache($farm_id);
+
+    return rest_ensure_response(['id' => $farm_id] + $data);
 }

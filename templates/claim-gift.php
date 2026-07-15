@@ -12,7 +12,7 @@ agri_saas_render_shell(__('Riscatta il tuo regalo', 'agri-saas'), function () us
         <div class="card span-3" data-claim-gift-card>
             <div style="text-align:center;padding:12px 0 20px;">
                 <span style="font-size:3.5rem;display:block;margin-bottom:12px;">🎁</span>
-                <h1 style="font-size:1.6rem;margin:0 0 8px;">Hai ricevuto un albero in regalo!</h1>
+                <h1 style="font-size:1.6rem;margin:0 0 8px;">Hai ricevuto un elemento in regalo!</h1>
                 <p style="color:var(--muted);margin:0 0 24px;">Accedi o registrati per riscattare la tua adozione.</p>
             </div>
 
@@ -20,7 +20,7 @@ agri_saas_render_shell(__('Riscatta il tuo regalo', 'agri-saas'), function () us
             <div data-gift-token="<?php echo esc_attr($token); ?>" data-gift-claim-section>
                 <?php if (is_user_logged_in()) : ?>
                 <button class="button" type="button" data-claim-gift style="width:100%;margin-top:8px;">
-                    <?php esc_html_e('Riscatta il tuo albero', 'agri-saas'); ?>
+                    <?php esc_html_e('Riscatta il tuo elemento', 'agri-saas'); ?>
                 </button>
                 <p class="map-note" data-claim-status style="text-align:center;margin-top:12px;"></p>
                 <?php else : ?>
