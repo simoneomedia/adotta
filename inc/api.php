@@ -3034,8 +3034,17 @@ function agri_saas_api_update_farm_branding(WP_REST_Request $request): WP_REST_R
     if ($request->get_param('cover_url') !== null) {
         $data['cover_url'] = esc_url_raw((string) $request->get_param('cover_url'));
     }
+    if ($request->get_param('contact_whatsapp') !== null) {
+        $data['contact_whatsapp'] = sanitize_text_field((string) $request->get_param('contact_whatsapp'));
+    }
+    if ($request->get_param('contact_phone') !== null) {
+        $data['contact_phone'] = sanitize_text_field((string) $request->get_param('contact_phone'));
+    }
+    if ($request->get_param('contact_email') !== null) {
+        $data['contact_email'] = sanitize_email((string) $request->get_param('contact_email'));
+    }
     if (!$data) {
-        return new WP_Error('agri_saas_branding_empty', __('Nessuna immagine da salvare.', 'agri-saas'), ['status' => 400]);
+        return new WP_Error('agri_saas_branding_empty', __('Nessun dato da salvare.', 'agri-saas'), ['status' => 400]);
     }
 
     $wpdb->update($tables['farms'], $data, ['id' => $farm_id]);

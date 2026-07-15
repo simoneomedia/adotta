@@ -919,8 +919,16 @@
                         <div data-brand-preview="cover">${brandPreview(farm.cover_url, 'Copertina')}</div>
                         <label style="margin-top:6px;display:block;"><input type="file" accept="image/*" data-brand-input="cover"></label>
                     </div>
+                    <div style="grid-column:1/-1;">
+                        <p class="eyebrow" style="margin:8px 0 6px;">Contatti pubblici (usati dal bottone Contatta)</p>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+                            <label style="font-size:.82rem;">WhatsApp<input type="tel" data-brand-contact="whatsapp" value="${escapeHtml(farm.contact_whatsapp || '')}" placeholder="+39…"></label>
+                            <label style="font-size:.82rem;">Telefono<input type="tel" data-brand-contact="phone" value="${escapeHtml(farm.contact_phone || '')}" placeholder="+39…"></label>
+                            <label style="font-size:.82rem;">Email<input type="email" data-brand-contact="email" value="${escapeHtml(farm.contact_email || '')}" placeholder="nome@esempio.it"></label>
+                        </div>
+                    </div>
                     <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center;">
-                        <button class="button" type="button" data-save-branding>Salva immagini profilo</button>
+                        <button class="button" type="button" data-save-branding>Salva profilo pubblico</button>
                         <span class="map-note" data-branding-status></span>
                     </div>
                 </div>` : '<div class="card empty-state">Profilo produttore non trovato.</div>';
@@ -931,14 +939,14 @@
                     const statusEl = infoEl.querySelector('[data-branding-status]');
                     const logoInput  = infoEl.querySelector('[data-brand-input="logo"]');
                     const coverInput = infoEl.querySelector('[data-brand-input="cover"]');
-                    if (!logoInput?.files?.length && !coverInput?.files?.length) {
-                        statusEl.textContent = 'Seleziona almeno un\'immagine da caricare.';
-                        return;
-                    }
                     saveBtn.disabled = true;
-                    statusEl.textContent = 'Caricamento…';
+                    statusEl.textContent = 'Salvataggio…';
                     try {
-                        const payload = {};
+                        const payload = {
+                            contact_whatsapp: infoEl.querySelector('[data-brand-contact="whatsapp"]')?.value ?? '',
+                            contact_phone:    infoEl.querySelector('[data-brand-contact="phone"]')?.value ?? '',
+                            contact_email:    infoEl.querySelector('[data-brand-contact="email"]')?.value ?? '',
+                        };
                         for (const [key, input] of [['logo_url', logoInput], ['cover_url', coverInput]]) {
                             if (input?.files?.length) {
                                 const fd = new FormData();
@@ -948,7 +956,7 @@
                             }
                         }
                         await apiFetch('/farms/branding', { method: 'POST', body: JSON.stringify(payload) });
-                        statusEl.textContent = '✅ Immagini salvate!';
+                        statusEl.textContent = '✅ Profilo salvato!';
                         setTimeout(() => window.location.reload(), 700);
                     } catch (err) {
                         statusEl.textContent = `❌ ${err.message}`;
@@ -1585,7 +1593,7 @@
             if (p.contact_whatsapp) return `<a class="button" href="https://wa.me/${p.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">💬 WhatsApp</a>`;
             if (p.contact_phone) return `<a class="button ghost" href="tel:${escapeHtml(p.contact_phone)}">📞 Chiama</a>`;
             if (p.contact_email) return `<a class="button ghost" href="mailto:${escapeHtml(p.contact_email)}">📧 Email</a>`;
-            return '';
+            return `<a class="button ghost" href="${appUrl(`farms/${p.farm_id}/`)}">🏡 Vedi produttore</a>`;
         };
 
         slot.innerHTML = data.products.length ? `<div class="product-grid">${data.products.map((p) => `
@@ -1634,7 +1642,7 @@
             if (b.contact_whatsapp) return `<a class="button" href="https://wa.me/${b.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">💬 Contatta</a>`;
             if (b.contact_phone) return `<a class="button ghost" href="tel:${escapeHtml(b.contact_phone)}">📞 Chiama</a>`;
             if (b.contact_email) return `<a class="button ghost" href="mailto:${escapeHtml(b.contact_email)}">📧 Email</a>`;
-            return '';
+            return `<a class="button ghost" href="${appUrl(`farms/${b.farm_id}/`)}">🏡 Vedi produttore</a>`;
         };
 
         slot.innerHTML = data.baratti.length ? `<div class="product-grid">${data.baratti.map((b) => `
