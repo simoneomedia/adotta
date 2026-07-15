@@ -48,6 +48,7 @@ agri_saas_render_shell(__('Mercato', 'agri-saas'), function (): void {
                         </select>
                     </label>
                 </div>
+                <label><?php esc_html_e('Foto del prodotto', 'agri-saas'); ?><input name="photo" type="file" accept="image/*" required></label>
                 <p class="map-note" data-form-status></p>
                 <button class="button" type="submit"><?php esc_html_e('Pubblica prodotto', 'agri-saas'); ?></button>
             </form>

@@ -208,6 +208,7 @@ agri_saas_render_shell(__('Area Produttore', 'agri-saas'), function (): void {
                         </select>
                     </label>
                 </div>
+                <label><?php esc_html_e('Foto del prodotto', 'agri-saas'); ?><input name="photo" type="file" accept="image/*" required></label>
                 <p class="map-note" data-form-status></p>
                 <button class="button" type="submit"><?php esc_html_e('Pubblica prodotto', 'agri-saas'); ?></button>
             </form>
@@ -223,6 +224,7 @@ agri_saas_render_shell(__('Area Produttore', 'agri-saas'), function (): void {
                 <label><?php esc_html_e('Dettagli offerta', 'agri-saas'); ?><textarea name="offer_description" placeholder="Qualità, provenienza, stagione…"></textarea></label>
                 <label><?php esc_html_e('Cosa cerco in cambio (es: 3 kg di farina di grano)', 'agri-saas'); ?><input name="wants_title" required placeholder="Es: 3 kg di farina tipo 1"></label>
                 <label><?php esc_html_e('Dettagli richiesta', 'agri-saas'); ?><textarea name="wants_description" placeholder="Tipo, varietà, preferenze…"></textarea></label>
+                <label><?php esc_html_e('Foto del baratto', 'agri-saas'); ?><input name="photo" type="file" accept="image/*" required></label>
                 <p class="map-note" data-form-status></p>
                 <button class="button" type="submit"><?php esc_html_e('Pubblica baratto', 'agri-saas'); ?></button>
             </form>

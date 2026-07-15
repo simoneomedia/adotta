@@ -612,7 +612,7 @@
             const waBtn = (subject, it2) => {
                 if (!window.AgriSaas.userId) return `<button class="button ghost" type="button" data-auth-contact onclick="event.stopPropagation()">🔒</button>`;
                 if (!it2.contact_whatsapp) return '';
-                return `<a class="button" href="https://wa.me/${String(it2.contact_whatsapp).replace(/\D/g, '')}?text=${encodeURIComponent(subject)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 WhatsApp</a>`;
+                return `<a class="button" href="https://wa.me/${String(it2.contact_whatsapp).replace(/\D/g, '')}?text=${encodeURIComponent(subject)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 Contatta</a>`;
             };
             if (kind === 'mercato') return `
                 <div class="tree-row tree-row--link" onclick="location.href='${appUrl('mercato/')}'" role="link" tabindex="0">
@@ -630,7 +630,7 @@
                         <div><strong>${escapeHtml(it.offer_title)}</strong><br><small>Cerco: ${escapeHtml(it.wants_title)}</small><br><small>${escapeHtml(it.farm_name)}</small></div>
                         <span class="badge">🤝</span>
                     </div>
-                    <div class="row-actions">${waBtn(`Ciao, ho visto il tuo baratto su wido: offri "${it.offer_title}" in cambio di "${it.wants_title}". Vorrei fare un'offerta.`, it)}</div>
+                    <div class="row-actions">${waBtn(`Ciao! Ho visto la tua offerta di baratto su wido: offri "${it.offer_title}" in cambio di "${it.wants_title}", e sono interessato.`, it)}</div>
                 </div>`;
             return `
                 <a class="tree-row tree-row--link" href="${appUrl(`farms/${it.id}/`)}">
@@ -1477,7 +1477,7 @@
             const out = [];
             if (farm.contact_whatsapp) {
                 const text = encodeURIComponent(subject);
-                out.push(`<a class="button" href="https://wa.me/${String(farm.contact_whatsapp).replace(/\D/g, '')}?text=${text}" target="_blank" rel="noopener">💬 WhatsApp</a>`);
+                out.push(`<a class="button" href="https://wa.me/${String(farm.contact_whatsapp).replace(/\D/g, '')}?text=${text}" target="_blank" rel="noopener">💬 Contatta</a>`);
             }
             if (farm.contact_phone) out.push(`<a class="button ghost" href="tel:${escapeHtml(farm.contact_phone)}">📞</a>`);
             return out.join('');
@@ -1515,7 +1515,7 @@
                                 <h3 class="product-name">${escapeHtml(b.wants_title)}</h3>
                             </div>
                         </div>
-                        <div class="product-actions">${_offerContacts(`Ciao, ho visto il tuo baratto su Adotta: offri "${b.offer_title}" in cambio di "${b.wants_title}". Vorrei fare un'offerta.`)}</div>
+                        <div class="product-actions">${_offerContacts(`Ciao! Ho visto la tua offerta di baratto su wido: offri "${b.offer_title}" in cambio di "${b.wants_title}", e sono interessato.`)}</div>
                     </div>
                 </article>`).join('')
                 : '<div class="card empty-state">Nessun baratto attivo di questo produttore.</div>';
@@ -1630,8 +1630,8 @@
 
         const waLink = (b) => {
             if (!data.logged_in) return `<button class="button ghost" type="button" data-auth-contact>🔒 Accedi per contattare</button>`;
-            const text = encodeURIComponent(`Ciao, ho visto il tuo baratto su Adotta: offri "${b.offer_title}" in cambio di "${b.wants_title}". Vorrei fare un'offerta.`);
-            if (b.contact_whatsapp) return `<a class="button" href="https://wa.me/${b.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">💬 WhatsApp</a>`;
+            const text = encodeURIComponent(`Ciao! Ho visto la tua offerta di baratto su wido: offri "${b.offer_title}" in cambio di "${b.wants_title}", e sono interessato.`);
+            if (b.contact_whatsapp) return `<a class="button" href="https://wa.me/${b.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">💬 Contatta</a>`;
             if (b.contact_phone) return `<a class="button ghost" href="tel:${escapeHtml(b.contact_phone)}">📞 Chiama</a>`;
             if (b.contact_email) return `<a class="button ghost" href="mailto:${escapeHtml(b.contact_email)}">📧 Email</a>`;
             return '';
