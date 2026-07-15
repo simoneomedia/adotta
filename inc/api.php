@@ -285,6 +285,20 @@ function agri_saas_register_api_routes(): void
         ],
     ]);
 
+    register_rest_route('agri-saas/v1', '/mercato/(?P<id>\d+)', [
+        'methods'             => WP_REST_Server::DELETABLE,
+        'callback'            => 'agri_saas_api_delete_product_owner',
+        'permission_callback' => 'is_user_logged_in',
+        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
+    register_rest_route('agri-saas/v1', '/baratto/(?P<id>\d+)', [
+        'methods'             => WP_REST_Server::DELETABLE,
+        'callback'            => 'agri_saas_api_delete_baratto_owner',
+        'permission_callback' => 'is_user_logged_in',
+        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
     register_rest_route('agri-saas/v1', '/baratto', [
         [
             'methods'             => WP_REST_Server::READABLE,
@@ -726,6 +740,22 @@ function agri_saas_api_farm_dashboard(): WP_REST_Response
         ), ARRAY_A);
     }
 
+    $my_products = [];
+    $my_baratti  = [];
+    if ($farm_ids) {
+        $placeholders = implode(',', array_fill(0, count($farm_ids), '%d'));
+        $my_products = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, farm_id, name, description, price, unit, media_url, is_active, created_at
+             FROM {$tables['products']} WHERE farm_id IN ({$placeholders}) ORDER BY created_at DESC",
+            ...$farm_ids
+        ), ARRAY_A) ?: [];
+        $my_baratti = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, farm_id, offer_title, wants_title, media_url, is_active, created_at
+             FROM {$tables['baratti']} WHERE farm_id IN ({$placeholders}) ORDER BY created_at DESC",
+            ...$farm_ids
+        ), ARRAY_A) ?: [];
+    }
+
     return rest_ensure_response([
         'stats' => [
             'farms'          => count($farms ?: []),
@@ -736,6 +766,8 @@ function agri_saas_api_farm_dashboard(): WP_REST_Response
         'trees'    => $trees ?: [],
         'requests' => $requests ?: [],
         'rewards'  => $rewards ?: [],
+        'products' => $my_products,
+        'baratti'  => $my_baratti,
     ]);
 }
 
@@ -2929,4 +2961,44 @@ function agri_saas_api_delete_tree_owner(WP_REST_Request $request): WP_REST_Resp
     $wpdb->delete($tables['tree_rewards'], ['tree_id' => $tree_id], ['%d']);
     $wpdb->delete($tables['trees'], ['id' => $tree_id], ['%d']);
     return rest_ensure_response(['deleted' => true]);
+}
+
+
+function agri_saas_owner_owns_farm_row(string $table_key, int $row_id): bool
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $farm_id = (int) $wpdb->get_var($wpdb->prepare("SELECT farm_id FROM {$tables[$table_key]} WHERE id = %d", $row_id));
+    if (!$farm_id) {
+        return false;
+    }
+    if (current_user_can('manage_options')) {
+        return true;
+    }
+    $owner = (int) $wpdb->get_var($wpdb->prepare("SELECT owner_user_id FROM {$tables['farms']} WHERE id = %d", $farm_id));
+    return $owner === get_current_user_id();
+}
+
+function agri_saas_api_delete_product_owner(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $id = absint($request['id']);
+    if (!agri_saas_owner_owns_farm_row('products', $id)) {
+        return new WP_Error('agri_saas_forbidden', __('Non puoi eliminare questo prodotto.', 'agri-saas'), ['status' => 403]);
+    }
+    $wpdb->delete($tables['products'], ['id' => $id]);
+    return rest_ensure_response(['deleted' => $id]);
+}
+
+function agri_saas_api_delete_baratto_owner(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $id = absint($request['id']);
+    if (!agri_saas_owner_owns_farm_row('baratti', $id)) {
+        return new WP_Error('agri_saas_forbidden', __('Non puoi eliminare questo baratto.', 'agri-saas'), ['status' => 403]);
+    }
+    $wpdb->delete($tables['baratti'], ['id' => $id]);
+    return rest_ensure_response(['deleted' => $id]);
 }

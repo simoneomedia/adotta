@@ -47,6 +47,32 @@ agri_saas_render_shell(__('Area Produttore', 'agri-saas'), function (): void {
                 <?php agri_saas_empty_state(__('Le richieste in sospeso appariranno qui quando i utenti chiederanno di adottare un albero.', 'agri-saas')); ?>
             </div>
         </article>
+
+        <article class="card span-3">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow"><?php esc_html_e('Mercato', 'agri-saas'); ?></p>
+                    <h2><?php esc_html_e('I miei prodotti nel mercato', 'agri-saas'); ?></h2>
+                </div>
+                <button class="button" type="button" data-open-product-form><?php esc_html_e('+ Prodotto', 'agri-saas'); ?></button>
+            </div>
+            <div class="card-list" data-slot="my-products">
+                <?php agri_saas_empty_state(__('I tuoi prodotti pubblicati nel mercato appariranno qui.', 'agri-saas')); ?>
+            </div>
+        </article>
+
+        <article class="card span-3">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow"><?php esc_html_e('Baratto', 'agri-saas'); ?></p>
+                    <h2><?php esc_html_e('I miei baratti', 'agri-saas'); ?></h2>
+                </div>
+                <button class="button" type="button" data-open-baratto-form><?php esc_html_e('+ Baratto', 'agri-saas'); ?></button>
+            </div>
+            <div class="card-list" data-slot="my-baratti">
+                <?php agri_saas_empty_state(__('Le tue proposte di baratto appariranno qui.', 'agri-saas')); ?>
+            </div>
+        </article>
     </section>
 
     <!-- Modals -->
@@ -159,6 +185,46 @@ agri_saas_render_shell(__('Area Produttore', 'agri-saas'), function (): void {
                     </select>
                 </label>
                 <button class="button" type="submit"><?php esc_html_e('Pubblica aggiornamento', 'agri-saas'); ?></button>
+            </form>
+        </div>
+    </div>
+    <div class="modal-backdrop" data-product-form>
+        <div class="modal-panel update-composer">
+            <button class="modal-close" type="button" data-close-modal>✕</button>
+            <h2><?php esc_html_e('Aggiungi prodotto', 'agri-saas'); ?></h2>
+            <form data-agri-product-form>
+                <label><?php esc_html_e('Nome prodotto', 'agri-saas'); ?><input name="name" required></label>
+                <label><?php esc_html_e('Descrizione', 'agri-saas'); ?><textarea name="description"></textarea></label>
+                <div class="form-grid-2">
+                    <label><?php esc_html_e('Prezzo (€)', 'agri-saas'); ?><input name="price" type="number" min="0" step="0.01" placeholder="Es: 4.50"></label>
+                    <label><?php esc_html_e('Unità', 'agri-saas'); ?>
+                        <select name="unit">
+                            <option value="unità"><?php esc_html_e('Per unità', 'agri-saas'); ?></option>
+                            <option value="kg"><?php esc_html_e('Per kg', 'agri-saas'); ?></option>
+                            <option value="litro"><?php esc_html_e('Per litro', 'agri-saas'); ?></option>
+                            <option value="dozzina"><?php esc_html_e('Per dozzina', 'agri-saas'); ?></option>
+                            <option value="cassetta"><?php esc_html_e('Per cassetta', 'agri-saas'); ?></option>
+                            <option value="barattolo"><?php esc_html_e('Per barattolo', 'agri-saas'); ?></option>
+                        </select>
+                    </label>
+                </div>
+                <p class="map-note" data-form-status></p>
+                <button class="button" type="submit"><?php esc_html_e('Pubblica prodotto', 'agri-saas'); ?></button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" data-baratto-form>
+        <div class="modal-panel update-composer">
+            <button class="modal-close" type="button" data-close-modal>✕</button>
+            <h2><?php esc_html_e('Proponi un baratto', 'agri-saas'); ?></h2>
+            <form data-agri-baratto-form>
+                <label><?php esc_html_e('Cosa offro (es: 5 litri di olio extravergine)', 'agri-saas'); ?><input name="offer_title" required placeholder="Es: 5 litri di olio EVO"></label>
+                <label><?php esc_html_e('Dettagli offerta', 'agri-saas'); ?><textarea name="offer_description" placeholder="Qualità, provenienza, stagione…"></textarea></label>
+                <label><?php esc_html_e('Cosa cerco in cambio (es: 3 kg di farina di grano)', 'agri-saas'); ?><input name="wants_title" required placeholder="Es: 3 kg di farina tipo 1"></label>
+                <label><?php esc_html_e('Dettagli richiesta', 'agri-saas'); ?><textarea name="wants_description" placeholder="Tipo, varietà, preferenze…"></textarea></label>
+                <p class="map-note" data-form-status></p>
+                <button class="button" type="submit"><?php esc_html_e('Pubblica baratto', 'agri-saas'); ?></button>
             </form>
         </div>
     </div>

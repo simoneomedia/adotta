@@ -839,6 +839,53 @@
     const renderFarmDashboard = (data) => {
         _statCardIdx = 0;
         const farm = (data.farms || [])[0] || null;
+
+        const WIDO_PH2 = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
+        const myProductsSlot = root.querySelector('[data-slot="my-products"]');
+        if (myProductsSlot) {
+            myProductsSlot.innerHTML = (data.products || []).length ? data.products.map((p) => `
+                <div class="tree-row tree-row--manageable">
+                    <img class="product-img product-img--small" src="${escapeHtml(p.media_url || WIDO_PH2)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH2}'">
+                    <div class="tree-row-top">
+                        <div><strong>${escapeHtml(p.name)}</strong><br><small>${p.description ? escapeHtml(p.description) : ''}</small></div>
+                        <span class="badge">${p.price != null ? `€${Number(p.price).toFixed(2)} / ${escapeHtml(p.unit)}` : escapeHtml(p.unit || '')}</span>
+                    </div>
+                    <div class="tree-row-actions">
+                        <button class="button ghost" style="padding:6px 12px;font-size:.8rem;color:#c62828;" data-delete-product="${p.id}">🗑 Elimina</button>
+                    </div>
+                </div>`).join('')
+                : '<div class="card empty-state">Nessun prodotto pubblicato. Usa "+ Prodotto" per aggiungerne uno.</div>';
+        }
+        const myBarattiSlot = root.querySelector('[data-slot="my-baratti"]');
+        if (myBarattiSlot) {
+            myBarattiSlot.innerHTML = (data.baratti || []).length ? data.baratti.map((b) => `
+                <div class="tree-row tree-row--manageable">
+                    <img class="product-img product-img--small" src="${escapeHtml(b.media_url || WIDO_PH2)}" alt="${escapeHtml(b.offer_title)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH2}'">
+                    <div class="tree-row-top">
+                        <div><strong>${escapeHtml(b.offer_title)}</strong><br><small>Cerco: ${escapeHtml(b.wants_title)}</small></div>
+                        <span class="badge">🤝</span>
+                    </div>
+                    <div class="tree-row-actions">
+                        <button class="button ghost" style="padding:6px 12px;font-size:.8rem;color:#c62828;" data-delete-baratto="${b.id}">🗑 Elimina</button>
+                    </div>
+                </div>`).join('')
+                : '<div class="card empty-state">Nessuna proposta di baratto. Usa "+ Baratto" per crearne una.</div>';
+        }
+
+        root.addEventListener('click', async (ev) => {
+            const delP = ev.target.closest('[data-delete-product]');
+            const delB = ev.target.closest('[data-delete-baratto]');
+            if (!delP && !delB) return;
+            const isProd = Boolean(delP);
+            const id = isProd ? delP.dataset.deleteProduct : delB.dataset.deleteBaratto;
+            if (!confirm(isProd ? 'Eliminare questo prodotto dal mercato?' : 'Eliminare questa proposta di baratto?')) return;
+            try {
+                await apiFetch(`/${isProd ? 'mercato' : 'baratto'}/${id}`, { method: 'DELETE' });
+                window.location.reload();
+            } catch (err) {
+                alert(`Errore: ${err.message}`);
+            }
+        }, { once: false });
         root.querySelector('[data-slot="stats"]').innerHTML = [
             statCard('Alberi disponibili', data.stats.availableTrees, "Pronti per l'adozione"),
             statCard('Alberi adottati', data.stats.adoptedTrees, 'Sponsorizzati dai utenti'),
