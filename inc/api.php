@@ -24,6 +24,13 @@ function agri_saas_register_api_routes(): void
         'permission_callback' => function () { return current_user_can('manage_options'); },
     ]);
 
+    register_rest_route('agri-saas/v1', '/admin/farms/(?P<id>\d+)/toggle-active', [
+        'methods'             => 'POST',
+        'callback'            => 'agri_saas_api_admin_toggle_farm_active',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
     register_rest_route('agri-saas/v1', '/admin/farms/(?P<id>\d+)/coords', [
         'methods'             => 'POST',
         'callback'            => 'agri_saas_api_admin_set_farm_coords',
@@ -859,6 +866,12 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
         return new WP_Error('agri_saas_farm_not_found', __('Produttore non trovato.', 'agri-saas'), ['status' => 404]);
     }
 
+    if (isset($farm['is_active']) && !(int) $farm['is_active']
+        && !current_user_can('manage_options')
+        && (int) $farm['owner_user_id'] !== $user_id) {
+        return new WP_Error('agri_saas_farm_inactive', __('Questo profilo produttore non è attivo.', 'agri-saas'), ['status' => 404]);
+    }
+
     $updates = $wpdb->get_results($wpdb->prepare(
         "SELECT u.id, u.farm_id, u.tree_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
                 f.owner_user_id, f.name AS farm_name, t.code AS tree_code, t.adopter_user_id AS tree_adopter_user_id
@@ -1008,7 +1021,7 @@ function agri_saas_api_adoptable_trees(WP_REST_Request $request): WP_REST_Respon
          INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
          LEFT JOIN {$tables['adoptions']} other_request ON other_request.tree_id = t.id AND other_request.status IN ('pending', 'active') AND other_request.adopter_user_id != %d
          LEFT JOIN {$tables['adoptions']} own_request ON own_request.tree_id = t.id AND own_request.adopter_user_id = %d AND own_request.status = 'pending'
-         WHERE t.status = 'available' AND other_request.id IS NULL" . $search_clause . "
+         WHERE t.status = 'available' AND f.is_active = 1 AND other_request.id IS NULL" . $search_clause . "
          ORDER BY t.created_at DESC
          LIMIT %d OFFSET %d";
 
@@ -1320,7 +1333,7 @@ function agri_saas_api_farms_map(): WP_REST_Response
     $farms = $wpdb->get_results(
         "SELECT id, name, location, crop_focus, latitude, longitude, media_url, is_verified
          FROM {$tables['farms']}
-         WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+         WHERE is_active = 1 AND latitude IS NOT NULL AND longitude IS NOT NULL
          ORDER BY name ASC",
         ARRAY_A
     ) ?: [];
@@ -2116,7 +2129,7 @@ function agri_saas_api_mercato(): WP_REST_Response
                 f.latitude AS map_latitude, f.longitude AS map_longitude
          FROM {$tables['products']} p
          INNER JOIN {$tables['farms']} f ON f.id = p.farm_id
-         WHERE p.is_active = 1
+         WHERE p.is_active = 1 AND f.is_active = 1
          ORDER BY p.created_at DESC",
         ARRAY_A
     );
@@ -2211,7 +2224,7 @@ function agri_saas_api_baratto(): WP_REST_Response
                 f.latitude AS map_latitude, f.longitude AS map_longitude
          FROM {$tables['baratti']} b
          INNER JOIN {$tables['farms']} f ON f.id = b.farm_id
-         WHERE b.is_active = 1
+         WHERE b.is_active = 1 AND f.is_active = 1
          ORDER BY b.created_at DESC",
         ARRAY_A
     );
@@ -2466,7 +2479,7 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
     };
 
     $farms = $wpdb->get_results(
-        "SELECT f.id, f.name, f.location, f.crop_focus, f.is_verified, f.latitude, f.longitude,
+        "SELECT f.id, f.name, f.location, f.crop_focus, f.is_verified, f.is_active, f.latitude, f.longitude,
                 u.display_name AS owner_name, u.user_email AS owner_email,
                 (SELECT COUNT(*) FROM {$tables['trees']} t WHERE t.farm_id = f.id) AS tree_count,
                 (SELECT COUNT(*) FROM {$tables['adoptions']} a
@@ -3122,4 +3135,20 @@ function agri_saas_api_admin_set_farm_coords(WP_REST_Request $request): WP_REST_
     }
     agri_saas_invalidate_farm_cache($farm_id);
     return rest_ensure_response(['id' => $farm_id, 'latitude' => $lat, 'longitude' => $lng]);
+}
+
+
+function agri_saas_api_admin_toggle_farm_active(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $farm_id = absint($request['id']);
+    $current = $wpdb->get_var($wpdb->prepare("SELECT is_active FROM {$tables['farms']} WHERE id = %d", $farm_id));
+    if ($current === null) {
+        return new WP_Error('agri_saas_farm_not_found', __('Produttore non trovato.', 'agri-saas'), ['status' => 404]);
+    }
+    $new_val = ((int) $current) ? 0 : 1;
+    $wpdb->update($tables['farms'], ['is_active' => $new_val], ['id' => $farm_id]);
+    agri_saas_invalidate_farm_cache($farm_id);
+    return rest_ensure_response(['id' => $farm_id, 'is_active' => $new_val]);
 }

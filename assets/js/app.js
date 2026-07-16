@@ -1853,7 +1853,10 @@
                         <input type="number" step="0.0000001" min="-180" max="180" value="${r.longitude != null ? e(String(r.longitude)) : ''}" placeholder="lng" data-coord-lng style="width:110px;padding:4px 6px;font-size:.8rem;">
                         <button class="admin-action-btn" data-save-coords="${e(String(r.id))}" title="Salva coordinate">📍 Salva</button>
                     </td>
-                    <td><button class="admin-verify-btn ${verified ? 'verified' : ''}" data-farm-id="${e(String(r.id))}" data-verified="${verified ? '1' : '0'}">${verified ? '✅ Verificata' : '⬜ Verifica'}</button></td>
+                    <td style="white-space:nowrap;">
+                        <button class="admin-verify-btn ${verified ? 'verified' : ''}" data-farm-id="${e(String(r.id))}" data-verified="${verified ? '1' : '0'}">${verified ? '✅ Verificata' : '⬜ Verifica'}</button>
+                        <button class="admin-action-btn" data-toggle-active="${e(String(r.id))}" data-active="${Number(r.is_active) === 1 ? '1' : '0'}" style="${Number(r.is_active) === 1 ? '' : 'color:#c62828;'}">${Number(r.is_active) === 1 ? '🟢 Attivo' : '🔴 Disattivato'}</button>
+                    </td>
                 </tr>`;
             }).join('') || '<tr><td colspan="10">Nessun produttore</td></tr>';
 
@@ -1940,6 +1943,25 @@
             });
         };
         document.getElementById('admin-search')?.addEventListener('input', (ev) => _adminFilterSearch(ev.target.value));
+
+        // ── Action: activate/deactivate farm ─────────────────────────
+        root.addEventListener('click', async (ev) => {
+            const toggleBtn = ev.target.closest('[data-toggle-active]');
+            if (!toggleBtn) return;
+            const isActive = toggleBtn.dataset.active === '1';
+            if (isActive && !confirm('Disattivare questo produttore? Il suo profilo, gli elementi, i prodotti e i baratti spariranno dalle pagine pubbliche.')) return;
+            toggleBtn.disabled = true;
+            try {
+                const res = await _adminPost(`/admin/farms/${toggleBtn.dataset.toggleActive}/toggle-active`);
+                const nowActive = Number(res.is_active) === 1;
+                toggleBtn.dataset.active = nowActive ? '1' : '0';
+                toggleBtn.textContent = nowActive ? '🟢 Attivo' : '🔴 Disattivato';
+                toggleBtn.style.color = nowActive ? '' : '#c62828';
+            } catch (err) {
+                alert(`Errore: ${err.message}`);
+            }
+            toggleBtn.disabled = false;
+        });
 
         // ── Action: save farm coordinates ────────────────────────────
         root.addEventListener('click', async (ev) => {

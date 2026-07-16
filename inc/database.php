@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AGRI_SAAS_DB_VERSION', '13');
+define('AGRI_SAAS_DB_VERSION', '14');
 
 add_action('init', 'agri_saas_maybe_upgrade_db');
 function agri_saas_maybe_upgrade_db(): void
@@ -64,6 +64,7 @@ function agri_saas_install_tables(): void
         media_url TEXT NOT NULL DEFAULT '',
         logo_url TEXT DEFAULT NULL,
         cover_url TEXT DEFAULT NULL,
+        is_active TINYINT UNSIGNED NOT NULL DEFAULT 1,
         is_verified TINYINT UNSIGNED NOT NULL DEFAULT 0,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY  (id),
