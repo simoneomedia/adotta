@@ -31,6 +31,13 @@ function agri_saas_register_api_routes(): void
         'args'                => ['id' => ['sanitize_callback' => 'absint']],
     ]);
 
+    register_rest_route('agri-saas/v1', '/admin/farms/(?P<id>\d+)/coordinates', [
+        'methods'             => 'POST',
+        'callback'            => 'agri_saas_api_admin_update_coordinates',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
     register_rest_route('agri-saas/v1', '/admin/adoptions/(?P<id>\d+)/status', [
         'methods'             => 'POST',
         'callback'            => 'agri_saas_api_admin_adoption_status',
@@ -2406,6 +2413,7 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
 
     $farms = $wpdb->get_results(
         "SELECT f.id, f.name, f.location, f.crop_focus, f.is_verified,
+                f.latitude, f.longitude,
                 u.display_name AS owner_name, u.user_email AS owner_email,
                 (SELECT COUNT(*) FROM {$tables['trees']} t WHERE t.farm_id = f.id) AS tree_count,
                 (SELECT COUNT(*) FROM {$tables['adoptions']} a
@@ -2498,6 +2506,39 @@ function agri_saas_api_admin_toggle_verify(WP_REST_Request $request): WP_REST_Re
     $new_val = $current ? 0 : 1;
     $wpdb->update($tables['farms'], ['is_verified' => $new_val], ['id' => $farm_id]);
     return rest_ensure_response(['id' => $farm_id, 'is_verified' => $new_val]);
+}
+
+function agri_saas_api_admin_update_coordinates(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $farm_id = absint($request['id']);
+
+    $exists = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['farms']} WHERE id = %d", $farm_id));
+    if (!$exists) {
+        return new WP_Error('not_found', 'Produttore non trovato.', ['status' => 404]);
+    }
+
+    // Empty string clears the coordinate (NULL); invalid/out-of-range is rejected.
+    $lat_raw = $request->get_param('latitude');
+    $lng_raw = $request->get_param('longitude');
+    $lat = agri_saas_sanitize_coordinate($lat_raw, -90, 90);
+    $lng = agri_saas_sanitize_coordinate($lng_raw, -180, 180);
+
+    if ($lat_raw !== null && $lat_raw !== '' && $lat === null) {
+        return new WP_Error('invalid_latitude', 'Latitudine non valida (attesa tra -90 e 90).', ['status' => 400]);
+    }
+    if ($lng_raw !== null && $lng_raw !== '' && $lng === null) {
+        return new WP_Error('invalid_longitude', 'Longitudine non valida (attesa tra -180 e 180).', ['status' => 400]);
+    }
+
+    $wpdb->update(
+        $tables['farms'],
+        ['latitude' => $lat, 'longitude' => $lng],
+        ['id' => $farm_id]
+    );
+
+    return rest_ensure_response(['id' => $farm_id, 'latitude' => $lat, 'longitude' => $lng]);
 }
 
 function agri_saas_api_admin_adoption_status(WP_REST_Request $request): WP_REST_Response|WP_Error
