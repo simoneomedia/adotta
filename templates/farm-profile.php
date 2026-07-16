@@ -10,16 +10,22 @@ $farm_id = absint(get_query_var('farm_id'));
 agri_saas_render_shell('', function () use ($farm_id): void {
     ?>
     <div class="farm-profile-shell" data-agri-endpoint="/farms/<?php echo esc_attr((string) $farm_id); ?>/profile" data-render="farm-profile">
-        <section class="farm-hero card">
-            <div>
-                <p class="eyebrow"><?php esc_html_e('Vetrina produttore', 'agri-saas'); ?></p>
-                <h1 data-slot="farm-title"><?php esc_html_e('Profilo produttore', 'agri-saas'); ?></h1>
-                <p data-slot="farm-summary"><?php esc_html_e("Caricamento informazioni sul produttore, elementi, aggiornamenti e foto.", 'agri-saas'); ?></p>
-                <div class="contact-actions" data-slot="farm-contacts"></div>
+        <section class="farm-landing-hero card">
+            <div class="farm-cover" data-farm-cover>
+                <span class="farm-cover-name" data-farm-cover-name></span>
             </div>
-            <div class="farm-hero-actions">
-                <button class="button" type="button" data-follow-farm hidden><?php esc_html_e('Segui produttore', 'agri-saas'); ?></button>
-                <a class="button ghost" href="<?php echo esc_url(home_url('/')); ?>"><?php esc_html_e('Adotta un elemento', 'agri-saas'); ?></a>
+            <div class="farm-hero-inner">
+                <img class="farm-logo-avatar" data-farm-logo hidden alt="">
+                <div class="farm-hero-text">
+                    <p class="eyebrow"><?php esc_html_e('Vetrina produttore', 'agri-saas'); ?></p>
+                    <h1 data-slot="farm-title"><?php esc_html_e('Profilo produttore', 'agri-saas'); ?></h1>
+                    <p data-slot="farm-summary"><?php esc_html_e("Caricamento informazioni sul produttore, elementi, aggiornamenti e foto.", 'agri-saas'); ?></p>
+                    <div class="contact-actions" data-slot="farm-contacts"></div>
+                </div>
+                <div class="farm-hero-actions">
+                    <button class="button" type="button" data-follow-farm hidden><?php esc_html_e('Segui produttore', 'agri-saas'); ?></button>
+                    <a class="button ghost" href="<?php echo esc_url(home_url('/')); ?>"><?php esc_html_e('Adotta un elemento', 'agri-saas'); ?></a>
+                </div>
             </div>
         </section>
 

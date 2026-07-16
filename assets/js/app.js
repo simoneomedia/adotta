@@ -301,17 +301,20 @@
         bosco:    '🌲',
         terreno:  '🌾',
         orto:     '🥦',
-        _shop:    '🛒',
+        _shop:    '🧺',
         _barter:  '🤝',
         _farm:    '🏡',
     };
     const _makeTypeIcon = (type) => {
         const emoji = _TYPE_ICONS[type] || '🌿';
+        const html = type === '_shop'
+            ? `<div style="width:32px;height:32px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:19px;line-height:1;">${emoji}</div>`
+            : `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4));">${emoji}</div>`;
         return L.divIcon({
-            html: `<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4));">${emoji}</div>`,
+            html,
             className: '',
-            iconSize: [30, 30],
-            iconAnchor: [15, 28],
+            iconSize: [32, 32],
+            iconAnchor: [16, 28],
             popupAnchor: [0, -28],
         });
     };
@@ -1473,15 +1476,20 @@
         _statCardIdx = 0;
         const farm = data.farm;
         const farmUrl = appUrl(`farms/${farm.id}/`);
-        const hero = root.querySelector('.farm-hero');
-        if (hero && farm.cover_url && !hero.querySelector('.farm-cover')) {
-            hero.insertAdjacentHTML('afterbegin', `<img class="farm-cover" src="${escapeHtml(farm.cover_url)}" alt="" style="grid-column:1/-1;width:100%;height:220px;object-fit:cover;border-radius:14px;margin-bottom:14px;">`);
+        const coverEl = root.querySelector('[data-farm-cover]');
+        if (coverEl && farm.cover_url) {
+            coverEl.style.backgroundImage = `linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.45)), url('${farm.cover_url}')`;
+        }
+        const coverName = root.querySelector('[data-farm-cover-name]');
+        if (coverName) coverName.textContent = farm.name;
+        const logoEl = root.querySelector('[data-farm-logo]');
+        if (logoEl && farm.logo_url) {
+            logoEl.src = farm.logo_url;
+            logoEl.alt = `Logo ${farm.name}`;
+            logoEl.hidden = false;
         }
         const titleEl = root.querySelector('[data-slot="farm-title"]');
         titleEl.textContent = farm.name;
-        if (farm.logo_url && !titleEl.parentElement.querySelector('.farm-logo')) {
-            titleEl.insertAdjacentHTML('beforebegin', `<img class="farm-logo" src="${escapeHtml(farm.logo_url)}" alt="Logo ${escapeHtml(farm.name)}" style="width:64px;height:64px;object-fit:cover;border-radius:50%;border:2px solid var(--border);margin-bottom:8px;">`);
-        }
         // Also update the shell topbar h1 if present
         const shellH1 = document.querySelector('.app-topbar h1');
         if (shellH1) shellH1.textContent = farm.name;
