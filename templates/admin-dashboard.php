@@ -41,10 +41,11 @@ agri_saas_render_shell(__('Pannello Admin', 'agri-saas'), function (): void {
                             <th><?php esc_html_e('Email', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Elementi', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Adozioni', 'agri-saas'); ?></th>
+                            <th><?php esc_html_e('Coordinate', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Stato', 'agri-saas'); ?></th>
                         </tr></thead>
                         <tbody data-slot="admin-farms">
-                            <tr><td colspan="9"><?php esc_html_e('Caricamento…', 'agri-saas'); ?></td></tr>
+                            <tr><td colspan="10"><?php esc_html_e('Caricamento…', 'agri-saas'); ?></td></tr>
                         </tbody>
                     </table>
                 </div>

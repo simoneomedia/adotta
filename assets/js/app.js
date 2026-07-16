@@ -1848,9 +1848,14 @@
                 const verified = Number(r.is_verified) === 1;
                 return `<tr data-farm-row="${e(String(r.id))}">
                     ${cell(r.id)}${cell(r.name)}${cell(r.location)}${cell(r.crop_focus)}${cell(r.owner_name)}${cell(r.owner_email)}${cell(r.tree_count)}${cell(r.adoption_count)}
+                    <td style="white-space:nowrap;">
+                        <input type="number" step="0.0000001" min="-90" max="90" value="${r.latitude != null ? e(String(r.latitude)) : ''}" placeholder="lat" data-coord-lat style="width:110px;padding:4px 6px;font-size:.8rem;">
+                        <input type="number" step="0.0000001" min="-180" max="180" value="${r.longitude != null ? e(String(r.longitude)) : ''}" placeholder="lng" data-coord-lng style="width:110px;padding:4px 6px;font-size:.8rem;">
+                        <button class="admin-action-btn" data-save-coords="${e(String(r.id))}" title="Salva coordinate">📍 Salva</button>
+                    </td>
                     <td><button class="admin-verify-btn ${verified ? 'verified' : ''}" data-farm-id="${e(String(r.id))}" data-verified="${verified ? '1' : '0'}">${verified ? '✅ Verificata' : '⬜ Verifica'}</button></td>
                 </tr>`;
-            }).join('') || '<tr><td colspan="9">Nessun produttore</td></tr>';
+            }).join('') || '<tr><td colspan="10">Nessun produttore</td></tr>';
 
             const adoptionStatuses = ['pending', 'active', 'cancelled', 'cancel_requested'];
             root.querySelector('[data-slot="admin-adoptions"]').innerHTML = (d.adoptions || []).map((r) =>
@@ -1935,6 +1940,26 @@
             });
         };
         document.getElementById('admin-search')?.addEventListener('input', (ev) => _adminFilterSearch(ev.target.value));
+
+        // ── Action: save farm coordinates ────────────────────────────
+        root.addEventListener('click', async (ev) => {
+            const saveCoords = ev.target.closest('[data-save-coords]');
+            if (!saveCoords) return;
+            const row = saveCoords.closest('tr');
+            const lat = row.querySelector('[data-coord-lat]')?.value;
+            const lng = row.querySelector('[data-coord-lng]')?.value;
+            if (lat === '' || lng === '') { alert('Inserisci latitudine e longitudine.'); return; }
+            saveCoords.disabled = true;
+            saveCoords.textContent = '…';
+            try {
+                await _adminPost(`/admin/farms/${saveCoords.dataset.saveCoords}/coords`, { latitude: lat, longitude: lng });
+                saveCoords.textContent = '✅';
+            } catch (err) {
+                alert(`Errore: ${err.message}`);
+                saveCoords.textContent = '📍 Salva';
+            }
+            setTimeout(() => { saveCoords.textContent = '📍 Salva'; saveCoords.disabled = false; }, 1200);
+        });
 
         // ── Action: verify/de-verify farm ────────────────────────────
         root.addEventListener('click', async (ev) => {

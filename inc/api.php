@@ -24,6 +24,13 @@ function agri_saas_register_api_routes(): void
         'permission_callback' => function () { return current_user_can('manage_options'); },
     ]);
 
+    register_rest_route('agri-saas/v1', '/admin/farms/(?P<id>\d+)/coords', [
+        'methods'             => 'POST',
+        'callback'            => 'agri_saas_api_admin_set_farm_coords',
+        'permission_callback' => function () { return current_user_can('manage_options'); },
+        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+    ]);
+
     register_rest_route('agri-saas/v1', '/admin/farms/(?P<id>\d+)/verify', [
         'methods'             => 'POST',
         'callback'            => 'agri_saas_api_admin_toggle_verify',
@@ -2459,7 +2466,7 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
     };
 
     $farms = $wpdb->get_results(
-        "SELECT f.id, f.name, f.location, f.crop_focus, f.is_verified,
+        "SELECT f.id, f.name, f.location, f.crop_focus, f.is_verified, f.latitude, f.longitude,
                 u.display_name AS owner_name, u.user_email AS owner_email,
                 (SELECT COUNT(*) FROM {$tables['trees']} t WHERE t.farm_id = f.id) AS tree_count,
                 (SELECT COUNT(*) FROM {$tables['adoptions']} a
@@ -3096,4 +3103,23 @@ function agri_saas_api_update_baratto_owner(WP_REST_Request $request): WP_REST_R
     }
     $wpdb->update($tables['baratti'], $data, ['id' => $id]);
     return rest_ensure_response(['id' => $id] + $data);
+}
+
+
+function agri_saas_api_admin_set_farm_coords(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables  = agri_saas_tables();
+    $farm_id = absint($request['id']);
+    $lat = agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90);
+    $lng = agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180);
+    if ($lat === null || $lng === null) {
+        return new WP_Error('agri_saas_coords_invalid', __('Coordinate non valide.', 'agri-saas'), ['status' => 400]);
+    }
+    $updated = $wpdb->update($tables['farms'], ['latitude' => $lat, 'longitude' => $lng], ['id' => $farm_id]);
+    if ($updated === false) {
+        return new WP_Error('agri_saas_coords_failed', __('Impossibile aggiornare le coordinate.', 'agri-saas'), ['status' => 500]);
+    }
+    agri_saas_invalidate_farm_cache($farm_id);
+    return rest_ensure_response(['id' => $farm_id, 'latitude' => $lat, 'longitude' => $lng]);
 }
