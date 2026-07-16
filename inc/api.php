@@ -292,17 +292,13 @@ function agri_saas_register_api_routes(): void
     ]);
 
     register_rest_route('agri-saas/v1', '/mercato/(?P<id>\d+)', [
-        'methods'             => WP_REST_Server::DELETABLE,
-        'callback'            => 'agri_saas_api_delete_product_owner',
-        'permission_callback' => 'is_user_logged_in',
-        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+        ['methods' => WP_REST_Server::DELETABLE, 'callback' => 'agri_saas_api_delete_product_owner', 'permission_callback' => 'is_user_logged_in', 'args' => ['id' => ['sanitize_callback' => 'absint']]],
+        ['methods' => 'PUT',                     'callback' => 'agri_saas_api_update_product_owner', 'permission_callback' => 'is_user_logged_in', 'args' => ['id' => ['sanitize_callback' => 'absint']]],
     ]);
 
     register_rest_route('agri-saas/v1', '/baratto/(?P<id>\d+)', [
-        'methods'             => WP_REST_Server::DELETABLE,
-        'callback'            => 'agri_saas_api_delete_baratto_owner',
-        'permission_callback' => 'is_user_logged_in',
-        'args'                => ['id' => ['sanitize_callback' => 'absint']],
+        ['methods' => WP_REST_Server::DELETABLE, 'callback' => 'agri_saas_api_delete_baratto_owner', 'permission_callback' => 'is_user_logged_in', 'args' => ['id' => ['sanitize_callback' => 'absint']]],
+        ['methods' => 'PUT',                     'callback' => 'agri_saas_api_update_baratto_owner', 'permission_callback' => 'is_user_logged_in', 'args' => ['id' => ['sanitize_callback' => 'absint']]],
     ]);
 
     register_rest_route('agri-saas/v1', '/baratto', [
@@ -3051,4 +3047,53 @@ function agri_saas_api_update_farm_branding(WP_REST_Request $request): WP_REST_R
     agri_saas_invalidate_farm_cache($farm_id);
 
     return rest_ensure_response(['id' => $farm_id] + $data);
+}
+
+
+function agri_saas_api_update_product_owner(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $id = absint($request['id']);
+    if (!agri_saas_owner_owns_farm_row('products', $id)) {
+        return new WP_Error('agri_saas_forbidden', __('Non puoi modificare questo prodotto.', 'agri-saas'), ['status' => 403]);
+    }
+    $data = [];
+    if ($request->get_param('name') !== null)        $data['name'] = sanitize_text_field($request->get_param('name'));
+    if ($request->get_param('description') !== null) $data['description'] = sanitize_textarea_field($request->get_param('description'));
+    if ($request->get_param('price') !== null)       $data['price'] = $request->get_param('price') === '' ? null : (float) $request->get_param('price');
+    if ($request->get_param('unit') !== null)        $data['unit'] = sanitize_text_field($request->get_param('unit'));
+    if ($request->get_param('media_url'))            $data['media_url'] = esc_url_raw($request->get_param('media_url'));
+    if (isset($data['name']) && $data['name'] === '') {
+        return new WP_Error('agri_saas_product_required', __('Il nome del prodotto è obbligatorio.', 'agri-saas'), ['status' => 400]);
+    }
+    if (!$data) {
+        return new WP_Error('agri_saas_nothing_to_update', __('Nessun dato da aggiornare.', 'agri-saas'), ['status' => 400]);
+    }
+    $wpdb->update($tables['products'], $data, ['id' => $id]);
+    return rest_ensure_response(['id' => $id] + $data);
+}
+
+function agri_saas_api_update_baratto_owner(WP_REST_Request $request): WP_REST_Response|WP_Error
+{
+    global $wpdb;
+    $tables = agri_saas_tables();
+    $id = absint($request['id']);
+    if (!agri_saas_owner_owns_farm_row('baratti', $id)) {
+        return new WP_Error('agri_saas_forbidden', __('Non puoi modificare questo baratto.', 'agri-saas'), ['status' => 403]);
+    }
+    $data = [];
+    if ($request->get_param('offer_title') !== null)       $data['offer_title'] = sanitize_text_field($request->get_param('offer_title'));
+    if ($request->get_param('offer_description') !== null) $data['offer_description'] = sanitize_textarea_field($request->get_param('offer_description'));
+    if ($request->get_param('wants_title') !== null)       $data['wants_title'] = sanitize_text_field($request->get_param('wants_title'));
+    if ($request->get_param('wants_description') !== null) $data['wants_description'] = sanitize_textarea_field($request->get_param('wants_description'));
+    if ($request->get_param('media_url'))                  $data['media_url'] = esc_url_raw($request->get_param('media_url'));
+    if ((isset($data['offer_title']) && $data['offer_title'] === '') || (isset($data['wants_title']) && $data['wants_title'] === '')) {
+        return new WP_Error('agri_saas_baratto_required', __('Titolo offerta e titolo richiesta sono obbligatori.', 'agri-saas'), ['status' => 400]);
+    }
+    if (!$data) {
+        return new WP_Error('agri_saas_nothing_to_update', __('Nessun dato da aggiornare.', 'agri-saas'), ['status' => 400]);
+    }
+    $wpdb->update($tables['baratti'], $data, ['id' => $id]);
+    return rest_ensure_response(['id' => $id] + $data);
 }

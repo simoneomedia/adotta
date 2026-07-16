@@ -230,5 +230,52 @@ agri_saas_render_shell(__('Area Produttore', 'agri-saas'), function (): void {
             </form>
         </div>
     </div>
+
+    <!-- Edit product modal -->
+    <div class="modal-backdrop" data-edit-product-form>
+        <div class="modal-panel update-composer">
+            <button class="modal-close" type="button" data-close-modal>✕</button>
+            <h2><?php esc_html_e('Modifica prodotto', 'agri-saas'); ?></h2>
+            <form data-agri-edit-product-form>
+                <input name="product_id" type="hidden">
+                <label><?php esc_html_e('Nome prodotto', 'agri-saas'); ?><input name="name" required></label>
+                <label><?php esc_html_e('Descrizione', 'agri-saas'); ?><textarea name="description"></textarea></label>
+                <div class="form-grid-2">
+                    <label><?php esc_html_e('Prezzo (€)', 'agri-saas'); ?><input name="price" type="number" min="0" step="0.01"></label>
+                    <label><?php esc_html_e('Unità', 'agri-saas'); ?>
+                        <select name="unit">
+                            <option value="unità"><?php esc_html_e('Per unità', 'agri-saas'); ?></option>
+                            <option value="kg"><?php esc_html_e('Per kg', 'agri-saas'); ?></option>
+                            <option value="litro"><?php esc_html_e('Per litro', 'agri-saas'); ?></option>
+                            <option value="dozzina"><?php esc_html_e('Per dozzina', 'agri-saas'); ?></option>
+                            <option value="cassetta"><?php esc_html_e('Per cassetta', 'agri-saas'); ?></option>
+                            <option value="barattolo"><?php esc_html_e('Per barattolo', 'agri-saas'); ?></option>
+                        </select>
+                    </label>
+                </div>
+                <label><?php esc_html_e('Nuova foto (opzionale)', 'agri-saas'); ?><input name="photo" type="file" accept="image/*"></label>
+                <p class="map-note" data-form-status></p>
+                <button class="button" type="submit"><?php esc_html_e('Salva modifiche', 'agri-saas'); ?></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit baratto modal -->
+    <div class="modal-backdrop" data-edit-baratto-form>
+        <div class="modal-panel update-composer">
+            <button class="modal-close" type="button" data-close-modal>✕</button>
+            <h2><?php esc_html_e('Modifica baratto', 'agri-saas'); ?></h2>
+            <form data-agri-edit-baratto-form>
+                <input name="baratto_id" type="hidden">
+                <label><?php esc_html_e('Cosa offro', 'agri-saas'); ?><input name="offer_title" required></label>
+                <label><?php esc_html_e('Dettagli offerta', 'agri-saas'); ?><textarea name="offer_description"></textarea></label>
+                <label><?php esc_html_e('Cosa cerco in cambio', 'agri-saas'); ?><input name="wants_title" required></label>
+                <label><?php esc_html_e('Dettagli richiesta', 'agri-saas'); ?><textarea name="wants_description"></textarea></label>
+                <label><?php esc_html_e('Nuova foto (opzionale)', 'agri-saas'); ?><input name="photo" type="file" accept="image/*"></label>
+                <p class="map-note" data-form-status></p>
+                <button class="button" type="submit"><?php esc_html_e('Salva modifiche', 'agri-saas'); ?></button>
+            </form>
+        </div>
+    </div>
     <?php
 });

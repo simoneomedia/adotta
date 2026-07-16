@@ -851,6 +851,7 @@
                         <span class="badge">${p.price != null ? `€${Number(p.price).toFixed(2)} / ${escapeHtml(p.unit)}` : escapeHtml(p.unit || '')}</span>
                     </div>
                     <div class="tree-row-actions">
+                        <button class="button ghost" style="padding:6px 12px;font-size:.8rem;" data-edit-product='${escapeHtml(JSON.stringify({id:p.id,name:p.name,description:p.description||"",price:p.price,unit:p.unit||"unità"}))}'>✏️ Modifica</button>
                         <button class="button ghost" style="padding:6px 12px;font-size:.8rem;color:#c62828;" data-delete-product="${p.id}">🗑 Elimina</button>
                     </div>
                 </div>`).join('')
@@ -866,6 +867,7 @@
                         <span class="badge">🤝</span>
                     </div>
                     <div class="tree-row-actions">
+                        <button class="button ghost" style="padding:6px 12px;font-size:.8rem;" data-edit-baratto='${escapeHtml(JSON.stringify({id:b.id,offer_title:b.offer_title,offer_description:b.offer_description||"",wants_title:b.wants_title,wants_description:b.wants_description||""}))}'>✏️ Modifica</button>
                         <button class="button ghost" style="padding:6px 12px;font-size:.8rem;color:#c62828;" data-delete-baratto="${b.id}">🗑 Elimina</button>
                     </div>
                 </div>`).join('')
@@ -873,6 +875,34 @@
         }
 
         root.addEventListener('click', async (ev) => {
+            const editP = ev.target.closest('[data-edit-product]');
+            if (editP) {
+                const d = JSON.parse(editP.dataset.editProduct);
+                const form = document.querySelector('[data-agri-edit-product-form]');
+                if (form) {
+                    form.elements.product_id.value = d.id;
+                    form.elements.name.value = d.name || '';
+                    form.elements.description.value = d.description || '';
+                    form.elements.price.value = d.price ?? '';
+                    form.elements.unit.value = d.unit || 'unità';
+                    openModal('[data-edit-product-form]');
+                }
+                return;
+            }
+            const editB = ev.target.closest('[data-edit-baratto]');
+            if (editB) {
+                const d = JSON.parse(editB.dataset.editBaratto);
+                const form = document.querySelector('[data-agri-edit-baratto-form]');
+                if (form) {
+                    form.elements.baratto_id.value = d.id;
+                    form.elements.offer_title.value = d.offer_title || '';
+                    form.elements.offer_description.value = d.offer_description || '';
+                    form.elements.wants_title.value = d.wants_title || '';
+                    form.elements.wants_description.value = d.wants_description || '';
+                    openModal('[data-edit-baratto-form]');
+                }
+                return;
+            }
             const delP = ev.target.closest('[data-delete-product]');
             const delB = ev.target.closest('[data-delete-baratto]');
             if (!delP && !delB) return;
@@ -886,6 +916,39 @@
                 alert(`Errore: ${err.message}`);
             }
         }, { once: false });
+
+        const bindEditModal = (formSel, idField, endpointBase) => {
+            const form = document.querySelector(formSel);
+            if (!form || form.dataset.bound) return;
+            form.dataset.bound = '1';
+            form.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                const btn = form.querySelector('button[type="submit"]');
+                const statusEl = form.querySelector('[data-form-status]');
+                btn.disabled = true;
+                if (statusEl) statusEl.textContent = 'Salvataggio…';
+                try {
+                    const fd = new FormData(form);
+                    const payload = {};
+                    fd.forEach((v, k) => { if (k !== 'photo' && k !== idField) payload[k] = v; });
+                    const fileInput = form.querySelector('input[type="file"][name="photo"]');
+                    if (fileInput?.files?.length) {
+                        const up = new FormData();
+                        up.append('photo', fileInput.files[0]);
+                        const res = await apiFetch('/media/photo', { method: 'POST', body: up });
+                        payload.media_url = res.url;
+                    }
+                    await apiFetch(`${endpointBase}/${fd.get(idField)}`, { method: 'PUT', body: JSON.stringify(payload) });
+                    closeAllModals();
+                    window.location.reload();
+                } catch (err) {
+                    if (statusEl) statusEl.textContent = `❌ ${err.message}`;
+                    btn.disabled = false;
+                }
+            });
+        };
+        bindEditModal('[data-agri-edit-product-form]', 'product_id', '/mercato');
+        bindEditModal('[data-agri-edit-baratto-form]', 'baratto_id', '/baratto');
         root.querySelector('[data-slot="stats"]').innerHTML = [
             statCard('Elementi disponibili', data.stats.availableTrees, "Pronti per l'adozione"),
             statCard('Elementi adottati', data.stats.adoptedTrees, 'Sponsorizzati dai utenti'),
