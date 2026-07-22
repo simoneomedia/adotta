@@ -1,0 +1,11 @@
+SKU,GRAVITA,NOME_PRODOTTO,PROBLEMA
+FAN1096993,ERRORE,FANOLA CONDITIONER BIFASICO ANTIGIALLO SENZA RISCIACQUO NO YELLOW CARE 150 ML,"Titolo ""No Yellow Care Conditioner Bifasico"" ma immagine = spray ""Nutri One 10 azioni"" (prodotto diverso). Preesistente."
+ID950.349,ERRORE,REGEA Siero Idratazione Profonda 100ml,"Titolo ""Siero Idratazione Profonda"" ma immagine = ""Microgel Contorno Occhi"". Preesistente."
+FAN1076025,ERRORE,FANOLA THERMO-PROTECTIVE CREAM,"Titolo ""Thermo-Protective Cream"" ma immagine = boccetta rossa Botugen fotografata su scrivania. Preesistente."
+FAN1076553,SCARSA,"Fanola FanTouch Keep Me Bright, Fluido con Cristalli Liquidi per la Cura e Preve","Titolo ""Keep Me Bright"" ma immagine = foto amatoriale di boccetta arancione su scrivania. Non identifica il prodotto. Preesistente."
+FAN1076064,SCARSA,Fanola Nutri Care Restructuring Conditioner,"Titolo ""Nutri Care Restructuring Conditioner"" ma immagine = tanica bianca 10L. Non e il flacone retail. Preesistente."
+FAN86334,SCARSA,Mascarailla ricci e capelli mossi 100ml,"Titolo poco chiaro (""Mascarilla ricci e capelli mossi"") + immagine = solo ciocca rossa, nessun prodotto. Da chiarire. Preesistente."
+FAN86326,DA VERIFICARE,FANOLA COLOR SUPERSCHIARENTI 12.7,"Titolo ""Fanola Color Superschiarenti 12.7"" ma immagine = astuccio COLOR ZOOM (linea diversa; nuance 12.7 giusta). Immagine caricata da me: decidi se il prodotto e Fanola Color o Color Zoom."
+FAN86440,DA VERIFICARE,FANOLA TINTURA ORO THERAPY COLOR KERATIN SENZA AMMONIACA 9.1,"Titolo ""Oro Therapy 9.1"" ma la ciocca ufficiale Fanola per questa variante mostra ""10.1"" (errore di etichettatura lato Fanola). Immagine caricata da me: consiglio versione solo-astuccio o verifica se lo SKU e 9.1 o 10.1."
+ID950.309,MINORE,Regea crema multivitaminica acido ialuronico e collagene marino 250ml,"Titolo ""crema multivitaminica"" ma immagine = ""Crema Viso e Corpo Lift Action"" (stessi attivi: ac. ialuronico + collagene marino). Probabile stesso prodotto, nome diverso. Preesistente."
+FAN86164,MINORE,"Fanola Acqua ossigenata profumata, 1000 ml","Titolo ""Acqua ossigenata profumata"" ma immagine = flacone ""40 vol"". Verifica il volume. Preesistente."
