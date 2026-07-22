@@ -1,0 +1,30 @@
+SKU,PRODOTTO,STATO,FONTE,NOTA
+FAN86017,FANOLA Crema colorante 8.04,PRONTA (astuccio generico),fanola.it,shade 8.04 fuori catalogo: astuccio Fanola Color senza numero
+FAN86047,FANOLA Tintura 6.43,PRONTA (astuccio generico),fanola.it,6.43 a catalogo ma senza ciocca pubblicata: astuccio generico
+RODEP539,Roial Olio Post-Epilazione 1000ml,SCEGLI PROFUMO,roial.it,"esiste Camomilla ed Eucalipto: 2 opzioni in da_scegliere/, dimmi quale"
+FAN86072,Fanola (codice=tinta 10.03 / titolo=Accessori colore 150gr),CONFLITTO,fanola.it,titolo e codice indicano prodotti diversi: da chiarire
+FAN86163,Fanola (codice=Oxy 30 vol / titolo=Matrix ricrescita),CONFLITTO,fanola.it,ho l Oxy 30 vol per codice; titolo dice Matrix: da chiarire
+FAN96628,Fanola (codice=superschiarente s.1202 / titolo=ghd Platinum Styler),CONFLITTO,fanola.it / ghd,titolo = piastra ghd (altro prodotto); ghdhair.com bloccato
+"ID920,209",Xanitalia (codice 920.209=cera NERA / titolo=miele),CONFLITTO,xanitalia.it,ho l immagine 920.209 (nera); titolo dice miele (920.200): da chiarire
+ID950.313,Regea (codice 950.313=Microgel occhi / titolo=Siero Idratazione),CONFLITTO,xanitalia catalogo,Siero Idratazione = codice 950.341; da chiarire quale prodotto e
+FAN86086,D Shila cerotti proteggi-dita 250gr,BLOCCATO,dshila (bloccato),SKU Fanola ma prodotto D Shila; sito non raggiungibile
+CC11013602,Cuki Professional Carta Forno 50m H36,BLOCCATO,cuki.it (bloccato),packshot ufficiale esiste; dominio bloccato dalla policy
+CC17030112,Cuki Film alluminio 30cm 100m,BLOCCATO,cuki.it (bloccato),dominio bloccato
+CC3530130,Cuki Pellicola trasparente,BLOCCATO,cuki.it (bloccato),dominio bloccato
+MD0000,Amedics Peroxill 2000 polvere 1kg,BLOCCATO,amedics.eu (bloccato),scheda ufficiale su amedics.eu; dominio bloccato
+MD0145,Lenyderm pasta ossido di zinco 150ml,BLOCCATO,amedics/altro (bloccato),dominio bloccato
+MD01AM0010,DECS Puro disinfettante conc. 1000ml,BLOCCATO,amedics/altro (bloccato),dominio bloccato
+MD0213,Bactisan Spray idroalcolico 1000ml,BLOCCATO,amedics (bloccato),dominio bloccato
+MD0496,Hygienbar CPR Washing Tab 160 cpr,BLOCCATO,amedics/altro (bloccato),dominio bloccato
+MD06BE0181,Dermaclyn dermodetergente pH5.5 1000ml,BLOCCATO,amedics/altro (bloccato),dominio bloccato
+MD07AX0401,Fry pulitore friggitrici 25 cpr,BLOCCATO,amedics/altro (bloccato),dominio bloccato
+MD07GA0020,Amedics Clorhygien Plus 333 cpr,BLOCCATO,amedics.eu (bloccato),dominio bloccato
+MDLHSTERUPSG075,Ster Up Sgrassatore 750ml,BLOCCATO,amedics/altro (bloccato),dominio bloccato
+ICOM1301,Rivit Mani emulsione igienizzante 100ml,BLOCCATO,fonte non in allowlist,packshot ufficiale esiste; non raggiungibile
+J7517908,Diversey Cif Bagno 2in1,BLOCCATO,diversey.com (bloccato),dominio bloccato
+SIGBBC003BIO50BOL,Piatto fondo 680ml fibra canna zucchero,NO PACKSHOT,white-label,monouso generico: nessun packshot produttore
+SIGBPC003BIO50B,Piatto liscio 22cm cellulosa,NO PACKSHOT,white-label,monouso generico
+SM0217/10,Forchetta Siam Quality bio 16.5cm,NO PACKSHOT,white-label,monouso generico
+SM0217/11,Coltelli Siam Quality bio 16.5cm,NO PACKSHOT,white-label,monouso generico
+VD11705,Bis posate bianche imbustate,NO PACKSHOT,white-label,monouso generico
+IEVSP/L,Guanto vinile Essential 511 S/M/L,NO PACKSHOT,white-label,guanto generico; nessun packshot brand
