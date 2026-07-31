@@ -19,39 +19,22 @@ agri_saas_render_shell('', function () use ($farm_id): void {
                 <div class="farm-hero-text">
                     <p class="eyebrow"><?php esc_html_e('Vetrina produttore', 'agri-saas'); ?></p>
                     <h1 data-slot="farm-title"><?php esc_html_e('Profilo produttore', 'agri-saas'); ?></h1>
-                    <p data-slot="farm-summary"><?php esc_html_e("Caricamento informazioni sul produttore, elementi, aggiornamenti e foto.", 'agri-saas'); ?></p>
+                    <p data-slot="farm-summary"><?php esc_html_e("Caricamento informazioni sul produttore, prodotti, aggiornamenti e foto.", 'agri-saas'); ?></p>
                     <div class="contact-actions" data-slot="farm-contacts"></div>
                 </div>
                 <div class="farm-hero-actions">
                     <button class="button" type="button" data-follow-farm hidden><?php esc_html_e('Segui produttore', 'agri-saas'); ?></button>
-                    <a class="button ghost" href="<?php echo esc_url(home_url('/')); ?>"><?php esc_html_e('Adotta un elemento', 'agri-saas'); ?></a>
+                    <a class="button ghost" href="<?php echo esc_url(home_url('/mercato/')); ?>"><?php esc_html_e('Vai al mercato', 'agri-saas'); ?></a>
                 </div>
             </div>
         </section>
 
         <section class="dashboard-grid">
             <div class="stats-grid" data-slot="farm-profile-stats">
-                <?php agri_saas_stat_card(__('Elementi', 'agri-saas'), '—', __('Elementi pubblicati', 'agri-saas')); ?>
-                <?php agri_saas_stat_card(__('Adottati', 'agri-saas'), '—', __('Già adottati', 'agri-saas')); ?>
+                <?php agri_saas_stat_card(__('Prodotti', 'agri-saas'), '—', __('Nel mercato', 'agri-saas')); ?>
+                <?php agri_saas_stat_card(__('Baratti', 'agri-saas'), '—', __('Scambi proposti', 'agri-saas')); ?>
                 <?php agri_saas_stat_card(__('Follower', 'agri-saas'), '—', __('Persone che seguono gli aggiornamenti', 'agri-saas')); ?>
             </div>
-
-            <article class="card span-3">
-                <div class="section-heading">
-                    <div>
-                        <p class="eyebrow"><?php esc_html_e('Mappa del frutteto', 'agri-saas'); ?></p>
-                        <h2><?php esc_html_e('Tutti gli elementi', 'agri-saas'); ?></h2>
-                    </div>
-                </div>
-                <div class="catalog-layout">
-                    <div class="catalog-map" data-slot="farm-profile-map" aria-label="<?php esc_attr_e('Mappa elementi produttore', 'agri-saas'); ?>">
-                        <span class="map-placeholder">&#9678;</span>
-                    </div>
-                    <div class="card-list" data-slot="farm-profile-trees">
-                        <?php agri_saas_empty_state("Gli elementi del produttore appariranno qui."); ?>
-                    </div>
-                </div>
-            </article>
 
             <article class="card span-2">
                 <div class="section-heading">

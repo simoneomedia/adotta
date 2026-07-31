@@ -22,9 +22,8 @@ agri_saas_render_shell(__('Pannello Admin', 'agri-saas'), function (): void {
 
             <div class="admin-tabs" style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
                 <button class="button active" data-admin-tab="farms"><?php esc_html_e('🏡 Produttori', 'agri-saas'); ?></button>
-                <button class="button ghost" data-admin-tab="adoptions"><?php esc_html_e('🌱 Adozioni', 'agri-saas'); ?></button>
                 <button class="button ghost" data-admin-tab="users"><?php esc_html_e('👤 Utenti', 'agri-saas'); ?></button>
-                <button class="button ghost" data-admin-tab="products"><?php esc_html_e('🛒 Prodotti', 'agri-saas'); ?></button>
+                <button class="button ghost" data-admin-tab="products"><?php esc_html_e('🧺 Prodotti', 'agri-saas'); ?></button>
                 <button class="button ghost" data-admin-tab="baratti"><?php esc_html_e('🤝 Baratti', 'agri-saas'); ?></button>
                 <button class="button ghost" data-admin-tab="create"><?php esc_html_e('➕ Crea', 'agri-saas'); ?></button>
             </div>
@@ -39,36 +38,13 @@ agri_saas_render_shell(__('Pannello Admin', 'agri-saas'), function (): void {
                             <th><?php esc_html_e('Coltura', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Referente', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Email', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Elementi', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Adozioni', 'agri-saas'); ?></th>
+                            <th><?php esc_html_e('Prodotti', 'agri-saas'); ?></th>
+                            <th><?php esc_html_e('Baratti', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Coordinate', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Stato', 'agri-saas'); ?></th>
                         </tr></thead>
                         <tbody data-slot="admin-farms">
                             <tr><td colspan="10"><?php esc_html_e('Caricamento…', 'agri-saas'); ?></td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div data-admin-panel="adoptions" hidden>
-                <div class="table-wrap" style="overflow-x:auto;">
-                    <table class="admin-table">
-                        <thead><tr>
-                            <th><?php esc_html_e('ID', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Specie', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Tipo', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Codice', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Produttore', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Utente', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Email', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('WhatsApp', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Telefono', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Stato', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Data', 'agri-saas'); ?></th>
-                        </tr></thead>
-                        <tbody data-slot="admin-adoptions">
-                            <tr><td colspan="11"><?php esc_html_e('Caricamento…', 'agri-saas'); ?></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -83,13 +59,12 @@ agri_saas_render_shell(__('Pannello Admin', 'agri-saas'), function (): void {
                             <th><?php esc_html_e('Email', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('WhatsApp', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Telefono', 'agri-saas'); ?></th>
-                            <th><?php esc_html_e('Adozioni attive', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Produttori', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Registrato', 'agri-saas'); ?></th>
                             <th><?php esc_html_e('Azioni', 'agri-saas'); ?></th>
                         </tr></thead>
                         <tbody data-slot="admin-users">
-                            <tr><td colspan="9"><?php esc_html_e('Caricamento…', 'agri-saas'); ?></td></tr>
+                            <tr><td colspan="8"><?php esc_html_e('Caricamento…', 'agri-saas'); ?></td></tr>
                         </tbody>
                     </table>
                 </div>

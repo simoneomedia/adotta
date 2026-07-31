@@ -9,9 +9,7 @@ function agri_saas_register_routes(): void
     add_rewrite_rule('^dashboard/?$', 'index.php?agri_saas_route=dashboard', 'top');
     add_rewrite_rule('^farms/([0-9]+)/?$', 'index.php?agri_saas_route=farm-profile&farm_id=$matches[1]', 'top');
     add_rewrite_rule('^farm-dashboard/?$', 'index.php?agri_saas_route=farm-dashboard', 'top');
-    add_rewrite_rule('^trees/([0-9]+)/?$', 'index.php?agri_saas_route=tree-detail&tree_id=$matches[1]', 'top');
     add_rewrite_rule('^updates/?$', 'index.php?agri_saas_route=updates', 'top');
-    add_rewrite_rule('^claim-gift/?$', 'index.php?agri_saas_route=claim-gift', 'top');
     add_rewrite_rule('^mercato/?$', 'index.php?agri_saas_route=mercato', 'top');
     add_rewrite_rule('^baratto/?$', 'index.php?agri_saas_route=baratto', 'top');
     add_rewrite_rule('^login/?$', 'index.php?agri_saas_route=login', 'top');
@@ -19,9 +17,9 @@ function agri_saas_register_routes(): void
     add_rewrite_rule('^profilo/?$', 'index.php?agri_saas_route=profilo', 'top');
 
     // Flush rewrite rules when route set changes
-    if (get_option('agri_saas_routes_version') !== '6') {
+    if (get_option('agri_saas_routes_version') !== '7') {
         flush_rewrite_rules();
-        update_option('agri_saas_routes_version', '6');
+        update_option('agri_saas_routes_version', '7');
     }
 }
 
@@ -29,7 +27,6 @@ add_filter('query_vars', 'agri_saas_query_vars');
 function agri_saas_query_vars(array $vars): array
 {
     $vars[] = 'agri_saas_route';
-    $vars[] = 'tree_id';
     $vars[] = 'farm_id';
     return $vars;
 }
@@ -45,7 +42,6 @@ function agri_saas_template_router(string $template): string
         'updates'      => 'updates',
         'mercato'      => 'mercato',
         'baratto'      => 'baratto',
-        'claim-gift'   => 'claim-gift',
         'wido-admin'   => 'wido-admin',
         'profilo'      => 'profilo',
         'login'        => 'login',
@@ -59,7 +55,7 @@ function agri_saas_template_router(string $template): string
         return $template;
     }
 
-    $public_routes = ['farm-profile', 'claim-gift', 'mercato', 'baratto', 'updates', 'tree-detail', 'login'];
+    $public_routes = ['farm-profile', 'mercato', 'baratto', 'updates', 'login'];
     if (!in_array($route, $public_routes, true)) {
         agri_saas_require_login();
     }
@@ -84,9 +80,7 @@ function agri_saas_template_router(string $template): string
         'dashboard'   => AGRI_SAAS_PATH . '/templates/dashboard-client.php',
         'farm-dashboard' => AGRI_SAAS_PATH . '/templates/dashboard-farm.php',
         'farm-profile' => AGRI_SAAS_PATH . '/templates/farm-profile.php',
-        'tree-detail' => AGRI_SAAS_PATH . '/templates/tree-detail.php',
         'updates'     => AGRI_SAAS_PATH . '/templates/updates.php',
-        'claim-gift'  => AGRI_SAAS_PATH . '/templates/claim-gift.php',
         'mercato'     => AGRI_SAAS_PATH . '/templates/mercato.php',
         'baratto'     => AGRI_SAAS_PATH . '/templates/baratto.php',
         'login'       => AGRI_SAAS_PATH . '/templates/login.php',

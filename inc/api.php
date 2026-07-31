@@ -45,20 +45,6 @@ function agri_saas_register_api_routes(): void
         'args'                => ['id' => ['sanitize_callback' => 'absint']],
     ]);
 
-    register_rest_route('agri-saas/v1', '/admin/adoptions/(?P<id>\d+)/status', [
-        'methods'             => 'POST',
-        'callback'            => 'agri_saas_api_admin_adoption_status',
-        'permission_callback' => function () { return current_user_can('manage_options'); },
-        'args'                => ['id' => ['sanitize_callback' => 'absint']],
-    ]);
-
-    register_rest_route('agri-saas/v1', '/admin/trees/(?P<id>\d+)', [
-        'methods'             => WP_REST_Server::DELETABLE,
-        'callback'            => 'agri_saas_api_admin_delete_tree',
-        'permission_callback' => function () { return current_user_can('manage_options'); },
-        'args'                => ['id' => ['sanitize_callback' => 'absint']],
-    ]);
-
     register_rest_route('agri-saas/v1', '/admin/products/(?P<id>\d+)', [
         'methods'             => WP_REST_Server::DELETABLE,
         'callback'            => 'agri_saas_api_admin_delete_product',
@@ -95,16 +81,9 @@ function agri_saas_register_api_routes(): void
     // Admin creation endpoints (bypass owner check, accept farm_id directly)
     $admin_perm = function () { return current_user_can('manage_options'); };
     register_rest_route('agri-saas/v1', '/admin/create/farm',    ['methods' => 'POST', 'callback' => 'agri_saas_api_admin_create_farm',    'permission_callback' => $admin_perm]);
-    register_rest_route('agri-saas/v1', '/admin/create/tree',    ['methods' => 'POST', 'callback' => 'agri_saas_api_admin_create_tree',    'permission_callback' => $admin_perm]);
     register_rest_route('agri-saas/v1', '/admin/create/product', ['methods' => 'POST', 'callback' => 'agri_saas_api_admin_create_product', 'permission_callback' => $admin_perm]);
     register_rest_route('agri-saas/v1', '/admin/create/baratto', ['methods' => 'POST', 'callback' => 'agri_saas_api_admin_create_baratto', 'permission_callback' => $admin_perm]);
     register_rest_route('agri-saas/v1', '/admin/create/update',  ['methods' => 'POST', 'callback' => 'agri_saas_api_admin_create_update',  'permission_callback' => $admin_perm]);
-
-    register_rest_route('agri-saas/v1', '/dashboard/client', [
-        'methods'             => WP_REST_Server::READABLE,
-        'callback'            => 'agri_saas_api_client_dashboard',
-        'permission_callback' => 'is_user_logged_in',
-    ]);
 
     register_rest_route('agri-saas/v1', '/dashboard/farm', [
         'methods'             => WP_REST_Server::READABLE,
@@ -132,68 +111,9 @@ function agri_saas_register_api_routes(): void
         ],
     ]);
 
-    register_rest_route('agri-saas/v1', '/farms/(?P<id>\d+)/rewards', [
-        'methods'             => WP_REST_Server::READABLE,
-        'callback'            => 'agri_saas_api_farm_rewards',
-        'permission_callback' => '__return_true',
-        'args'                => ['id' => ['sanitize_callback' => 'absint']],
-    ]);
-
     register_rest_route('agri-saas/v1', '/farms/(?P<id>\d+)/reviews', [
         ['methods' => WP_REST_Server::READABLE,  'callback' => 'agri_saas_api_get_farm_reviews',    'permission_callback' => '__return_true', 'args' => ['id' => ['sanitize_callback' => 'absint']]],
         ['methods' => WP_REST_Server::CREATABLE, 'callback' => 'agri_saas_api_create_farm_review', 'permission_callback' => 'is_user_logged_in', 'args' => ['id' => ['sanitize_callback' => 'absint']]],
-    ]);
-
-    register_rest_route('agri-saas/v1', '/catalog/trees', [
-        'methods'             => WP_REST_Server::READABLE,
-        'callback'            => 'agri_saas_api_adoptable_trees',
-        'permission_callback' => '__return_true',
-    ]);
-
-    register_rest_route('agri-saas/v1', '/adoption-requests', [
-        'methods'             => WP_REST_Server::CREATABLE,
-        'callback'            => 'agri_saas_api_create_adoption_request',
-        'permission_callback' => 'is_user_logged_in',
-    ]);
-
-    register_rest_route('agri-saas/v1', '/adoption-requests/(?P<id>\d+)/(?P<decision>accept|reject)', [
-        'methods'             => WP_REST_Server::CREATABLE,
-        'callback'            => 'agri_saas_api_decide_adoption_request',
-        'permission_callback' => 'agri_saas_can_manage_farms',
-        'args'                => ['id' => ['sanitize_callback' => 'absint']],
-    ]);
-
-    register_rest_route('agri-saas/v1', '/adoption-requests/(?P<id>\d+)/request-cancel', [
-        'methods'             => WP_REST_Server::CREATABLE,
-        'callback'            => 'agri_saas_api_request_cancel_adoption',
-        'permission_callback' => 'is_user_logged_in',
-        'args'                => ['id' => ['sanitize_callback' => 'absint']],
-    ]);
-
-    register_rest_route('agri-saas/v1', '/adoption-requests/(?P<id>\d+)/confirm-cancel', [
-        'methods'             => WP_REST_Server::CREATABLE,
-        'callback'            => 'agri_saas_api_confirm_cancel_adoption',
-        'permission_callback' => 'agri_saas_can_manage_farms',
-        'args'                => ['id' => ['sanitize_callback' => 'absint']],
-    ]);
-
-    register_rest_route('agri-saas/v1', '/adoption-requests/(?P<id>\d+)/reject-cancel', [
-        'methods'             => WP_REST_Server::CREATABLE,
-        'callback'            => 'agri_saas_api_reject_cancel_adoption',
-        'permission_callback' => 'agri_saas_can_manage_farms',
-        'args'                => ['id' => ['sanitize_callback' => 'absint']],
-    ]);
-
-    register_rest_route('agri-saas/v1', '/gift-adoption', [
-        'methods'             => WP_REST_Server::CREATABLE,
-        'callback'            => 'agri_saas_api_gift_adoption',
-        'permission_callback' => 'is_user_logged_in',
-    ]);
-
-    register_rest_route('agri-saas/v1', '/claim-gift', [
-        'methods'             => WP_REST_Server::CREATABLE,
-        'callback'            => 'agri_saas_api_claim_gift',
-        'permission_callback' => 'is_user_logged_in',
     ]);
 
     register_rest_route('agri-saas/v1', '/farms', [
@@ -218,18 +138,6 @@ function agri_saas_register_api_routes(): void
         'methods'             => WP_REST_Server::CREATABLE,
         'callback'            => 'agri_saas_api_become_farmer',
         'permission_callback' => 'is_user_logged_in',
-    ]);
-
-    register_rest_route('agri-saas/v1', '/trees', [
-        'methods'             => WP_REST_Server::CREATABLE,
-        'callback'            => 'agri_saas_api_create_tree',
-        'permission_callback' => 'agri_saas_can_manage_farms',
-    ]);
-
-    register_rest_route('agri-saas/v1', '/trees/(?P<id>\d+)', [
-        ['methods' => WP_REST_Server::READABLE, 'callback' => 'agri_saas_api_tree_detail',       'permission_callback' => '__return_true',       'args' => ['id' => ['sanitize_callback' => 'absint']]],
-        ['methods' => 'PUT',                     'callback' => 'agri_saas_api_update_tree',       'permission_callback' => 'is_user_logged_in',   'args' => ['id' => ['sanitize_callback' => 'absint']]],
-        ['methods' => WP_REST_Server::DELETABLE,  'callback' => 'agri_saas_api_delete_tree_owner','permission_callback' => 'is_user_logged_in',   'args' => ['id' => ['sanitize_callback' => 'absint']]],
     ]);
 
     register_rest_route('agri-saas/v1', '/media/photo', [
@@ -268,27 +176,6 @@ function agri_saas_register_api_routes(): void
             'methods'             => WP_REST_Server::DELETABLE,
             'callback'            => 'agri_saas_api_push_unsubscribe',
             'permission_callback' => 'is_user_logged_in',
-        ],
-    ]);
-
-    register_rest_route('agri-saas/v1', '/rewards', [
-        'methods'             => WP_REST_Server::CREATABLE,
-        'callback'            => 'agri_saas_api_create_reward',
-        'permission_callback' => 'agri_saas_can_manage_farms',
-    ]);
-
-    register_rest_route('agri-saas/v1', '/rewards/(?P<id>\d+)', [
-        [
-            'methods'             => 'PUT',
-            'callback'            => 'agri_saas_api_update_reward',
-            'permission_callback' => 'agri_saas_can_manage_farms',
-            'args'                => ['id' => ['sanitize_callback' => 'absint']],
-        ],
-        [
-            'methods'             => WP_REST_Server::DELETABLE,
-            'callback'            => 'agri_saas_api_delete_reward',
-            'permission_callback' => 'agri_saas_can_manage_farms',
-            'args'                => ['id' => ['sanitize_callback' => 'absint']],
         ],
     ]);
 
@@ -482,7 +369,7 @@ function agri_saas_can_manage_farms(): bool
 
 function agri_saas_update_visibility_options(): array
 {
-    return ['public', 'followers', 'adopters', 'tree_adopter'];
+    return ['public', 'followers'];
 }
 
 function agri_saas_is_farm_follower(int $farm_id, int $user_id): bool
@@ -501,30 +388,10 @@ function agri_saas_is_farm_follower(int $farm_id, int $user_id): bool
     ));
 }
 
-function agri_saas_user_has_adoption_in_farm(int $farm_id, int $user_id): bool
-{
-    if (!$farm_id || !$user_id) {
-        return false;
-    }
-
-    global $wpdb;
-    $tables = agri_saas_tables();
-
-    return (bool) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*)
-         FROM {$tables['adoptions']} a
-         INNER JOIN {$tables['trees']} t ON t.id = a.tree_id
-         WHERE t.farm_id = %d AND a.adopter_user_id = %d AND a.status = 'active'",
-        $farm_id,
-        $user_id
-    ));
-}
-
 function agri_saas_user_can_view_update(array $update, int $user_id): bool
 {
     $visibility  = $update['visibility'] ?? 'public';
     $farm_id     = (int) ($update['farm_id'] ?? 0);
-    $tree_adopter = (int) ($update['tree_adopter_user_id'] ?? 0);
 
     if ($visibility === 'public') {
         return true;
@@ -539,15 +406,7 @@ function agri_saas_user_can_view_update(array $update, int $user_id): bool
     }
 
     if ($visibility === 'followers') {
-        return agri_saas_is_farm_follower($farm_id, $user_id) || agri_saas_user_has_adoption_in_farm($farm_id, $user_id);
-    }
-
-    if ($visibility === 'adopters') {
-        return agri_saas_user_has_adoption_in_farm($farm_id, $user_id);
-    }
-
-    if ($visibility === 'tree_adopter') {
-        return $tree_adopter && $tree_adopter === $user_id;
+        return agri_saas_is_farm_follower($farm_id, $user_id);
     }
 
     return false;
@@ -608,94 +467,6 @@ function agri_saas_attach_reactions(array $updates, int $user_id): array
     }, $updates);
 }
 
-function agri_saas_api_client_dashboard(): WP_REST_Response
-{
-    global $wpdb;
-    $tables  = agri_saas_tables();
-    $user_id = get_current_user_id();
-
-    $stats = [
-        'adoptedTrees'    => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['trees']} WHERE adopter_user_id = %d", $user_id)),
-        'activeAdoptions' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['adoptions']} WHERE adopter_user_id = %d AND status IN ('active','cancel_requested')", $user_id)),
-    ];
-
-    $trees = $wpdb->get_results($wpdb->prepare(
-        "SELECT t.id, t.species, t.code, t.status,
-                t.planted_at, t.planted_display,
-                f.name AS farm_name, f.location, f.id AS farm_id,
-                a.id AS adoption_id, a.status AS adoption_status,
-                a.cancellation_requested_at
-         FROM {$tables['trees']} t
-         LEFT JOIN {$tables['farms']} f ON f.id = t.farm_id
-         LEFT JOIN {$tables['adoptions']} a ON a.tree_id = t.id
-             AND a.adopter_user_id = %d
-             AND a.status IN ('active', 'cancel_requested')
-         WHERE t.adopter_user_id = %d
-         ORDER BY t.created_at DESC
-         LIMIT 6",
-        $user_id, $user_id
-    ), ARRAY_A);
-
-    // Attach rewards for each adopted tree
-    $tree_ids = array_column($trees ?: [], 'id');
-    $rewards_by_tree = [];
-    if ($tree_ids) {
-        $ph = implode(',', array_fill(0, count($tree_ids), '%d'));
-        $reward_rows = $wpdb->get_results($wpdb->prepare(
-            "SELECT r.id, r.name, r.description, r.reward_type, r.when_received, r.estimated_value, tr.tree_id
-             FROM {$tables['rewards']} r
-             INNER JOIN {$tables['tree_rewards']} tr ON tr.reward_id = r.id
-             WHERE tr.tree_id IN ({$ph}) AND r.is_active = 1
-             ORDER BY r.created_at ASC",
-            ...$tree_ids
-        ), ARRAY_A);
-        foreach ($reward_rows as $rr) {
-            $rewards_by_tree[(int) $rr['tree_id']][] = $rr;
-        }
-    }
-    foreach ($trees as &$tree) {
-        $tree['rewards'] = $rewards_by_tree[(int) $tree['id']] ?? [];
-    }
-    unset($tree);
-
-    // Upcoming milestones within 30 days
-    $milestones = [];
-    $active_adoptions = $wpdb->get_results($wpdb->prepare(
-        "SELECT a.starts_at, a.milestone_sent, t.species, t.code, t.id AS tree_id
-         FROM {$tables['adoptions']} a
-         INNER JOIN {$tables['trees']} t ON t.id = a.tree_id
-         WHERE a.adopter_user_id = %d AND a.status = 'active'",
-        $user_id
-    ), ARRAY_A);
-
-    $milestone_map = ['6m' => 180, '1y' => 365, '2y' => 730, '3y' => 1095];
-    $label_map     = ['6m' => '6 mesi', '1y' => '1 anno', '2y' => '2 anni', '3y' => '3 anni'];
-    $now           = time();
-
-    foreach ($active_adoptions as $adoption) {
-        $sent      = array_filter(explode(',', $adoption['milestone_sent']));
-        $start     = strtotime($adoption['starts_at']);
-        foreach ($milestone_map as $key => $days) {
-            if (in_array($key, $sent, true)) {
-                continue;
-            }
-            $milestone_ts = $start + $days * 86400;
-            $diff_days    = (int) round(($milestone_ts - $now) / 86400);
-            if ($diff_days >= 0 && $diff_days <= 30) {
-                $milestones[] = [
-                    'tree_id' => (int) $adoption['tree_id'],
-                    'species' => $adoption['species'],
-                    'code'    => $adoption['code'],
-                    'period'  => $label_map[$key],
-                    'days_away' => $diff_days,
-                ];
-            }
-        }
-    }
-
-    return rest_ensure_response(['stats' => $stats, 'trees' => $trees ?: [], 'milestones' => $milestones]);
-}
-
 function agri_saas_api_farm_dashboard(): WP_REST_Response
 {
     global $wpdb;
@@ -703,59 +474,13 @@ function agri_saas_api_farm_dashboard(): WP_REST_Response
     $user_id = get_current_user_id();
 
     $farms = $wpdb->get_results($wpdb->prepare(
-        "SELECT f.*, COUNT(t.id) AS tree_count,
-            SUM(CASE WHEN t.status = 'adopted' THEN 1 ELSE 0 END) AS adopted_count
-         FROM {$tables['farms']} f
-         LEFT JOIN {$tables['trees']} t ON t.farm_id = f.id
+        "SELECT f.* FROM {$tables['farms']} f
          WHERE f.owner_user_id = %d
-         GROUP BY f.id
          ORDER BY f.created_at DESC",
         $user_id
     ), ARRAY_A);
 
-    $open_trees = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(t.id) FROM {$tables['trees']} t INNER JOIN {$tables['farms']} f ON f.id = t.farm_id WHERE f.owner_user_id = %d AND t.status = 'available'",
-        $user_id
-    ));
-
-    $trees = $wpdb->get_results($wpdb->prepare(
-        "SELECT t.id, t.farm_id, t.species, t.code, t.status, t.planted_at, t.planted_display,
-                f.name AS farm_name,
-                (SELECT COUNT(*) FROM {$tables['adoptions']} a2 WHERE a2.tree_id = t.id AND a2.status = 'active') AS adoption_count
-         FROM {$tables['trees']} t
-         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
-         WHERE f.owner_user_id = %d
-         ORDER BY t.created_at DESC
-         LIMIT 10",
-        $user_id
-    ), ARRAY_A);
-
-    $requests = $wpdb->get_results($wpdb->prepare(
-        "SELECT a.id, a.tree_id, a.adopter_user_id, a.requested_at, a.status, t.species, t.code, f.name AS farm_name,
-                u.display_name AS adopter_name, u.user_email AS adopter_email,
-                phone.meta_value AS adopter_phone, whatsapp.meta_value AS adopter_whatsapp
-         FROM {$tables['adoptions']} a
-         INNER JOIN {$tables['trees']} t ON t.id = a.tree_id
-         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
-         LEFT JOIN {$wpdb->users} u ON u.ID = a.adopter_user_id
-         LEFT JOIN {$wpdb->usermeta} phone ON phone.user_id = a.adopter_user_id AND phone.meta_key = 'agri_contact_phone'
-         LEFT JOIN {$wpdb->usermeta} whatsapp ON whatsapp.user_id = a.adopter_user_id AND whatsapp.meta_key = 'agri_contact_whatsapp'
-         WHERE f.owner_user_id = %d AND a.status IN ('pending', 'cancel_requested')
-         ORDER BY a.requested_at ASC, a.starts_at ASC",
-        $user_id
-    ), ARRAY_A);
-
-    // Rewards for all farms owned by this user
-    $farm_ids = array_column($farms ?: [], 'id');
-    $rewards  = [];
-    if ($farm_ids) {
-        $placeholders = implode(',', array_fill(0, count($farm_ids), '%d'));
-        $rewards = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$tables['rewards']} WHERE farm_id IN ({$placeholders}) AND is_active = 1 ORDER BY created_at DESC",
-            ...$farm_ids
-        ), ARRAY_A);
-    }
-
+    $farm_ids    = array_column($farms ?: [], 'id');
     $my_products = [];
     $my_baratti  = [];
     if ($farm_ids) {
@@ -772,21 +497,27 @@ function agri_saas_api_farm_dashboard(): WP_REST_Response
         ), ARRAY_A) ?: [];
     }
 
+    $followers = 0;
+    if ($farm_ids) {
+        $placeholders = implode(',', array_fill(0, count($farm_ids), '%d'));
+        $followers = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$tables['farm_followers']} WHERE farm_id IN ({$placeholders})",
+            ...$farm_ids
+        ));
+    }
+
     return rest_ensure_response([
         'stats' => [
-            'farms'          => count($farms ?: []),
-            'availableTrees' => $open_trees,
-            'adoptedTrees'   => array_sum(array_map(static fn($farm) => (int) $farm['adopted_count'], $farms ?: [])),
+            'farms'     => count($farms ?: []),
+            'products'  => count($my_products),
+            'baratti'   => count($my_baratti),
+            'followers' => $followers,
         ],
         'farms'    => $farms ?: [],
-        'trees'    => $trees ?: [],
-        'requests' => $requests ?: [],
-        'rewards'  => $rewards ?: [],
         'products' => $my_products,
         'baratti'  => $my_baratti,
     ]);
 }
-
 
 function agri_saas_farm_cache_key(int $farm_id): string
 {
@@ -829,37 +560,14 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
             return new WP_Error('agri_saas_farm_not_found', __('Produttore non trovato.', 'agri-saas'), ['status' => 404]);
         }
 
-        $trees = $wpdb->get_results($wpdb->prepare(
-            "SELECT t.id, t.species, t.code, t.status, t.planted_at, t.carbon_estimate,
-                    COALESCE(t.latitude, f.latitude) AS map_latitude,
-                    COALESCE(t.longitude, f.longitude) AS map_longitude,
-                    CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN 'tree' ELSE 'farm' END AS coordinate_source,
-                    adopter.display_name AS adopter_name,
-                    (SELECT COUNT(*) FROM {$tables['adoptions']} a2 WHERE a2.tree_id = t.id AND a2.status = 'active') AS adoption_count
-             FROM {$tables['trees']} t
-             INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
-             LEFT JOIN {$wpdb->users} adopter ON adopter.ID = t.adopter_user_id
-             WHERE t.farm_id = %d
-             ORDER BY t.status ASC, t.created_at DESC",
-            $farm_id
-        ), ARRAY_A);
-
         $fc = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['farm_followers']} WHERE farm_id = %d", $farm_id));
-
-        $rewards = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$tables['rewards']} WHERE farm_id = %d AND is_active = 1 ORDER BY created_at ASC",
-            $farm_id
-        ), ARRAY_A);
 
         set_transient(agri_saas_farm_cache_key($farm_id), [
             'farm'           => $farm,
-            'trees'          => $trees,
             'follower_count' => $fc,
-            'rewards'        => $rewards ?: [],
         ], 5 * MINUTE_IN_SECONDS);
     } else {
-        ['farm' => $farm, 'trees' => $trees, 'follower_count' => $fc] = $cached;
-        $rewards = $cached['rewards'] ?? [];
+        ['farm' => $farm, 'follower_count' => $fc] = $cached;
     }
 
     if (!$farm) {
@@ -873,15 +581,13 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
     }
 
     $updates = $wpdb->get_results($wpdb->prepare(
-        "SELECT u.id, u.farm_id, u.tree_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
-                f.owner_user_id, f.name AS farm_name, t.code AS tree_code, t.adopter_user_id AS tree_adopter_user_id
+        "SELECT u.id, u.farm_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
+                f.owner_user_id, f.name AS farm_name
          FROM {$tables['updates']} u
          LEFT JOIN {$tables['farms']} f ON f.id = u.farm_id
-         LEFT JOIN {$tables['trees']} t ON t.id = u.tree_id
-         WHERE u.farm_id = %d OR t.farm_id = %d
+         WHERE u.farm_id = %d
          ORDER BY u.created_at DESC
          LIMIT 30",
-        $farm_id,
         $farm_id
     ), ARRAY_A);
 
@@ -907,18 +613,15 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
     return rest_ensure_response([
         'farm'        => $farm,
         'stats'       => [
-            'trees'         => count($trees ?: []),
-            'availableTrees'=> count(array_filter($trees ?: [], static fn(array $tree): bool => ($tree['status'] ?? '') === 'available')),
-            'adoptedTrees'  => count(array_filter($trees ?: [], static fn(array $tree): bool => ($tree['status'] ?? '') === 'adopted')),
-            'followers'     => $fc,
+            'products'  => count($products ?: []),
+            'baratti'   => count($baratti ?: []),
+            'followers' => $fc,
         ],
         'isFollowing' => agri_saas_is_farm_follower($farm_id, $user_id),
         'canFollow'   => $logged_in && (int) $farm['owner_user_id'] !== $user_id,
         'loginUrl'    => wp_login_url(home_url('/farms/' . $farm_id . '/')),
-        'trees'       => $trees ?: [],
         'updates'     => $visible_updates,
         'photos'      => $photos,
-        'rewards'     => $rewards,
         'products'    => $products ?: [],
         'baratti'     => $baratti ?: [],
         'logged_in'   => $logged_in,
@@ -965,325 +668,6 @@ function agri_saas_api_unfollow_farm(WP_REST_Request $request): WP_REST_Response
 
     agri_saas_invalidate_farm_cache($farm_id);
     return rest_ensure_response(['farm_id' => $farm_id, 'isFollowing' => false]);
-}
-
-function agri_saas_api_farm_rewards(WP_REST_Request $request): WP_REST_Response
-{
-    global $wpdb;
-    $tables  = agri_saas_tables();
-    $farm_id = absint($request['id']);
-
-    $rewards = $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM {$tables['rewards']} WHERE farm_id = %d AND is_active = 1 ORDER BY created_at ASC",
-        $farm_id
-    ), ARRAY_A);
-
-    return rest_ensure_response(['rewards' => $rewards ?: []]);
-}
-
-function agri_saas_api_adoptable_trees(WP_REST_Request $request): WP_REST_Response
-{
-    global $wpdb;
-    $tables  = agri_saas_tables();
-    $user_id = get_current_user_id();
-
-    $search = sanitize_text_field($request->get_param('search') ?? '');
-    $limit  = min(50, max(5, (int) ($request->get_param('limit') ?: 50)));
-    $offset = max(0, (int) ($request->get_param('offset') ?: 0));
-
-    $search_clause = '';
-    $params        = [$user_id, $user_id];
-
-    if ($search !== '') {
-        $like           = '%' . $wpdb->esc_like($search) . '%';
-        $search_clause  = ' AND (t.species LIKE %s OR f.name LIKE %s OR f.location LIKE %s)';
-        $params[]       = $like;
-        $params[]       = $like;
-        $params[]       = $like;
-    }
-
-    $params[] = $limit + 1;
-    $params[] = $offset;
-
-    $sql = "SELECT t.id, t.species, t.type, t.code, t.status, t.planted_at, t.planted_display,
-                COALESCE(t.latitude, f.latitude) AS map_latitude,
-                COALESCE(t.longitude, f.longitude) AS map_longitude,
-                CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN 'tree' ELSE 'farm' END AS coordinate_source,
-                f.id AS farm_id,
-                f.name AS farm_name, f.location, f.crop_focus, f.is_verified,
-                (SELECT COUNT(*) FROM {$tables['adoptions']} a2 WHERE a2.tree_id = t.id AND a2.status = 'active') AS adoption_count,
-                EXISTS(SELECT 1 FROM {$tables['tree_rewards']} trw
-                       INNER JOIN {$tables['rewards']} rw ON rw.id = trw.reward_id
-                       WHERE trw.tree_id = t.id AND rw.is_active = 1) AS has_rewards,
-                (SELECT media_url FROM {$tables['updates']} u WHERE u.farm_id = f.id AND u.media_url != '' ORDER BY u.created_at DESC LIMIT 1) AS farm_photo,
-                own_request.status AS request_status
-         FROM {$tables['trees']} t
-         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
-         LEFT JOIN {$tables['adoptions']} other_request ON other_request.tree_id = t.id AND other_request.status IN ('pending', 'active') AND other_request.adopter_user_id != %d
-         LEFT JOIN {$tables['adoptions']} own_request ON own_request.tree_id = t.id AND own_request.adopter_user_id = %d AND own_request.status = 'pending'
-         WHERE t.status = 'available' AND f.is_active = 1 AND other_request.id IS NULL" . $search_clause . "
-         ORDER BY t.created_at DESC
-         LIMIT %d OFFSET %d";
-
-    $trees    = $wpdb->get_results($wpdb->prepare($sql, ...$params), ARRAY_A);
-    $has_more = count($trees) > $limit;
-    if ($has_more) {
-        array_pop($trees);
-    }
-
-    return rest_ensure_response(['trees' => $trees ?: [], 'has_more' => $has_more]);
-}
-
-function agri_saas_api_create_adoption_request(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables  = agri_saas_tables();
-    $tree_id = absint($request->get_param('tree_id'));
-    $user_id = get_current_user_id();
-
-    if (!$tree_id) {
-        return new WP_Error('agri_saas_tree_required', __('L\'elemento è obbligatorio.', 'agri-saas'), ['status' => 400]);
-    }
-
-    $tree = $wpdb->get_row($wpdb->prepare(
-        "SELECT t.id, t.status, f.owner_user_id FROM {$tables['trees']} t INNER JOIN {$tables['farms']} f ON f.id = t.farm_id WHERE t.id = %d",
-        $tree_id
-    ), ARRAY_A);
-
-    if (!$tree || $tree['status'] !== 'available') {
-        return new WP_Error('agri_saas_tree_unavailable', __('Questo elemento non è disponibile per l\'adozione.', 'agri-saas'), ['status' => 400]);
-    }
-
-    if ((int) $tree['owner_user_id'] === $user_id) {
-        return new WP_Error('agri_saas_own_tree_request', __('Non puoi richiedere l\'adozione di un tuo elemento.', 'agri-saas'), ['status' => 400]);
-    }
-
-    $blocking = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$tables['adoptions']} WHERE tree_id = %d AND status IN ('pending', 'active')",
-        $tree_id
-    ));
-
-    if ($blocking) {
-        return new WP_Error('agri_saas_request_exists', __('Questo elemento ha già una richiesta di adozione.', 'agri-saas'), ['status' => 409]);
-    }
-
-    $existing_id = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT id FROM {$tables['adoptions']} WHERE tree_id = %d AND adopter_user_id = %d",
-        $tree_id,
-        $user_id
-    ));
-
-    if ($existing_id) {
-        $wpdb->update($tables['adoptions'], [
-            'status'       => 'pending',
-            'starts_at'    => current_time('mysql'),
-            'requested_at' => current_time('mysql'),
-            'decided_at'   => null,
-        ], ['id' => $existing_id], ['%s', '%s', '%s', '%s'], ['%d']);
-        return rest_ensure_response(['id' => $existing_id, 'status' => 'pending']);
-    }
-
-    $wpdb->insert($tables['adoptions'], [
-        'tree_id'          => $tree_id,
-        'adopter_user_id'  => $user_id,
-        'starts_at'        => current_time('mysql'),
-        'requested_at'     => current_time('mysql'),
-        'status'           => 'pending',
-    ], ['%d', '%d', '%s', '%s', '%s']);
-
-    return rest_ensure_response(['id' => (int) $wpdb->insert_id, 'status' => 'pending']);
-}
-
-function agri_saas_api_decide_adoption_request(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables     = agri_saas_tables();
-    $request_id = absint($request['id']);
-    $decision   = sanitize_key($request['decision']);
-    $user_id    = get_current_user_id();
-
-    $adoption = $wpdb->get_row($wpdb->prepare(
-        "SELECT a.id, a.tree_id, a.adopter_user_id, a.status, f.owner_user_id
-         FROM {$tables['adoptions']} a
-         INNER JOIN {$tables['trees']} t ON t.id = a.tree_id
-         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
-         WHERE a.id = %d",
-        $request_id
-    ), ARRAY_A);
-
-    if (!$adoption || (int) $adoption['owner_user_id'] !== $user_id) {
-        return new WP_Error('agri_saas_request_not_found', __('Richiesta di adozione non trovata.', 'agri-saas'), ['status' => 404]);
-    }
-
-    if ($adoption['status'] !== 'pending') {
-        return new WP_Error('agri_saas_request_not_pending', __('Solo le richieste in sospeso possono essere gestite.', 'agri-saas'), ['status' => 400]);
-    }
-
-    $new_status = $decision === 'accept' ? 'active' : 'rejected';
-    $wpdb->update($tables['adoptions'], [
-        'status'     => $new_status,
-        'decided_at' => current_time('mysql'),
-    ], ['id' => $request_id], ['%s', '%s'], ['%d']);
-
-    if ($new_status === 'active') {
-        // starts_at marks when the adoption actually began — set it at acceptance, not request time.
-        $wpdb->update($tables['adoptions'], [
-            'starts_at' => current_time('mysql'),
-        ], ['id' => $request_id], ['%s'], ['%d']);
-
-        $wpdb->update($tables['trees'], [
-            'status'          => 'adopted',
-            'adopter_user_id' => (int) $adoption['adopter_user_id'],
-        ], ['id' => (int) $adoption['tree_id']], ['%s', '%d'], ['%d']);
-
-        $tree_row = $wpdb->get_row($wpdb->prepare(
-            "SELECT t.species, t.code, f.name AS farm_name, f.id AS farm_id FROM {$tables['trees']} t LEFT JOIN {$tables['farms']} f ON f.id = t.farm_id WHERE t.id = %d",
-            (int) $adoption['tree_id']
-        ), ARRAY_A);
-
-        if ($tree_row) {
-            agri_saas_invalidate_farm_cache((int) $tree_row['farm_id']);
-        }
-
-        $adopter = get_userdata((int) $adoption['adopter_user_id']);
-        if ($adopter && $tree_row) {
-            $tree_url = home_url('/trees/' . (int) $adoption['tree_id'] . '/');
-            wp_mail(
-                $adopter->user_email,
-                'La tua adozione è stata accettata! 🌳',
-                "Ciao {$adopter->display_name},\n\nLa tua richiesta di adozione per {$tree_row['species']} ({$tree_row['code']}) presso {$tree_row['farm_name']} è stata accettata!\n\nSegui il tuo albero:\n{$tree_url}\n\nGrazie per sostenere l'agricoltura sostenibile!"
-            );
-        }
-    }
-
-    return rest_ensure_response(['id' => $request_id, 'status' => $new_status]);
-}
-
-function agri_saas_api_gift_adoption(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables          = agri_saas_tables();
-    $tree_id         = absint($request->get_param('tree_id'));
-    $recipient_email = sanitize_email($request->get_param('recipient_email'));
-    $gift_message    = sanitize_textarea_field($request->get_param('gift_message') ?? '');
-    $user_id         = get_current_user_id();
-
-    if (!$tree_id) {
-        return new WP_Error('agri_saas_tree_required', __('Scegli un elemento da regalare.', 'agri-saas'), ['status' => 400]);
-    }
-
-    if (!$recipient_email || !is_email($recipient_email)) {
-        return new WP_Error('agri_saas_gift_email_required', __('Inserisci un\'email valida per il destinatario.', 'agri-saas'), ['status' => 400]);
-    }
-
-    $tree = $wpdb->get_row($wpdb->prepare(
-        "SELECT t.id, t.status, t.species, t.code, f.owner_user_id, f.name AS farm_name, f.id AS farm_id
-         FROM {$tables['trees']} t
-         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
-         WHERE t.id = %d",
-        $tree_id
-    ), ARRAY_A);
-
-    if (!$tree || $tree['status'] !== 'available') {
-        return new WP_Error('agri_saas_tree_unavailable', __('Questo elemento non è disponibile per l\'adozione.', 'agri-saas'), ['status' => 400]);
-    }
-
-    if ((int) $tree['owner_user_id'] === $user_id) {
-        return new WP_Error('agri_saas_own_tree_gift', __('Non puoi regalare un elemento della tua produzione.', 'agri-saas'), ['status' => 400]);
-    }
-
-    // Serialize concurrent gifts for the same tree with a transaction + row-level lock.
-    $wpdb->query('START TRANSACTION');
-
-    $blocking = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$tables['adoptions']} WHERE tree_id = %d AND status IN ('pending', 'active') FOR UPDATE",
-        $tree_id
-    ));
-
-    if ($blocking) {
-        $wpdb->query('ROLLBACK');
-        return new WP_Error('agri_saas_request_exists', __('Questo elemento ha già una richiesta di adozione in corso.', 'agri-saas'), ['status' => 409]);
-    }
-
-    $token = bin2hex(random_bytes(32));
-
-    $wpdb->insert($tables['adoptions'], [
-        'tree_id'              => $tree_id,
-        'adopter_user_id'      => $user_id,
-        'starts_at'            => current_time('mysql'),
-        'requested_at'         => current_time('mysql'),
-        'status'               => 'pending',
-        'is_gift'              => 1,
-        'gift_token'           => $token,
-        'gift_recipient_email' => $recipient_email,
-        'gift_message'         => $gift_message,
-    ], ['%d', '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s']);
-
-    $wpdb->query('COMMIT');
-
-    $claim_url   = home_url('/claim-gift/?token=' . $token);
-    $sender      = wp_get_current_user();
-    $sender_name = $sender->display_name ?: 'Qualcuno';
-    $msg_part    = $gift_message ? "\n\nMessaggio: {$gift_message}\n" : '';
-
-    wp_mail(
-        $recipient_email,
-        "Hai ricevuto in regalo un elemento! 🌱",
-        "Ciao,\n\n{$sender_name} ti ha regalato l'adozione di {$tree['species']} ({$tree['code']}) presso {$tree['farm_name']}!{$msg_part}\n\nReclama il tuo albero:\n{$claim_url}\n\nIl link è personale e riservato a te."
-    );
-
-    return rest_ensure_response(['id' => (int) $wpdb->insert_id, 'message' => 'Regalo inviato a ' . $recipient_email]);
-}
-
-function agri_saas_api_claim_gift(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables  = agri_saas_tables();
-    $token   = sanitize_text_field($request->get_param('token'));
-    $user_id = get_current_user_id();
-
-    if (!$token) {
-        return new WP_Error('agri_saas_token_required', __('Token non valido.', 'agri-saas'), ['status' => 400]);
-    }
-
-    $adoption = $wpdb->get_row($wpdb->prepare(
-        "SELECT a.id, a.tree_id, a.adopter_user_id AS gift_creator_id, t.species, t.code, f.name AS farm_name, f.id AS farm_id
-         FROM {$tables['adoptions']} a
-         INNER JOIN {$tables['trees']} t ON t.id = a.tree_id
-         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
-         WHERE a.gift_token = %s AND a.gift_claimed_at IS NULL AND a.status = 'pending'",
-        $token
-    ), ARRAY_A);
-
-    if (!$adoption) {
-        return new WP_Error('agri_saas_gift_invalid', __('Questo link regalo non è valido o è già stato usato.', 'agri-saas'), ['status' => 404]);
-    }
-
-    if ((int) $adoption['gift_creator_id'] === $user_id) {
-        return new WP_Error('agri_saas_self_claim', __('Non puoi riscattare un regalo che hai inviato tu.', 'agri-saas'), ['status' => 403]);
-    }
-
-    $wpdb->update($tables['adoptions'], [
-        'adopter_user_id' => $user_id,
-        'starts_at'       => current_time('mysql'),
-        'gift_claimed_at' => current_time('mysql'),
-        'status'          => 'active',
-    ], ['id' => (int) $adoption['id']], ['%d', '%s', '%s', '%s'], ['%d']);
-
-    // Mark tree as adopted
-    $wpdb->update($tables['trees'], [
-        'status'          => 'adopted',
-        'adopter_user_id' => $user_id,
-    ], ['id' => (int) $adoption['tree_id']], ['%s', '%d'], ['%d']);
-
-    agri_saas_invalidate_farm_cache((int) $adoption['farm_id']);
-
-    return rest_ensure_response([
-        'tree_id'   => (int) $adoption['tree_id'],
-        'species'   => $adoption['species'],
-        'code'      => $adoption['code'],
-        'farm_name' => $adoption['farm_name'],
-    ]);
 }
 
 function agri_saas_api_create_farm(WP_REST_Request $request): WP_REST_Response|WP_Error
@@ -1396,176 +780,6 @@ function agri_saas_api_become_farmer(WP_REST_Request $request): WP_REST_Response
     ]);
 }
 
-function agri_saas_api_create_tree(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables  = agri_saas_tables();
-    $user_id = get_current_user_id();
-    $species = sanitize_text_field($request->get_param('species'));
-    $code    = sanitize_text_field($request->get_param('code'));
-
-    if (!$species || !$code) {
-        return new WP_Error('agri_saas_tree_required_fields', __('Specie e codice sono obbligatori.', 'agri-saas'), ['status' => 400]);
-    }
-
-    // Auto-resolve the farmer's single farm
-    $farm_id = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT id FROM {$tables['farms']} WHERE owner_user_id = %d LIMIT 1",
-        $user_id
-    ));
-
-    if (!$farm_id) {
-        return new WP_Error('agri_saas_farm_not_found', __('Nessun profilo produttore trovato per questo account.', 'agri-saas'), ['status' => 403]);
-    }
-
-    $status = sanitize_key($request->get_param('status') ?: 'available');
-    if (!in_array($status, ['available', 'adopted', 'maintenance'], true)) {
-        $status = 'available';
-    }
-
-    $latitude  = agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90);
-    $longitude = agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180);
-    $raw_planted = sanitize_text_field($request->get_param('planted_at') ?? '');
-    $parsed_planted = $raw_planted ? agri_saas_parse_planted_input($raw_planted) : ['display' => null, 'date' => null];
-    $planted_display = $parsed_planted['display'];
-    $planted_at      = $parsed_planted['date'];
-
-    $media_url = esc_url_raw($request->get_param('media_url') ?? '');
-    $type      = sanitize_text_field($request->get_param('type') ?: 'albero');
-    $valid_types = ['albero', 'orto', 'animale', 'alveare', 'bosco', 'vite', 'olivo', 'altro'];
-    if (!in_array($type, $valid_types, true)) {
-        $type = 'albero';
-    }
-
-    $wpdb->insert($tables['trees'], [
-        'farm_id'         => $farm_id,
-        'species'         => $species,
-        'code'            => $code,
-        'type'            => $type,
-        'latitude'        => $latitude,
-        'longitude'       => $longitude,
-        'status'          => $status,
-        'planted_at'      => $planted_at ?: null,
-        'planted_display' => $planted_display ?: null,
-        'media_url'       => $media_url ?: null,
-    ], ['%d', '%s', '%s', '%s', '%f', '%f', '%s', '%s', '%s', '%s']);
-
-    if (!$wpdb->insert_id) {
-        return new WP_Error('agri_saas_tree_failed', __('Impossibile creare l\'elemento. Controlla che il codice sia univoco.', 'agri-saas'), ['status' => 500]);
-    }
-
-    $tree_id = (int) $wpdb->insert_id;
-
-    // Optionally assign rewards
-    $raw_ids = $request->get_param('reward_ids') ?: [];
-    $decoded = is_array($raw_ids) ? $raw_ids : (json_decode((string) $raw_ids, true) ?: []);
-    $reward_ids_clean = array_filter(array_map('absint', $decoded));
-
-    if (!empty($reward_ids_clean)) {
-        $placeholders = implode(',', array_fill(0, count($reward_ids_clean), '%d'));
-        $valid_count = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$tables['rewards']} WHERE id IN ({$placeholders}) AND farm_id = %d AND is_active = 1",
-            array_merge($reward_ids_clean, [$farm_id])
-        ));
-
-        if ($valid_count !== count($reward_ids_clean)) {
-            return new WP_Error('agri_saas_reward_invalid', __('Premio non valido o non attivo.', 'agri-saas'), ['status' => 400]);
-        }
-
-        foreach ($reward_ids_clean as $rid) {
-            $wpdb->replace($tables['tree_rewards'], ['tree_id' => $tree_id, 'reward_id' => $rid], ['%d', '%d']);
-        }
-    }
-
-    agri_saas_invalidate_farm_cache($farm_id);
-
-    // Auto-publish a public feed update announcing the new tree
-    $farm_name = $wpdb->get_var($wpdb->prepare("SELECT name FROM {$tables['farms']} WHERE id = %d", $farm_id));
-    $wpdb->insert($tables['updates'], [
-        'farm_id'        => $farm_id,
-        'tree_id'        => $tree_id,
-        'author_user_id' => $user_id,
-        'title'          => sprintf(__('Nuovo elemento disponibile: %s', 'agri-saas'), $species),
-        'body'           => sprintf(__('È disponibile un nuovo elemento (%s) da %s. Adottalo oggi!', 'agri-saas'), $code, $farm_name),
-        'media_url'      => $media_url ?: null,
-        'visibility'     => 'public',
-    ], ['%d', '%d', '%d', '%s', '%s', '%s', '%s']);
-
-    return rest_ensure_response(['id' => $tree_id]);
-}
-
-function agri_saas_api_tree_detail(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables  = agri_saas_tables();
-    $tree_id = absint($request['id']);
-    $user_id = get_current_user_id();
-
-    $tree = $wpdb->get_row($wpdb->prepare(
-        "SELECT t.*,
-               f.id AS farm_id, f.name AS farm_name, f.location, f.crop_focus,
-               f.description AS farm_description, f.is_verified, f.acreage,
-               f.latitude AS farm_latitude, f.longitude AS farm_longitude,
-               (SELECT media_url FROM {$tables['updates']} u2
-                WHERE u2.farm_id = f.id AND u2.media_url != ''
-                ORDER BY u2.created_at DESC LIMIT 1) AS farm_photo
-         FROM {$tables['trees']} t
-         LEFT JOIN {$tables['farms']} f ON f.id = t.farm_id
-         WHERE t.id = %d",
-        $tree_id
-    ), ARRAY_A);
-
-    if (!$tree) {
-        return new WP_Error('agri_saas_tree_not_found', __('Elemento non trovato.', 'agri-saas'), ['status' => 404]);
-    }
-
-    $rewards = $wpdb->get_results($wpdb->prepare(
-        "SELECT r.* FROM {$tables['rewards']} r
-         INNER JOIN {$tables['tree_rewards']} tr ON tr.reward_id = r.id
-         WHERE tr.tree_id = %d AND r.is_active = 1
-         ORDER BY r.created_at ASC",
-        $tree_id
-    ), ARRAY_A);
-
-    $updates = $wpdb->get_results($wpdb->prepare(
-        "SELECT u.id, u.farm_id, u.tree_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
-                f.owner_user_id, f.name AS farm_name, t.code AS tree_code, t.adopter_user_id AS tree_adopter_user_id
-         FROM {$tables['updates']} u
-         LEFT JOIN {$tables['farms']} f ON f.id = u.farm_id
-         LEFT JOIN {$tables['trees']} t ON t.id = u.tree_id
-         WHERE u.tree_id = %d
-         ORDER BY u.created_at DESC
-         LIMIT 10",
-        $tree_id
-    ), ARRAY_A);
-
-    $visible = agri_saas_filter_visible_updates($updates ?: [], $user_id);
-    $visible = agri_saas_attach_reactions($visible, $user_id);
-
-    $user_adoption = $user_id ? $wpdb->get_row($wpdb->prepare(
-        "SELECT id, status FROM {$tables['adoptions']} WHERE tree_id = %d AND adopter_user_id = %d ORDER BY requested_at DESC LIMIT 1",
-        $tree_id, $user_id
-    ), ARRAY_A) : null;
-
-    // Other available elements from same farm
-    $farm_id = (int) ($tree['farm_id'] ?? 0);
-    $farm_trees = $farm_id ? $wpdb->get_results($wpdb->prepare(
-        "SELECT t.id, t.species, t.type, t.code, t.status, t.media_url,
-                f.name AS farm_name, f.location,
-                (SELECT u2.media_url FROM {$tables['updates']} u2
-                 WHERE u2.farm_id = f.id AND u2.media_url != ''
-                 ORDER BY u2.created_at DESC LIMIT 1) AS farm_photo
-         FROM {$tables['trees']} t
-         LEFT JOIN {$tables['farms']} f ON f.id = t.farm_id
-         WHERE t.farm_id = %d AND t.id != %d AND t.status = 'available'
-         ORDER BY t.id DESC LIMIT 6",
-        $farm_id, $tree_id
-    ), ARRAY_A) : [];
-
-    return rest_ensure_response(['tree' => $tree, 'updates' => $visible, 'rewards' => $rewards ?: [], 'user_adoption' => $user_adoption ?: null, 'farm_trees' => $farm_trees ?: []]);
-}
-
-
 function agri_saas_api_upload_photo(WP_REST_Request $request): WP_REST_Response|WP_Error
 {
     $files = $request->get_file_params();
@@ -1672,20 +886,18 @@ function agri_saas_api_updates(WP_REST_Request $request): WP_REST_Response
     if ($mine) {
         $mine_subquery = $wpdb->prepare(
             "u.farm_id IN (
-                SELECT DISTINCT t.farm_id FROM {$tables['trees']} t
-                JOIN {$tables['adoptions']} a ON a.tree_id = t.id AND a.adopter_user_id = %d AND a.status = 'active'
-                UNION
                 SELECT farm_id FROM {$tables['farm_followers']} WHERE follower_user_id = %d
+                UNION
+                SELECT id FROM {$tables['farms']} WHERE owner_user_id = %d
             )",
             $user_id,
             $user_id
         );
         $raw = $wpdb->get_results($wpdb->prepare(
-            "SELECT u.id, u.farm_id, u.tree_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
-                    f.owner_user_id, f.name AS farm_name, t.code AS tree_code, t.adopter_user_id AS tree_adopter_user_id
+            "SELECT u.id, u.farm_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
+                    f.owner_user_id, f.name AS farm_name
              FROM {$tables['updates']} u
              LEFT JOIN {$tables['farms']} f ON f.id = u.farm_id
-             LEFT JOIN {$tables['trees']} t ON t.id = u.tree_id
              WHERE {$mine_subquery}
              ORDER BY u.created_at DESC
              LIMIT %d OFFSET %d",
@@ -1694,11 +906,10 @@ function agri_saas_api_updates(WP_REST_Request $request): WP_REST_Response
         ), ARRAY_A);
     } else {
         $raw = $wpdb->get_results($wpdb->prepare(
-            "SELECT u.id, u.farm_id, u.tree_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
-                    f.owner_user_id, f.name AS farm_name, t.code AS tree_code, t.adopter_user_id AS tree_adopter_user_id
+            "SELECT u.id, u.farm_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
+                    f.owner_user_id, f.name AS farm_name
              FROM {$tables['updates']} u
              LEFT JOIN {$tables['farms']} f ON f.id = u.farm_id
-             LEFT JOIN {$tables['trees']} t ON t.id = u.tree_id
              ORDER BY u.created_at DESC
              LIMIT %d OFFSET %d",
             $batch_size,
@@ -1726,7 +937,6 @@ function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response
     global $wpdb;
     $tables     = agri_saas_tables();
     $user_id    = get_current_user_id();
-    $tree_id    = absint($request->get_param('tree_id')) ?: null;
     $title      = sanitize_text_field($request->get_param('title'));
     $body       = wp_kses_post($request->get_param('body'));
     $visibility = sanitize_key($request->get_param('visibility') ?: 'public');
@@ -1739,41 +949,23 @@ function agri_saas_api_create_update(WP_REST_Request $request): WP_REST_Response
         return new WP_Error('agri_saas_update_required', __('Titolo e messaggio sono obbligatori.', 'agri-saas'), ['status' => 400]);
     }
 
-    // Auto-resolve farm from tree or from the farmer's own farm
-    $farm_id = null;
-    if ($tree_id) {
-        $tree_farm = $wpdb->get_row($wpdb->prepare(
-            "SELECT t.farm_id, f.owner_user_id FROM {$tables['trees']} t INNER JOIN {$tables['farms']} f ON f.id = t.farm_id WHERE t.id = %d",
-            $tree_id
-        ), ARRAY_A);
-
-        if (!$tree_farm || (int) $tree_farm['owner_user_id'] !== $user_id) {
-            return new WP_Error('agri_saas_update_tree_forbidden', __('Puoi pubblicare aggiornamenti solo per i tuoi elementi.', 'agri-saas'), ['status' => 403]);
-        }
-        $farm_id = (int) $tree_farm['farm_id'];
-    } else {
-        $farm_id = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT id FROM {$tables['farms']} WHERE owner_user_id = %d LIMIT 1",
-            $user_id
-        ));
-        if (!$farm_id) {
-            return new WP_Error('agri_saas_farm_not_found', __('Nessun profilo produttore trovato per questo account.', 'agri-saas'), ['status' => 403]);
-        }
-    }
-
-    if ($visibility === 'tree_adopter' && !$tree_id) {
-        return new WP_Error('agri_saas_update_tree_visibility', __('La visibilità per l\'adottante richiede un elemento specifico.', 'agri-saas'), ['status' => 400]);
+    // Resolve the farmer's own producer profile
+    $farm_id = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM {$tables['farms']} WHERE owner_user_id = %d LIMIT 1",
+        $user_id
+    ));
+    if (!$farm_id) {
+        return new WP_Error('agri_saas_farm_not_found', __('Nessun profilo produttore trovato per questo account.', 'agri-saas'), ['status' => 403]);
     }
 
     $inserted = $wpdb->insert($tables['updates'], [
         'farm_id'        => $farm_id,
-        'tree_id'        => $tree_id,
         'author_user_id' => $user_id,
         'title'          => $title,
         'body'           => $body,
         'media_url'      => esc_url_raw($request->get_param('media_url')),
         'visibility'     => $visibility,
-    ], ['%d', '%d', '%d', '%s', '%s', '%s', '%s']);
+    ], ['%d', '%d', '%s', '%s', '%s', '%s']);
 
     if (!$inserted) {
         return new WP_Error('agri_saas_update_failed', __('Impossibile creare l\'aggiornamento.', 'agri-saas'), ['status' => 500]);
@@ -1877,129 +1069,6 @@ function agri_saas_api_push_unsubscribe(WP_REST_Request $request): WP_REST_Respo
     return rest_ensure_response(['unsubscribed' => true]);
 }
 
-function agri_saas_api_create_reward(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables      = agri_saas_tables();
-    $user_id     = get_current_user_id();
-    $farm_id     = absint($request->get_param('farm_id'));
-    $name          = sanitize_text_field($request->get_param('name'));
-    $description   = wp_kses_post($request->get_param('description'));
-    $reward_type   = sanitize_key($request->get_param('reward_type') ?: 'surprise');
-    $when_received = sanitize_key($request->get_param('when_received') ?: 'immediate');
-    $est_value     = sanitize_text_field($request->get_param('estimated_value') ?? '');
-    $guidelines    = sanitize_textarea_field($request->get_param('guidelines') ?? '');
-
-    if (!$farm_id || !$name || !$description) {
-        return new WP_Error('agri_saas_reward_required', __('Produttore, nome e descrizione sono obbligatori.', 'agri-saas'), ['status' => 400]);
-    }
-
-    $valid_types = ['physical', 'digital', 'experience', 'surprise'];
-    if (!in_array($reward_type, $valid_types, true)) {
-        $reward_type = 'surprise';
-    }
-
-    $valid_timing = ['immediate', '6m', '1y', 'harvest', 'annually'];
-    if (!in_array($when_received, $valid_timing, true)) {
-        $when_received = 'immediate';
-    }
-
-    $owns = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$tables['farms']} WHERE id = %d AND owner_user_id = %d",
-        $farm_id, $user_id
-    ));
-
-    if (!$owns) {
-        return new WP_Error('agri_saas_farm_forbidden', __('Non puoi aggiungere premi a questo produttore.', 'agri-saas'), ['status' => 403]);
-    }
-
-    $wpdb->insert($tables['rewards'], [
-        'farm_id'         => $farm_id,
-        'name'            => $name,
-        'description'     => $description,
-        'reward_type'     => $reward_type,
-        'when_received'   => $when_received,
-        'estimated_value' => $est_value,
-        'guidelines'      => $guidelines ?: null,
-        'is_active'       => 1,
-    ], ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d']);
-
-    if (!$wpdb->insert_id) {
-        return new WP_Error('agri_saas_reward_failed', __('Impossibile creare il premio.', 'agri-saas'), ['status' => 500]);
-    }
-
-    agri_saas_invalidate_farm_cache($farm_id);
-    return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
-}
-
-function agri_saas_api_update_reward(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables    = agri_saas_tables();
-    $user_id   = get_current_user_id();
-    $reward_id = absint($request['id']);
-
-    $reward = $wpdb->get_row($wpdb->prepare(
-        "SELECT r.*, f.owner_user_id FROM {$tables['rewards']} r INNER JOIN {$tables['farms']} f ON f.id = r.farm_id WHERE r.id = %d",
-        $reward_id
-    ), ARRAY_A);
-
-    if (!$reward || (int) $reward['owner_user_id'] !== $user_id) {
-        return new WP_Error('agri_saas_reward_not_found', __('Premio non trovato.', 'agri-saas'), ['status' => 404]);
-    }
-
-    $field_formats = [
-        'name'            => '%s',
-        'description'     => '%s',
-        'reward_type'     => '%s',
-        'when_received'   => '%s',
-        'estimated_value' => '%s',
-        'guidelines'      => '%s',
-        'is_active'       => '%d',
-    ];
-
-    $update_data = [];
-    if ($request->get_param('name') !== null)            $update_data['name']            = sanitize_text_field($request->get_param('name'));
-    if ($request->get_param('description') !== null)     $update_data['description']     = wp_kses_post($request->get_param('description'));
-    if ($request->get_param('reward_type') !== null)     $update_data['reward_type']     = sanitize_key($request->get_param('reward_type'));
-    if ($request->get_param('when_received') !== null)   $update_data['when_received']   = sanitize_key($request->get_param('when_received'));
-    if ($request->get_param('estimated_value') !== null) $update_data['estimated_value'] = sanitize_text_field($request->get_param('estimated_value'));
-    if ($request->get_param('guidelines') !== null)      $update_data['guidelines']      = sanitize_textarea_field($request->get_param('guidelines'));
-    if ($request->get_param('is_active') !== null)       $update_data['is_active']       = (int) (bool) $request->get_param('is_active');
-
-    if (empty($update_data)) {
-        return rest_ensure_response(['id' => $reward_id]);
-    }
-
-    $formats = array_map(static fn($k) => $field_formats[$k] ?? '%s', array_keys($update_data));
-    $wpdb->update($tables['rewards'], $update_data, ['id' => $reward_id], $formats, ['%d']);
-    agri_saas_invalidate_farm_cache((int) $reward['farm_id']);
-
-    return rest_ensure_response(['id' => $reward_id]);
-}
-
-function agri_saas_api_delete_reward(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables    = agri_saas_tables();
-    $user_id   = get_current_user_id();
-    $reward_id = absint($request['id']);
-
-    $reward = $wpdb->get_row($wpdb->prepare(
-        "SELECT r.farm_id, f.owner_user_id FROM {$tables['rewards']} r INNER JOIN {$tables['farms']} f ON f.id = r.farm_id WHERE r.id = %d",
-        $reward_id
-    ), ARRAY_A);
-
-    if (!$reward || (int) $reward['owner_user_id'] !== $user_id) {
-        return new WP_Error('agri_saas_reward_not_found', __('Premio non trovato.', 'agri-saas'), ['status' => 404]);
-    }
-
-    $wpdb->update($tables['rewards'], ['is_active' => 0], ['id' => $reward_id], ['%d'], ['%d']);
-    agri_saas_invalidate_farm_cache((int) $reward['farm_id']);
-
-    return rest_ensure_response(['deleted' => true]);
-}
-
 function agri_saas_api_verify_farm(WP_REST_Request $request): WP_REST_Response|WP_Error
 {
     global $wpdb;
@@ -2015,105 +1084,6 @@ function agri_saas_api_verify_farm(WP_REST_Request $request): WP_REST_Response|W
     agri_saas_invalidate_farm_cache($farm_id);
 
     return rest_ensure_response(['id' => $farm_id, 'is_verified' => !$current]);
-}
-
-function agri_saas_api_request_cancel_adoption(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables      = agri_saas_tables();
-    $adoption_id = absint($request['id']);
-    $user_id     = get_current_user_id();
-
-    $adoption = $wpdb->get_row($wpdb->prepare(
-        "SELECT a.id, a.tree_id, a.adopter_user_id, a.status FROM {$tables['adoptions']} a WHERE a.id = %d",
-        $adoption_id
-    ), ARRAY_A);
-
-    if (!$adoption || (int) $adoption['adopter_user_id'] !== $user_id) {
-        return new WP_Error('agri_saas_not_found', __('Adozione non trovata.', 'agri-saas'), ['status' => 404]);
-    }
-
-    if ($adoption['status'] !== 'active') {
-        return new WP_Error('agri_saas_not_active', __('Solo le adozioni attive possono essere cancellate.', 'agri-saas'), ['status' => 400]);
-    }
-
-    $wpdb->update($tables['adoptions'], [
-        'status'                     => 'cancel_requested',
-        'cancellation_requested_at'  => current_time('mysql'),
-    ], ['id' => $adoption_id], ['%s', '%s'], ['%d']);
-
-    return rest_ensure_response(['id' => $adoption_id, 'status' => 'cancel_requested']);
-}
-
-function agri_saas_api_confirm_cancel_adoption(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables      = agri_saas_tables();
-    $adoption_id = absint($request['id']);
-    $user_id     = get_current_user_id();
-
-    $adoption = $wpdb->get_row($wpdb->prepare(
-        "SELECT a.id, a.tree_id, a.adopter_user_id, a.status, f.owner_user_id, f.id AS farm_id
-         FROM {$tables['adoptions']} a
-         INNER JOIN {$tables['trees']} t ON t.id = a.tree_id
-         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
-         WHERE a.id = %d",
-        $adoption_id
-    ), ARRAY_A);
-
-    if (!$adoption || (int) $adoption['owner_user_id'] !== $user_id) {
-        return new WP_Error('agri_saas_not_found', __('Adozione non trovata.', 'agri-saas'), ['status' => 404]);
-    }
-
-    if ($adoption['status'] !== 'cancel_requested') {
-        return new WP_Error('agri_saas_wrong_status', __('Questa adozione non ha una richiesta di cancellazione in sospeso.', 'agri-saas'), ['status' => 400]);
-    }
-
-    $wpdb->update($tables['adoptions'], [
-        'status'     => 'cancelled',
-        'decided_at' => current_time('mysql'),
-    ], ['id' => $adoption_id], ['%s', '%s'], ['%d']);
-
-    $wpdb->update($tables['trees'], [
-        'status'          => 'available',
-        'adopter_user_id' => null,
-    ], ['id' => (int) $adoption['tree_id']], ['%s', '%d'], ['%d']);
-
-    agri_saas_invalidate_farm_cache((int) $adoption['farm_id']);
-
-    return rest_ensure_response(['id' => $adoption_id, 'status' => 'cancelled']);
-}
-
-function agri_saas_api_reject_cancel_adoption(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables      = agri_saas_tables();
-    $adoption_id = absint($request['id']);
-    $user_id     = get_current_user_id();
-
-    $adoption = $wpdb->get_row($wpdb->prepare(
-        "SELECT a.id, a.status, f.owner_user_id
-         FROM {$tables['adoptions']} a
-         INNER JOIN {$tables['trees']} t ON t.id = a.tree_id
-         INNER JOIN {$tables['farms']} f ON f.id = t.farm_id
-         WHERE a.id = %d",
-        $adoption_id
-    ), ARRAY_A);
-
-    if (!$adoption || (int) $adoption['owner_user_id'] !== $user_id) {
-        return new WP_Error('agri_saas_not_found', __('Adozione non trovata.', 'agri-saas'), ['status' => 404]);
-    }
-
-    if ($adoption['status'] !== 'cancel_requested') {
-        return new WP_Error('agri_saas_wrong_status', __('Questa adozione non ha una richiesta di cancellazione.', 'agri-saas'), ['status' => 400]);
-    }
-
-    $wpdb->update($tables['adoptions'], [
-        'status'                    => 'active',
-        'cancellation_requested_at' => null,
-    ], ['id' => $adoption_id], ['%s', '%s'], ['%d']);
-
-    return rest_ensure_response(['id' => $adoption_id, 'status' => 'active']);
 }
 
 // ── Mercato ────────────────────────────────────────────────────────────────
@@ -2319,14 +1289,10 @@ function agri_saas_send_push_notifications(int $farm_id, array $data): void
     global $wpdb;
     $tables = agri_saas_tables();
 
-    // Get user IDs: tree adopters + farm followers
+    // Recipients: followers of this producer
     $user_ids = $wpdb->get_col($wpdb->prepare(
-        "SELECT DISTINCT t.adopter_user_id
-         FROM {$tables['trees']} t
-         WHERE t.farm_id = %d AND t.adopter_user_id IS NOT NULL
-         UNION
-         SELECT follower_user_id FROM {$tables['farm_followers']} WHERE farm_id = %d",
-        $farm_id, $farm_id
+        "SELECT follower_user_id FROM {$tables['farm_followers']} WHERE farm_id = %d",
+        $farm_id
     ));
 
     if (!$user_ids) {
@@ -2481,34 +1447,14 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
     $farms = $wpdb->get_results(
         "SELECT f.id, f.name, f.location, f.crop_focus, f.is_verified, f.is_active, f.latitude, f.longitude,
                 u.display_name AS owner_name, u.user_email AS owner_email,
-                (SELECT COUNT(*) FROM {$tables['trees']} t WHERE t.farm_id = f.id) AS tree_count,
-                (SELECT COUNT(*) FROM {$tables['adoptions']} a
-                    JOIN {$tables['trees']} t2 ON t2.id = a.tree_id
-                    WHERE t2.farm_id = f.id AND a.status = 'active') AS adoption_count
+                (SELECT COUNT(*) FROM {$tables['products']} p WHERE p.farm_id = f.id) AS product_count,
+                (SELECT COUNT(*) FROM {$tables['baratti']} b WHERE b.farm_id = f.id) AS baratto_count
          FROM {$tables['farms']} f
          LEFT JOIN {$wpdb->users} u ON u.ID = f.owner_user_id
          ORDER BY f.id DESC",
         ARRAY_A
     ) ?: [];
     $track('farms');
-
-    $adoptions = $wpdb->get_results(
-        "SELECT a.id, a.status, a.requested_at,
-                t.species, t.code, t.type,
-                f.name AS farm_name,
-                u.display_name AS adopter_name, u.user_email AS adopter_email,
-                um_wa.meta_value AS adopter_whatsapp,
-                um_ph.meta_value AS adopter_phone
-         FROM {$tables['adoptions']} a
-         LEFT JOIN {$tables['trees']} t ON t.id = a.tree_id
-         LEFT JOIN {$tables['farms']} f ON f.id = t.farm_id
-         LEFT JOIN {$wpdb->users} u ON u.ID = a.adopter_user_id
-         LEFT JOIN {$wpdb->usermeta} um_wa ON um_wa.user_id = a.adopter_user_id AND um_wa.meta_key = 'contact_whatsapp'
-         LEFT JOIN {$wpdb->usermeta} um_ph ON um_ph.user_id = a.adopter_user_id AND um_ph.meta_key = 'contact_phone'
-         ORDER BY a.requested_at DESC LIMIT 200",
-        ARRAY_A
-    ) ?: [];
-    $track('adoptions');
 
     $products = $wpdb->get_results(
         "SELECT p.id, p.name, p.price, p.unit, p.price_note, p.created_at,
@@ -2538,7 +1484,6 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
         "SELECT u.ID AS id, u.display_name, u.user_email, u.user_registered,
                 um_wa.meta_value AS whatsapp,
                 um_ph.meta_value AS phone,
-                (SELECT COUNT(*) FROM {$tables['adoptions']} a WHERE a.adopter_user_id = u.ID AND a.status = 'active') AS active_adoptions,
                 (SELECT COUNT(*) FROM {$tables['farms']} f WHERE f.owner_user_id = u.ID) AS farms_count
          FROM {$wpdb->users} u
          LEFT JOIN {$wpdb->usermeta} um_wa ON um_wa.user_id = u.ID AND um_wa.meta_key = 'contact_whatsapp'
@@ -2558,7 +1503,7 @@ function agri_saas_api_admin_overview(WP_REST_Request $request): WP_REST_Respons
         'theme_ver'    => defined('AGRI_SAAS_VERSION') ? AGRI_SAAS_VERSION : '?',
     ];
 
-    $response = rest_ensure_response(compact('farms', 'adoptions', 'products', 'baratti', 'users', 'errors', 'debug'));
+    $response = rest_ensure_response(compact('farms', 'products', 'baratti', 'users', 'errors', 'debug'));
     $response->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     return $response;
 }
@@ -2572,51 +1517,6 @@ function agri_saas_api_admin_toggle_verify(WP_REST_Request $request): WP_REST_Re
     $new_val = $current ? 0 : 1;
     $wpdb->update($tables['farms'], ['is_verified' => $new_val], ['id' => $farm_id]);
     return rest_ensure_response(['id' => $farm_id, 'is_verified' => $new_val]);
-}
-
-function agri_saas_api_admin_adoption_status(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables = agri_saas_tables();
-    $id     = absint($request['id']);
-    $status = sanitize_key($request->get_param('status'));
-    $valid  = ['pending', 'active', 'cancelled', 'cancel_requested'];
-    if (!in_array($status, $valid, true)) {
-        return new WP_Error('invalid_status', 'Stato non valido.', ['status' => 400]);
-    }
-    // If activating, set adopted_at and adopter_user_id on the tree
-    if ($status === 'active') {
-        $adoption = $wpdb->get_row($wpdb->prepare(
-            "SELECT tree_id, adopter_user_id FROM {$tables['adoptions']} WHERE id = %d", $id
-        ), ARRAY_A);
-        if ($adoption) {
-            $wpdb->update($tables['trees'],
-                ['status' => 'adopted', 'adopter_user_id' => $adoption['adopter_user_id'], 'adopted_at' => current_time('mysql')],
-                ['id' => $adoption['tree_id']]
-            );
-        }
-    }
-    if ($status === 'cancelled') {
-        $adoption = $wpdb->get_row($wpdb->prepare(
-            "SELECT tree_id FROM {$tables['adoptions']} WHERE id = %d", $id
-        ), ARRAY_A);
-        if ($adoption) {
-            $wpdb->update($tables['trees'], ['status' => 'available', 'adopter_user_id' => null, 'adopted_at' => null], ['id' => $adoption['tree_id']]);
-        }
-    }
-    $wpdb->update($tables['adoptions'], ['status' => $status], ['id' => $id]);
-    return rest_ensure_response(['id' => $id, 'status' => $status]);
-}
-
-function agri_saas_api_admin_delete_tree(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables  = agri_saas_tables();
-    $tree_id = absint($request['id']);
-    $wpdb->delete($tables['tree_rewards'], ['tree_id' => $tree_id]);
-    $wpdb->delete($tables['adoptions'],   ['tree_id' => $tree_id]);
-    $wpdb->delete($tables['trees'],       ['id'      => $tree_id]);
-    return rest_ensure_response(['deleted' => true, 'id' => $tree_id]);
 }
 
 function agri_saas_api_admin_delete_product(WP_REST_Request $request): WP_REST_Response|WP_Error
@@ -2683,40 +1583,6 @@ function agri_saas_api_admin_create_farm(WP_REST_Request $request): WP_REST_Resp
     return rest_ensure_response(['id' => (int) $wpdb->insert_id, 'name' => $name]);
 }
 
-function agri_saas_api_admin_create_tree(WP_REST_Request $request): WP_REST_Response|WP_Error
-{
-    global $wpdb;
-    $tables  = agri_saas_tables();
-    $farm_id = absint($request->get_param('farm_id'));
-    $species = sanitize_text_field($request->get_param('species'));
-    $code    = sanitize_text_field($request->get_param('code'));
-    if (!$farm_id || !$species || !$code) {
-        return new WP_Error('missing_fields', 'Produttore, specie e codice sono obbligatori.', ['status' => 400]);
-    }
-    $type = sanitize_text_field($request->get_param('type') ?: 'albero');
-    if (!in_array($type, ['albero','orto','animale','alveare','bosco','vite','olivo','altro'], true)) $type = 'albero';
-    $status = sanitize_key($request->get_param('status') ?: 'available');
-    if (!in_array($status, ['available','adopted','maintenance'], true)) $status = 'available';
-    $raw_planted = sanitize_text_field($request->get_param('planted_at') ?? '');
-    $parsed = $raw_planted ? agri_saas_parse_planted_input($raw_planted) : ['display' => null, 'date' => null];
-    $wpdb->insert($tables['trees'], [
-        'farm_id'         => $farm_id,
-        'species'         => $species,
-        'code'            => $code,
-        'type'            => $type,
-        'latitude'        => agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90),
-        'longitude'       => agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180),
-        'status'          => $status,
-        'planted_at'      => $parsed['date'] ?: null,
-        'planted_display' => $parsed['display'] ?: null,
-        'media_url'       => esc_url_raw($request->get_param('media_url') ?? '') ?: null,
-        'description'     => sanitize_textarea_field($request->get_param('description') ?? ''),
-    ], ['%d','%s','%s','%s','%f','%f','%s','%s','%s','%s','%s']);
-    if (!$wpdb->insert_id) return new WP_Error('db_error', 'Errore durante la creazione. Il codice potrebbe essere duplicato.', ['status' => 500]);
-    agri_saas_invalidate_farm_cache($farm_id);
-    return rest_ensure_response(['id' => (int) $wpdb->insert_id]);
-}
-
 function agri_saas_api_admin_create_product(WP_REST_Request $request): WP_REST_Response|WP_Error
 {
     global $wpdb;
@@ -2770,10 +1636,9 @@ function agri_saas_api_admin_create_update(WP_REST_Request $request): WP_REST_Re
     $body    = sanitize_textarea_field($request->get_param('body') ?? '');
     if (!$farm_id || !$title) return new WP_Error('missing_fields', 'Produttore e titolo sono obbligatori.', ['status' => 400]);
     $visibility = sanitize_key($request->get_param('visibility') ?: 'public');
-    if (!in_array($visibility, ['public','adopters','private'], true)) $visibility = 'public';
+    if (!in_array($visibility, ['public','followers'], true)) $visibility = 'public';
     $wpdb->insert($tables['updates'], [
         'farm_id'        => $farm_id,
-        'tree_id'        => absint($request->get_param('tree_id') ?? 0) ?: null,
         'author_user_id' => get_current_user_id(),
         'title'          => $title,
         'body'           => $body,
@@ -2795,7 +1660,7 @@ function agri_saas_api_admin_reset_content(WP_REST_Request $request): WP_REST_Re
     }
     $tables = agri_saas_tables();
     // Delete in dependency order (children first)
-    $order = ['tree_rewards', 'update_reactions', 'farm_followers', 'push_subscriptions', 'adoptions', 'rewards', 'updates', 'products', 'baratti', 'trees', 'farms'];
+    $order = ['update_reactions', 'farm_followers', 'push_subscriptions', 'updates', 'products', 'baratti', 'farms'];
     $counts = [];
     foreach ($order as $key) {
         $table = $tables[$key] ?? null;
@@ -2831,22 +1696,9 @@ function agri_saas_api_get_profile(): WP_REST_Response {
     $user_id = get_current_user_id();
     $user    = wp_get_current_user();
     $stats = [
-        'activeAdoptions' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['adoptions']} WHERE adopter_user_id = %d AND status = 'active'", $user_id)),
-        'adoptedTrees'    => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['trees']} WHERE adopter_user_id = %d", $user_id)),
-        'farms'           => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['farms']} WHERE owner_user_id = %d", $user_id)),
+        'farms'     => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['farms']} WHERE owner_user_id = %d", $user_id)),
+        'following' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$tables['farm_followers']} WHERE follower_user_id = %d", $user_id)),
     ];
-    $adoptions = $wpdb->get_results($wpdb->prepare(
-        "SELECT a.id, a.status, a.requested_at,
-                t.id AS tree_id, t.species, t.code, t.type, t.media_url,
-                f.name AS farm_name, f.location, f.id AS farm_id,
-                (SELECT u2.media_url FROM {$tables['updates']} u2 WHERE u2.farm_id = f.id AND u2.media_url != '' ORDER BY u2.created_at DESC LIMIT 1) AS farm_photo
-         FROM {$tables['adoptions']} a
-         LEFT JOIN {$tables['trees']} t ON t.id = a.tree_id
-         LEFT JOIN {$tables['farms']} f ON f.id = t.farm_id
-         WHERE a.adopter_user_id = %d
-         ORDER BY a.requested_at DESC LIMIT 20",
-        $user_id
-    ), ARRAY_A);
     return rest_ensure_response([
         'user' => [
             'id'           => $user_id,
@@ -2856,8 +1708,7 @@ function agri_saas_api_get_profile(): WP_REST_Response {
             'phone'        => get_user_meta($user_id, 'contact_phone', true),
             'registered'   => $user->user_registered,
         ],
-        'stats'     => $stats,
-        'adoptions' => $adoptions ?: [],
+        'stats' => $stats,
     ]);
 }
 
@@ -2909,82 +1760,6 @@ function agri_saas_api_create_farm_review(WP_REST_Request $request): WP_REST_Res
     ], ['%d', '%d', '%d', '%s', '%s']);
     return rest_ensure_response(['saved' => true]);
 }
-
-function agri_saas_api_update_tree(WP_REST_Request $request): WP_REST_Response|WP_Error {
-    global $wpdb;
-    $tables  = agri_saas_tables();
-    $user_id = get_current_user_id();
-    $tree_id = absint($request->get_param('id'));
-
-    $tree = $wpdb->get_row($wpdb->prepare(
-        "SELECT t.*, f.owner_user_id FROM {$tables['trees']} t JOIN {$tables['farms']} f ON f.id = t.farm_id WHERE t.id = %d",
-        $tree_id
-    ), ARRAY_A);
-    if (!$tree) return new WP_Error('not_found', 'Elemento non trovato', ['status' => 404]);
-    if ((int) $tree['owner_user_id'] !== $user_id && !current_user_can('manage_options'))
-        return new WP_Error('forbidden', 'Non autorizzato', ['status' => 403]);
-
-    $species     = sanitize_text_field($request->get_param('species') ?? $tree['species']);
-    $code        = sanitize_text_field($request->get_param('code') ?? $tree['code']);
-    $type        = sanitize_key($request->get_param('type') ?? $tree['type']);
-    $status      = sanitize_key($request->get_param('status') ?? $tree['status']);
-    $media_url   = esc_url_raw($request->get_param('media_url') ?? $tree['media_url']);
-    $lat         = agri_saas_sanitize_coordinate($request->get_param('latitude'), -90, 90);
-    $lng         = agri_saas_sanitize_coordinate($request->get_param('longitude'), -180, 180);
-    $planted_at  = $request->get_param('planted_at') !== null
-        ? agri_saas_parse_planted_input($request->get_param('planted_at'))
-        : $tree['planted_at'];
-    $description = sanitize_textarea_field($request->get_param('description') ?? ($tree['description'] ?? ''));
-
-    $wpdb->update($tables['trees'], [
-        'species'       => $species,
-        'code'          => $code,
-        'type'          => $type,
-        'status'        => $status,
-        'media_url'     => $media_url,
-        'map_latitude'  => $lat ?? $tree['map_latitude'],
-        'map_longitude' => $lng ?? $tree['map_longitude'],
-        'planted_at'    => $planted_at,
-        'description'   => $description,
-    ], ['id' => $tree_id], ['%s','%s','%s','%s','%s','%s','%s','%s','%s'], ['%d']);
-
-    $reward_ids = $request->get_param('reward_ids');
-    if (is_array($reward_ids)) {
-        $wpdb->delete($tables['tree_rewards'], ['tree_id' => $tree_id], ['%d']);
-        foreach (array_map('absint', $reward_ids) as $rid) {
-            if ($rid) $wpdb->insert($tables['tree_rewards'], ['tree_id' => $tree_id, 'reward_id' => $rid], ['%d', '%d']);
-        }
-    }
-
-    return rest_ensure_response(['updated' => true]);
-}
-
-function agri_saas_api_delete_tree_owner(WP_REST_Request $request): WP_REST_Response|WP_Error {
-    global $wpdb;
-    $tables  = agri_saas_tables();
-    $user_id = get_current_user_id();
-    $tree_id = absint($request->get_param('id'));
-
-    $tree = $wpdb->get_row($wpdb->prepare(
-        "SELECT t.*, f.owner_user_id FROM {$tables['trees']} t JOIN {$tables['farms']} f ON f.id = t.farm_id WHERE t.id = %d",
-        $tree_id
-    ), ARRAY_A);
-    if (!$tree) return new WP_Error('not_found', 'Elemento non trovato', ['status' => 404]);
-    if ((int) $tree['owner_user_id'] !== $user_id && !current_user_can('manage_options'))
-        return new WP_Error('forbidden', 'Non autorizzato', ['status' => 403]);
-
-    $active = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$tables['adoptions']} WHERE tree_id = %d AND status IN ('active','pending')",
-        $tree_id
-    ));
-    if ($active > 0)
-        return new WP_Error('has_adoptions', 'Questo elemento ha adozioni attive o in attesa. Annullale prima di eliminare.', ['status' => 409]);
-
-    $wpdb->delete($tables['tree_rewards'], ['tree_id' => $tree_id], ['%d']);
-    $wpdb->delete($tables['trees'], ['id' => $tree_id], ['%d']);
-    return rest_ensure_response(['deleted' => true]);
-}
-
 
 function agri_saas_owner_owns_farm_row(string $table_key, int $row_id): bool
 {

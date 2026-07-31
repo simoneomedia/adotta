@@ -6,10 +6,11 @@ require_once AGRI_SAAS_PATH . '/components/layout.php';
 require_once AGRI_SAAS_PATH . '/components/cards.php';
 
 agri_saas_render_shell('', function (): void {
+    $u           = wp_get_current_user();
+    $is_producer = in_array('farm_manager', (array) $u->roles, true);
     ?>
-    <section class="dashboard-grid" data-agri-endpoint="/dashboard/client" data-render="client-dashboard">
+    <section class="dashboard-grid" data-agri-endpoint="/farms/map" data-render="explore">
 
-        <!-- 1. MAIN VIEW: map/list + content tabs -->
         <article class="card span-3 card--hero">
             <div class="section-heading">
                 <div>
@@ -17,31 +18,23 @@ agri_saas_render_shell('', function (): void {
                     <h2><?php esc_html_e('Esplora', 'agri-saas'); ?></h2>
                 </div>
                 <div class="view-toggle">
-                    <button class="button active" type="button" data-view-toggle="map">🗺 Mappa</button>
-                    <button class="button ghost" type="button" data-view-toggle="list">☰ Lista</button>
+                    <button class="button active" type="button" data-view-toggle="map">🗺 <?php esc_html_e('Mappa', 'agri-saas'); ?></button>
+                    <button class="button ghost" type="button" data-view-toggle="list">☰ <?php esc_html_e('Lista', 'agri-saas'); ?></button>
                 </div>
             </div>
-            <!-- Content filter tabs: Adozioni | Mercato | Baratto -->
             <div class="dashboard-content-tabs" role="tablist">
-                <button class="dash-content-tab active" data-content-tab="all">🌍 Tutto</button>
-                <button class="dash-content-tab" data-content-tab="adoptions">🌱 Adozioni</button>
-                <button class="dash-content-tab" data-content-tab="mercato">🛒 Mercato</button>
-                <button class="dash-content-tab" data-content-tab="baratto">🤝 Baratto</button>
-                <button class="dash-content-tab" data-content-tab="farms">🏡 Produttori</button>
+                <button class="dash-content-tab active" data-content-tab="all">🌍 <?php esc_html_e('Tutto', 'agri-saas'); ?></button>
+                <button class="dash-content-tab" data-content-tab="mercato">🧺 <?php esc_html_e('Mercato', 'agri-saas'); ?></button>
+                <button class="dash-content-tab" data-content-tab="baratto">🤝 <?php esc_html_e('Baratto', 'agri-saas'); ?></button>
+                <button class="dash-content-tab" data-content-tab="farms">🏡 <?php esc_html_e('Produttori', 'agri-saas'); ?></button>
             </div>
-            <!-- Catalog type filter (shown only for adoptions tab) -->
-            <div class="catalog-filter-bar" data-slot="catalog-filter" role="group" aria-label="<?php esc_attr_e('Filtra per tipo', 'agri-saas'); ?>"></div>
-            <!-- Map/list panels -->
-            <div class="catalog-map catalog-map--hero" data-slot="adoptable-map" aria-label="<?php esc_attr_e('Mappa elementi adottabili', 'agri-saas'); ?>">
+            <div class="catalog-map catalog-map--hero" data-slot="explore-map" aria-label="<?php esc_attr_e('Mappa', 'agri-saas'); ?>">
                 <div class="map-placeholder"><span style="font-size:2.5rem">🗺</span><small><?php esc_html_e('Caricamento mappa…', 'agri-saas'); ?></small></div>
             </div>
-            <div class="card-list" data-slot="adoptable-trees" style="display:none;"></div>
+            <div class="card-list" data-slot="explore-list" style="display:none;"></div>
         </article>
 
-        <?php
-        $u = wp_get_current_user();
-        $is_producer = in_array('farm_manager', (array) $u->roles, true);
-        if (!$is_producer) : ?>
+        <?php if (!$is_producer) : ?>
         <article class="card span-3 become-producer-card">
             <div class="section-heading">
                 <div>
@@ -51,7 +44,7 @@ agri_saas_render_shell('', function (): void {
                 <button class="button" type="button" data-open-become-producer>🚜 <?php esc_html_e('Diventa produttore', 'agri-saas'); ?></button>
             </div>
             <p style="color:var(--muted);font-size:.92rem;">
-                <?php esc_html_e('Micro imprese, piccoli produttori agricoli autonomi, persone che coltivano e vogliono scambiare prodotti con altre piccole realtà: crea il tuo profilo con il luogo di produzione e inizia a pubblicare adozioni, prodotti e baratti.', 'agri-saas'); ?>
+                <?php esc_html_e('Micro imprese, piccoli produttori agricoli autonomi, persone che coltivano e vogliono scambiare prodotti con altre piccole realtà: crea il tuo profilo con il luogo di produzione e inizia a pubblicare prodotti e baratti.', 'agri-saas'); ?>
             </p>
         </article>
         <?php endif; ?>
@@ -79,7 +72,7 @@ agri_saas_render_shell('', function (): void {
                 </div>
                 <button class="button ghost" type="button" data-set-marker><?php esc_html_e('Imposta marcatore', 'agri-saas'); ?></button>
                 <div class="coordinate-map" data-coordinate-map aria-label="<?php esc_attr_e('Mappa luogo di produzione', 'agri-saas'); ?>"></div>
-                <p class="map-note"><?php esc_html_e('Clicca sulla mappa per impostare le coordinate generali del luogo di produzione: verranno usate per mostrare adozioni, prodotti e baratti sulla mappa.', 'agri-saas'); ?></p>
+                <p class="map-note"><?php esc_html_e('Clicca sulla mappa per impostare le coordinate generali del luogo di produzione: verranno usate per mostrare prodotti e baratti sulla mappa.', 'agri-saas'); ?></p>
                 <p class="map-note" data-form-status></p>
                 <button class="button" type="submit"><?php esc_html_e('Crea profilo produttore', 'agri-saas'); ?></button>
             </form>

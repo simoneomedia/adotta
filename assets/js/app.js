@@ -48,7 +48,6 @@
 
     const root = document.querySelector('[data-agri-endpoint]');
     const coordinateLeafletMaps = new Map();
-    let adoptableLeafletMap = null;
     let farmProfileLeafletMap = null;
 
     // ── Geolocation ───────────────────────────────────────────────────
@@ -238,40 +237,12 @@
         </article>`;
     };
 
-    const treeMeta = (tree) => [tree.farm_name, tree.location, tree.crop_focus].filter(Boolean).join(' · ');
-
-    const plantedDisplay = (tree) => {
-        const d = tree.planted_display || tree.planted_at;
-        if (!d) return null;
-        // Return as-is (could be "1920", "1920-03", "1920-03-15")
-        return d.substring(0, 10); // trim time if present
-    };
-
     const treeAgeYears = (tree) => {
         const d = tree.planted_display || tree.planted_at;
         if (!d) return null;
         const year = parseInt(d.substring(0, 4), 10);
         if (!year) return null;
         return new Date().getFullYear() - year;
-    };
-
-    const secolareBadge = (tree) => {
-        const age = treeAgeYears(tree);
-        return age !== null && age >= 100
-            ? `<span class="badge-secolare">🏛️ Elemento Secolare (${age} anni)</span>`
-            : '';
-    };
-
-    const rewardChips = (rewards) => {
-        if (!rewards || !rewards.length) return '';
-        const whenLabel = (w) => ({ immediate: 'Immediato', '6m': '6 mesi', '1y': '1 anno', harvest: 'Al raccolto', annually: 'Annuale' }[w] || w);
-        return `<div class="tree-rewards">
-            ${rewards.map((r) => `<div class="reward-chip">
-                <strong>🎁 ${escapeHtml(r.name)}</strong>
-                <small>${escapeHtml(r.description.substring(0, 60))}${r.description.length > 60 ? '…' : ''}</small>
-                <small>⏱ ${whenLabel(r.when_received)}${r.estimated_value ? ` · ${escapeHtml(r.estimated_value)}` : ''}</small>
-            </div>`).join('')}
-        </div>`;
     };
 
     const timeAgo = (dateStr) => {
@@ -289,7 +260,7 @@
         return `${Math.floor(mo / 12)} anni fa`;
     };
 
-    const visibilityLabel = (v) => ({ public: '🌐 Pubblico', followers: '👥 Follower', adopters: '🌱 Adottanti', tree_adopter: '🌳 Adottante elemento' }[v] || v);
+    const visibilityLabel = (v) => ({ public: '🌐 Pubblico', followers: '👥 Follower' }[v] || v);
 
     // TYPE-SPECIFIC MAP ICONS
     const _TYPE_ICONS = {
@@ -342,171 +313,6 @@
         (typeof L.markerClusterGroup === 'function')
             ? L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 60 })
             : L.layerGroup();
-
-    let _adoptableMapTrees = [];
-
-    const _initAdoptableLeafletMap = () => {
-        const slot = root?.querySelector('[data-slot="adoptable-map"]');
-        if (!slot) return;
-        const mapped = _adoptableMapTrees;
-        if (!mapped.length) return;
-        if (!adoptableLeafletMap) {
-            slot.innerHTML = '<div id="adoptable-leaflet-map" class="leaflet-map"></div><p class="map-note">I numeri nei cerchi indicano quanti elementi si trovano nell\'area — clicca per espandere.</p>';
-            adoptableLeafletMap = makeClusterMap('adoptable-leaflet-map');
-        } else {
-            clearMapLayers(adoptableLeafletMap);
-        }
-        const cluster = makeClusterGroup();
-        mapped.forEach((tree) => {
-            L.marker([Number(tree.map_latitude), Number(tree.map_longitude)], { icon: _makeTypeIcon(tree.type) })
-                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.farm_name)}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi elemento →</a>`)
-                .addTo(cluster);
-        });
-        adoptableLeafletMap.addLayer(cluster);
-        setTimeout(() => {
-            adoptableLeafletMap.invalidateSize();
-            try {
-                mapped.length === 1
-                    ? adoptableLeafletMap.setView([Number(mapped[0].map_latitude), Number(mapped[0].map_longitude)], 13)
-                    : adoptableLeafletMap.fitBounds(cluster.getBounds ? cluster.getBounds() : mapped.map((t) => [Number(t.map_latitude), Number(t.map_longitude)]), { padding: [28, 28], maxZoom: 14 });
-            } catch (_) {}
-        }, 150);
-    };
-
-    // MAPPA ALBERI ADOTTABILI
-    const renderAdoptableMap = (trees) => {
-        const slot = root?.querySelector('[data-slot="adoptable-map"]');
-        if (!slot) return;
-        const mapped = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
-        _adoptableMapTrees = mapped;
-        if (!mapped.length) {
-            slot.innerHTML = '<div class="map-placeholder">&#9678;<small>Nessuna coordinata disponibile</small></div>';
-            adoptableLeafletMap = null;
-            return;
-        }
-        // If the map panel is currently visible, initialize immediately; otherwise defer to toggle click
-        const panel = slot.closest('[data-catalog-panel]');
-        if (!panel || !panel.hidden) {
-            _initAdoptableLeafletMap();
-        } else {
-            slot.innerHTML = '<div class="map-placeholder">&#9678;</div>'; // placeholder until panel shown
-        }
-    };
-
-    const renderAdoptableTrees = (trees) => {
-        const slot = root?.querySelector('[data-slot="adoptable-trees"]');
-        if (!slot) return;
-        slot.innerHTML = trees.length
-            ? trees.map((tree) => `
-                <article class="tree-row catalog-row catalog-row--card">
-                    <div class="catalog-row-img"><img src="${escapeHtml(tree.media_url || tree.farm_photo || 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png')}" alt="${escapeHtml(tree.species)}" loading="lazy" onerror="this.onerror=null;this.src='https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';this.style.objectFit='contain';this.style.padding='8px';this.style.background='var(--surface-soft)'"></div>
-                    <div class="catalog-row-body">
-                        <strong>${escapeHtml(tree.species)}</strong>
-                        <small>${escapeHtml(treeMeta(tree))}</small>
-                        ${tree.map_latitude && tree.map_longitude ? `<small class="catalog-row-loc">📍 ${escapeHtml(tree.location || tree.farm_name)}</small>` : ''}
-                        ${_distLabel(tree.map_latitude, tree.map_longitude)}
-                    </div>
-                    <div class="row-actions">
-                        <span class="badge">${escapeHtml(tree.code)}</span>
-                        <a class="button" href="${appUrl(`trees/${tree.id}/`)}">Info</a>
-                    </div>
-                </article>`).join('')
-            : '<div class="card empty-state">Nessun elemento disponibile per l\'adozione al momento.</div>';
-        renderAdoptableMap(trees);
-    };
-
-    // ── Catalogo filtri ───────────────────────────────────────────────
-    const _CATALOG_TYPES = [
-        { type: null,      label: 'Tutti',    icon: '🌿' },
-        { type: 'albero',  label: 'Elementi',   icon: '🌳' },
-        { type: 'olivo',   label: 'Olivi',    icon: '🫒' },
-        { type: 'vite',    label: 'Viti',     icon: '🍇' },
-        { type: 'orto',    label: 'Orti',     icon: '🥦' },
-        { type: 'alveare', label: 'Alveari',  icon: '🐝' },
-        { type: 'bosco',   label: 'Boschi',   icon: '🌲' },
-        { type: 'terreno', label: 'Terreni',  icon: '🏡' },
-        { type: 'animale', label: 'Animali',  icon: '🐄' },
-        { type: 'altro',   label: 'Altro',    icon: '✨' },
-    ];
-    let _activeTypeFilter = null;
-
-    const renderCatalogFilter = (trees) => {
-        const slot = root?.querySelector('[data-slot="catalog-filter"]');
-        if (!slot) return;
-        // Only show types that actually exist in the data
-        const presentTypes = new Set(trees.map((t) => t.type || 'altro'));
-        const visible = _CATALOG_TYPES.filter((c) => c.type === null || presentTypes.has(c.type));
-        if (visible.length <= 2) { slot.innerHTML = ''; return; } // no point showing just "Tutti" + 1 type
-        slot.innerHTML = visible.map((c) => `
-            <button class="catalog-filter-chip${_activeTypeFilter === c.type ? ' active' : ''}"
-                    data-filter-type="${c.type ?? ''}" type="button">
-                <span>${c.icon}</span> ${c.label}
-                ${c.type !== null ? `<span class="filter-count">${trees.filter((t) => (t.type || 'altro') === c.type).length}</span>` : ''}
-            </button>`).join('');
-    };
-
-    let _lastAdoptableTrees = null;
-    const _filteredTrees = () => {
-        if (!_lastAdoptableTrees) return [];
-        if (_activeTypeFilter === null) return _lastAdoptableTrees;
-        return _lastAdoptableTrees.filter((t) => (t.type || 'altro') === _activeTypeFilter);
-    };
-
-    const loadAdoptableTrees = async () => {
-        if (!root?.querySelector('[data-slot="adoptable-trees"]') && !root?.querySelector('[data-slot="adoptable-map"]')) return;
-        const data = await apiFetch('/catalog/trees');
-        _lastAdoptableTrees = data.trees || [];
-        renderCatalogFilter(_lastAdoptableTrees);
-        renderAdoptableTrees(_filteredTrees());
-        // Re-render when geolocation arrives to show distances
-        _onGeo(() => { if (_lastAdoptableTrees) renderAdoptableTrees(_filteredTrees()); });
-    };
-
-    // Filter chip click
-    document.addEventListener('click', (e) => {
-        const chip = e.target.closest('[data-filter-type]');
-        if (!chip || !chip.classList.contains('catalog-filter-chip')) return;
-        _activeTypeFilter = chip.dataset.filterType || null;
-        renderCatalogFilter(_lastAdoptableTrees || []);
-        renderAdoptableTrees(_filteredTrees());
-    });
-
-    // ── Sistema livelli "Radici" ──────────────────────────────────────
-    const _LEVELS = [
-        { min: 0,  name: 'Seme',               icon: '🌱', color: '#A8D5A2', text: '#1B5E20' },
-        { min: 1,  name: 'Germoglio',           icon: '🌿', color: '#B2DFDB', text: '#00695C' },
-        { min: 3,  name: 'Custode della terra', icon: '🌳', color: '#C8E6C9', text: '#2E7D32' },
-        { min: 6,  name: 'Eroe della campagna', icon: '🌾', color: '#FFF9C4', text: '#F57F17' },
-        { min: 10, name: 'Anima del bosco',     icon: '🏡', color: '#D7CCC8', text: '#4E342E' },
-    ];
-    const _getLevel = (active) => {
-        let lvl = _LEVELS[0];
-        for (const l of _LEVELS) { if (active >= l.min) lvl = l; }
-        return lvl;
-    };
-    const _getNextLevel = (active) => _LEVELS.find((l) => l.min > active) || null;
-    const renderLevelBadge = (activeAdoptions) => {
-        const slot = root?.querySelector('[data-slot="level-badge"]');
-        if (!slot) return;
-        const lvl  = _getLevel(activeAdoptions);
-        const next = _getNextLevel(activeAdoptions);
-        const idx  = _LEVELS.indexOf(lvl) + 1;
-        const pct  = next ? Math.round(((activeAdoptions - lvl.min) / (next.min - lvl.min)) * 100) : 100;
-        slot.innerHTML = `
-        <div class="level-badge" style="background:${lvl.color};color:${lvl.text};">
-            <span class="level-icon">${lvl.icon}</span>
-            <div class="level-info">
-                <span class="level-label">Livello ${idx} · ${lvl.name}</span>
-                ${next
-                    ? `<div class="level-progress-wrap">
-                        <div class="level-progress-bar" style="width:${pct}%;background:${lvl.text};opacity:.6;"></div>
-                       </div>
-                       <span class="level-next">ancora ${next.min - activeAdoptions} adozione${next.min - activeAdoptions !== 1 ? 'i' : ''} per diventare <strong>${next.icon} ${next.name}</strong></span>`
-                    : `<span class="level-next">🏆 Livello massimo raggiunto!</span>`
-                }
-            </div>
-        </div>`;
-    };
 
     const _dashInlineMap = (containerId, items, makeMarker) => {
         // reuse makeClusterMap
@@ -574,15 +380,12 @@
 
     // DASHBOARD UTENTE
     const initExplore = () => {
-        // ── Esplora unificato: tutto | adozioni | mercato | baratto | produttori ──
+        // ── Esplora unificato: tutto | mercato | baratto | produttori ──
         const WIDO_PH = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
         const _exploreCache = {};
         const _fetchExplore = async (kind) => {
             if (_exploreCache[kind]) return _exploreCache[kind];
-            if (kind === 'adoptions') {
-                if (!_lastAdoptableTrees) { try { const d = await apiFetch('/catalog/trees'); _lastAdoptableTrees = d.trees || []; renderCatalogFilter(_lastAdoptableTrees); } catch (_) { _lastAdoptableTrees = []; } }
-                _exploreCache.adoptions = _lastAdoptableTrees;
-            } else if (kind === 'mercato') {
+            if (kind === 'mercato') {
                 _exploreCache.mercato = (await apiFetch('/mercato')).products || [];
             } else if (kind === 'baratto') {
                 _exploreCache.baratto = (await apiFetch('/baratto')).baratti || [];
@@ -596,22 +399,13 @@
             const lat = Number(kind === 'farms' ? it.latitude : it.map_latitude);
             const lng = Number(kind === 'farms' ? it.longitude : it.map_longitude);
             if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-            if (kind === 'adoptions') return { lat, lng, type: it.type, popup: `<strong>${escapeHtml(it.species)}</strong><br>${escapeHtml(it.farm_name)}<br><a href="${appUrl(`trees/${it.id}/`)}">Vedi elemento →</a>` };
-            if (kind === 'mercato')   return { lat, lng, type: '_shop', popup: `<strong>${escapeHtml(it.name)}</strong><br>${escapeHtml(it.farm_name)}<br><a href="${appUrl('mercato/')}">Vai al mercato →</a>` };
-            if (kind === 'baratto')   return { lat, lng, type: '_barter', popup: `<strong>${escapeHtml(it.offer_title)}</strong><br>Cerca: ${escapeHtml(it.wants_title)}<br><a href="${appUrl('baratto/')}">Vai al baratto →</a>` };
+            if (kind === 'mercato') return { lat, lng, type: '_shop', popup: `<strong>${escapeHtml(it.name)}</strong><br>${escapeHtml(it.farm_name)}<br><a href="${appUrl('mercato/')}">Vai al mercato →</a>` };
+            if (kind === 'baratto') return { lat, lng, type: '_barter', popup: `<strong>${escapeHtml(it.offer_title)}</strong><br>Cerca: ${escapeHtml(it.wants_title)}<br><a href="${appUrl('baratto/')}">Vai al baratto →</a>` };
             return { lat, lng, type: '_farm', popup: `<strong>${escapeHtml(it.name)}</strong><br>${escapeHtml(it.location || '')}<br><a href="${appUrl(`farms/${it.id}/`)}">Vedi vetrina →</a>` };
         };
 
         const _exploreRow = (kind, it) => {
             const img = (src, alt) => `<img class="product-img product-img--small" src="${escapeHtml(src || WIDO_PH)}" alt="${escapeHtml(alt)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}'">`;
-            if (kind === 'adoptions') return `
-                <a class="tree-row tree-row--link" href="${appUrl(`trees/${it.id}/`)}">
-                    ${img(it.media_url || it.farm_photo, it.species)}
-                    <div class="tree-row-top">
-                        <div><strong>${escapeHtml(it.species)}</strong><br><small>${escapeHtml(it.farm_name)} · ${escapeHtml(it.location || '')}</small></div>
-                        <span class="badge">${escapeHtml(it.code || '🌱')}</span>
-                    </div>
-                </a>`;
             const waBtn = (subject, it2) => {
                 if (!window.AgriSaas.userId) return `<button class="button ghost" type="button" data-auth-contact onclick="event.stopPropagation()">🔒</button>`;
                 if (!it2.contact_whatsapp) return '';
@@ -622,7 +416,7 @@
                     ${img(it.media_url, it.name)}
                     <div class="tree-row-top">
                         <div><strong>${escapeHtml(it.name)}</strong><br><small>${escapeHtml(it.farm_name)} · ${escapeHtml(it.location || '')}</small></div>
-                        <span class="badge">${it.price ? `€${Number(it.price).toFixed(2)}` : '🛒'}</span>
+                        <span class="badge">${it.price ? `€${Number(it.price).toFixed(2)}` : '🧺'}</span>
                     </div>
                     <div class="row-actions">${waBtn(`Ciao, sono interessato al prodotto "${it.name}" di ${it.farm_name}`, it)}</div>
                 </div>`;
@@ -637,7 +431,7 @@
                 </div>`;
             return `
                 <a class="tree-row tree-row--link" href="${appUrl(`farms/${it.id}/`)}">
-                    ${img(it.media_url, it.name)}
+                    ${img(it.logo_url || it.media_url, it.name)}
                     <div class="tree-row-top">
                         <div><strong>${escapeHtml(it.name)}</strong>${Number(it.is_verified) === 1 ? ' ✅' : ''}<br><small>${escapeHtml(it.location || '')}${it.crop_focus ? ` · ${escapeHtml(it.crop_focus)}` : ''}</small></div>
                         <span class="badge">🏡</span>
@@ -645,16 +439,15 @@
                 </a>`;
         };
 
-        const EXPLORE_LABELS = { adoptions: '🌱 Adozioni', mercato: '🛒 Mercato', baratto: '🤝 Baratto', farms: '🏡 Produttori' };
+        const EXPLORE_LABELS = { mercato: '🧺 Mercato', baratto: '🤝 Baratto', farms: '🏡 Produttori' };
 
         const renderExploreTab = async (tab) => {
-            const mapSlot  = root.querySelector('[data-slot="adoptable-map"]');
-            const listSlot = root.querySelector('[data-slot="adoptable-trees"]');
+            const mapSlot  = root.querySelector('[data-slot="explore-map"]');
+            const listSlot = root.querySelector('[data-slot="explore-list"]');
             if (!mapSlot || !listSlot) return;
             mapSlot.innerHTML = '<div class="map-placeholder"><small>Caricamento…</small></div>';
-            const kinds = tab === 'all' ? ['adoptions', 'mercato', 'baratto', 'farms'] : [tab];
+            const kinds = tab === 'all' ? ['mercato', 'baratto', 'farms'] : [tab];
             const datasets = await Promise.all(kinds.map((k) => _fetchExplore(k).catch(() => [])));
-            adoptableLeafletMap = null;
             const markers = [];
             let listHtml = '';
             kinds.forEach((k, i) => {
@@ -670,7 +463,7 @@
             }
             mapSlot.innerHTML = '<div id="explore-leaflet-map" class="leaflet-map"></div>';
             const map = makeClusterMap('explore-leaflet-map');
-            adoptableLeafletMap = null; // explore map is standalone; adoptions tab rebuilds its own
+            exploreLeafletMap = map;
             const cluster = makeClusterGroup();
             markers.forEach((m) => L.marker([m.lat, m.lng], { icon: _makeTypeIcon(m.type) }).bindPopup(m.popup).addTo(cluster));
             map.addLayer(cluster);
@@ -684,161 +477,20 @@
             }, 120);
         };
 
-        // Content tab switching for dashboard
         const contentTabs = root.querySelectorAll('[data-content-tab]');
-        const filterBar   = root.querySelector('[data-slot="catalog-filter"]');
-        if (filterBar) filterBar.style.display = 'none'; // default tab is "Tutto"
         if (contentTabs.length) {
             contentTabs.forEach((btn) => {
                 btn.addEventListener('click', () => {
                     contentTabs.forEach((b) => b.classList.toggle('active', b === btn));
-                    const tab = btn.dataset.contentTab;
-                    if (filterBar) filterBar.style.display = tab === 'adoptions' ? '' : 'none';
-                    if (tab === 'adoptions') {
-                        adoptableLeafletMap = null;
-                        renderAdoptableTrees(_filteredTrees());
-                    } else {
-                        renderExploreTab(tab);
-                    }
+                    renderExploreTab(btn.dataset.contentTab);
                 });
             });
         }
 
-        // Initial view: everything together, no filters
+        // Vista iniziale: tutto insieme, senza filtri
         renderExploreTab('all');
     };
 
-    const renderClientDashboard = (data) => {
-        _statCardIdx = 0;
-        const statsSlot = root.querySelector('[data-slot="stats"]');
-        if (statsSlot) statsSlot.innerHTML = [
-            statCard('Adottati', data.stats.adoptedTrees, 'Nel tuo portfolio'),
-            statCard('Attivi', data.stats.activeAdoptions, 'Adozioni attive'),
-        ].join('');
-        renderLevelBadge(data.stats.activeAdoptions || 0);
-
-        const treeRow = (tree) => {
-            const planted = plantedDisplay(tree);
-            const isCancelRequested = tree.adoption_status === 'cancel_requested';
-            return `
-            <a href="${appUrl(`trees/${tree.id}/`)}" class="tree-row tree-row--portfolio tree-row--link">
-                <div class="tree-row-top">
-                    <div>
-                        <strong>${escapeHtml(tree.species)}</strong>${secolareBadge(tree)}<br>
-                        <small>${escapeHtml(tree.farm_name)} · ${escapeHtml(tree.location)}</small>
-                        ${planted ? `<br><small>🌱 ${escapeHtml(planted)}</small>` : ''}
-                    </div>
-                    <span class="badge">${escapeHtml(tree.code)}</span>
-                </div>
-                ${rewardChips(tree.rewards)}
-                ${isCancelRequested ? `<span class="badge-warning">⏳ Cancellazione in attesa di conferma</span>` : ''}
-            </a>`;
-        };
-
-        // Pending adoptions (shown first, section hidden if empty)
-        const pendingTrees = data.trees.filter((t) => t.adoption_status === 'pending');
-        const activeTrees  = data.trees.filter((t) => t.adoption_status !== 'pending');
-
-        const pendingSection = root.querySelector('[data-profile-section="pending"]');
-        if (pendingSection) {
-            if (pendingTrees.length) {
-                pendingSection.hidden = false;
-                pendingSection.querySelector('[data-slot="trees-pending"]').innerHTML =
-                    pendingTrees.map(treeRow).join('');
-            } else {
-                pendingSection.hidden = true;
-            }
-        }
-
-        const treesSlot = root.querySelector('[data-slot="trees"]');
-        if (treesSlot) treesSlot.innerHTML = activeTrees.length
-            ? activeTrees.map(treeRow).join('')
-            : '<div class="card empty-state">Non hai ancora adozioni attive. Adotta il tuo primo elemento dalla mappa qui sopra!</div>';
-
-        // Il caricamento del catalogo avviene tramite la vista Esplora unificata (renderExploreTab).
-
-        initExplore();
-    };
-
-    let _farmsData = [];
-
-    const updateTreeRewardOptions = (farmId) => {
-        const slot = document.querySelector('[data-slot="tree-reward-options"]');
-        const box  = document.querySelector('[data-tree-reward-checkboxes]');
-        if (!slot || !box) return;
-        const farm = _farmsData.find((f) => String(f.id) === String(farmId));
-        const rewards = farm?.rewards || [];
-        slot.style.display = '';
-        if (!rewards.length) {
-            box.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">⚠️ Nessun premio configurato per questo produttore. Chiedi all\'admin di aggiungerne prima di creare elementi.</p>';
-            return;
-        }
-        box.innerHTML = rewards.map((r) => `
-            <label style="flex-direction:row;align-items:center;gap:8px;font-weight:normal;">
-                <input type="checkbox" name="reward_ids[]" value="${escapeHtml(r.id)}">
-                <span><strong>${escapeHtml(r.name)}</strong>${r.description ? ` — ${escapeHtml(r.description)}` : ''}</span>
-            </label>`).join('');
-    };
-
-    const updateFarmOptions = (farms) => {
-        _farmsData = farms;
-        document.querySelectorAll('[data-farm-options]').forEach((select) => {
-            select.innerHTML = farms.length
-                ? farms.map((farm) => `<option value="${escapeHtml(farm.id)}">${escapeHtml(farm.name)} · ${escapeHtml(farm.location)}</option>`).join('')
-                : '<option value="">Crea prima un produttore</option>';
-            select.disabled = !farms.length;
-        });
-        const treeFormFarmSelect = document.querySelector('[data-agri-tree-form] [data-farm-options]');
-        if (treeFormFarmSelect) {
-            updateTreeRewardOptions(treeFormFarmSelect.value);
-            treeFormFarmSelect.addEventListener('change', (e) => updateTreeRewardOptions(e.target.value));
-        }
-    };
-
-    const renderAdoptionRequests = (requests) => {
-        const slot = root.querySelector('[data-slot="adoption-requests"]');
-        if (!slot) return;
-        const pending = requests.filter(r => r.status === 'pending');
-        const cancelRequests = requests.filter(r => r.status === 'cancel_requested');
-
-        let html = '';
-
-        if (cancelRequests.length) {
-            html += cancelRequests.map((req) => `
-                <article class="tree-row request-row" style="border-color: #ffcc02;">
-                    <div>
-                        <span class="badge-warning" style="margin-bottom:6px;display:inline-block;">⚠️ Richiesta di cancellazione</span><br>
-                        <strong>${escapeHtml(req.species)} · ${escapeHtml(req.code)}</strong><br>
-                        <small>${escapeHtml(req.farm_name)} · ${escapeHtml(req.adopter_name || req.adopter_email || `Utente #${req.adopter_user_id}`)}</small>
-                    </div>
-                    <div class="row-actions">
-                        <button class="button" type="button" data-adoption-decision="confirm-cancel" data-request-id="${escapeHtml(req.id)}">Conferma cancellazione</button>
-                        <button class="button ghost" type="button" data-adoption-decision="reject-cancel" data-request-id="${escapeHtml(req.id)}">Rifiuta cancellazione</button>
-                    </div>
-                </article>`).join('');
-        }
-
-        if (pending.length) {
-            html += pending.map((req) => `
-                <article class="tree-row request-row">
-                    <div>
-                        <strong>${escapeHtml(req.species)} · ${escapeHtml(req.code)}</strong><br>
-                        <small>${escapeHtml(req.farm_name)} · richiesta da ${escapeHtml(req.adopter_name || req.adopter_email || `Utente #${req.adopter_user_id}`)} · ${escapeHtml(req.requested_at)}</small><br>
-                        <small>${escapeHtml([req.adopter_email, req.adopter_phone ? `📞 ${req.adopter_phone}` : '', req.adopter_whatsapp ? `💬 ${req.adopter_whatsapp}` : ''].filter(Boolean).join(' · '))}</small>
-                    </div>
-                    <div class="row-actions">
-                        ${req.adopter_whatsapp ? `<a class="button" href="https://wa.me/${String(req.adopter_whatsapp).replace(/\D/g,'')}?text=${encodeURIComponent(`Ciao ${req.adopter_name || ''}, ti scrivo riguardo all'adozione di ${req.species} (${req.code}).`)}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}
-                        ${req.adopter_phone ? `<a class="button ghost" href="tel:${escapeHtml(req.adopter_phone)}">📞 Chiama</a>` : ''}
-                        <button class="button" type="button" data-adoption-decision="accept" data-request-id="${escapeHtml(req.id)}">Accetta</button>
-                        <button class="button ghost" type="button" data-adoption-decision="reject" data-request-id="${escapeHtml(req.id)}">Rifiuta</button>
-                    </div>
-                </article>`).join('');
-        }
-
-        slot.innerHTML = html || '<div class="card empty-state">Nessuna richiesta in sospeso.</div>';
-    };
-
-    // DASHBOARD PRODUTTORE
     const renderFarmDashboard = (data) => {
         _statCardIdx = 0;
         const farm = (data.farms || [])[0] || null;
@@ -953,8 +605,9 @@
         bindEditModal('[data-agri-edit-product-form]', 'product_id', '/mercato');
         bindEditModal('[data-agri-edit-baratto-form]', 'baratto_id', '/baratto');
         root.querySelector('[data-slot="stats"]').innerHTML = [
-            statCard('Elementi disponibili', data.stats.availableTrees, "Pronti per l'adozione"),
-            statCard('Elementi adottati', data.stats.adoptedTrees, 'Sponsorizzati dai utenti'),
+            statCard('Prodotti', data.stats.products, 'Pubblicati nel mercato'),
+            statCard('Baratti', data.stats.baratti, 'Scambi proposti'),
+            statCard('Follower', data.stats.followers, 'Seguono i tuoi aggiornamenti'),
         ].join('');
         const nameEl = root.querySelector('[data-slot="farm-name"]');
         if (nameEl) nameEl.textContent = farm ? farm.name : '—';
@@ -1031,283 +684,6 @@
                 });
             }
         }
-        root.querySelector('[data-slot="farm-trees"]').innerHTML = data.trees.length
-            ? data.trees.map((tree) => `
-                <div class="tree-row tree-row--manageable">
-                    <a class="tree-row-link" href="${appUrl(`trees/${tree.id}/`)}">
-                        <div><strong>${escapeHtml(tree.species)}</strong><br><small>${escapeHtml(tree.farm_name)} · ${escapeHtml(plantedDisplay(tree) || 'Data non disponibile')}</small></div>
-                        <span class="badge">${escapeHtml(tree.code)} · ${escapeHtml(tree.status)}</span>
-                    </a>
-                    <div class="tree-row-actions">
-                        <button class="button ghost" style="padding:6px 12px;font-size:.8rem;" data-edit-tree="${tree.id}">✏️ Modifica</button>
-                        ${!tree.adopter_user_id ? `<button class="button ghost" style="padding:6px 12px;font-size:.8rem;color:var(--error);border-color:var(--error);" data-delete-tree="${tree.id}">🗑</button>` : ''}
-                    </div>
-                </div>`).join('')
-            : '<div class="card empty-state">Nessun elemento pubblicato. Usa "+ Elemento" per renderlo disponibile.</div>';
-        renderAdoptionRequests(data.requests || []);
-        // Attach rewards to the single farm and pre-populate reward checkboxes
-        const farmWithRewards = farm ? { ...farm, rewards: data.rewards || [] } : null;
-        _farmsData = farmWithRewards ? [farmWithRewards] : [];
-        if (farmWithRewards) updateTreeRewardOptions(farmWithRewards.id);
-
-        // Edit tree button handler
-        root.querySelector('[data-slot="farm-trees"]')?.addEventListener('click', async (ev) => {
-            const editBtn   = ev.target.closest('[data-edit-tree]');
-            const deleteBtn = ev.target.closest('[data-delete-tree]');
-
-            if (editBtn) {
-                const treeId = Number(editBtn.dataset.editTree);
-                const tree   = data.trees.find((t) => t.id === treeId);
-                if (!tree) return;
-                const modal = document.querySelector('[data-edit-tree-form]');
-                const form  = modal?.querySelector('[data-agri-edit-tree-form]');
-                if (!form) return;
-                form.querySelector('[name="tree_id"]').value    = tree.id;
-                form.querySelector('[name="species"]').value    = tree.species || '';
-                form.querySelector('[name="code"]').value       = tree.code || '';
-                form.querySelector('[name="planted_at"]').value = tree.planted_at || '';
-                form.querySelector('[name="latitude"]').value   = tree.map_latitude || '';
-                form.querySelector('[name="longitude"]').value  = tree.map_longitude || '';
-                form.querySelector('[data-edit-tree-media-url]').value = tree.media_url || '';
-                const typeEl = form.querySelector('[name="type"]');
-                if (typeEl) typeEl.value = tree.type || 'albero';
-                const statusEl = form.querySelector('[name="status"]');
-                if (statusEl) statusEl.value = tree.status || 'available';
-                // Populate reward checkboxes
-                const rewards = farmWithRewards?.rewards || [];
-                const currentRewardIds = (tree.rewards || []).map((r) => String(r.id || r));
-                const checkboxDiv = form.querySelector('[data-edit-tree-reward-checkboxes]');
-                if (checkboxDiv) {
-                    checkboxDiv.innerHTML = rewards.length
-                        ? rewards.map((r) => `<label style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-                            <input type="checkbox" name="reward_ids[]" value="${r.id}" ${currentRewardIds.includes(String(r.id)) ? 'checked' : ''}>
-                            <span>${escapeHtml(r.name)}</span></label>`).join('')
-                        : '<p style="color:var(--muted);font-size:.85rem;">Nessun premio configurato per questo produttore.</p>';
-                }
-                form.querySelector('[data-edit-tree-form-status]').textContent = '';
-                modal.classList.add('active');
-            }
-
-            if (deleteBtn) {
-                const treeId = Number(deleteBtn.dataset.deleteTree);
-                const tree   = data.trees.find((t) => t.id === treeId);
-                if (!confirm(`Eliminare "${tree?.species || 'questo elemento'}"? Questa azione non può essere annullata.`)) return;
-                deleteBtn.disabled = true;
-                try {
-                    await apiFetch(`/trees/${treeId}`, { method: 'DELETE' });
-                    window.location.reload();
-                } catch (err) {
-                    alert(err.message || 'Errore durante l\'eliminazione.');
-                    deleteBtn.disabled = false;
-                }
-            }
-        });
-
-        // Edit tree form submit
-        document.querySelector('[data-agri-edit-tree-form]')?.addEventListener('submit', async (ev) => {
-            ev.preventDefault();
-            const form       = ev.currentTarget;
-            const statusEl   = form.querySelector('[data-edit-tree-form-status]');
-            const photoInput = form.querySelector('[data-edit-tree-photo-input]');
-            const mediaUrlEl = form.querySelector('[data-edit-tree-media-url]');
-            const submitBtn  = form.querySelector('[type="submit"]');
-            statusEl.textContent = '';
-            submitBtn.disabled = true;
-            try {
-                if (photoInput?.files?.length) {
-                    statusEl.textContent = 'Ottimizzazione foto…';
-                    const fd = new FormData();
-                    fd.append('photo', photoInput.files[0]);
-                    const up = await apiFetch('/media/photo', { method: 'POST', body: fd });
-                    mediaUrlEl.value = up.url;
-                }
-                const formData = new FormData(form);
-                const treeId   = formData.get('tree_id');
-                const payload  = Object.fromEntries(formData.entries());
-                delete payload.tree_photo;
-                delete payload.tree_id;
-                const rewardIds = formData.getAll('reward_ids[]').map(Number).filter(Boolean);
-                payload.reward_ids = rewardIds;
-                await apiFetch(`/trees/${treeId}`, { method: 'PUT', body: JSON.stringify(payload) });
-                window.location.reload();
-            } catch (err) {
-                statusEl.textContent = err.message || 'Errore durante il salvataggio.';
-                submitBtn.disabled = false;
-            }
-        });
-    };
-
-    // DETTAGLIO ALBERO
-    const treeAge = (tree) => {
-        if (!tree.planted_at) return 'N/D';
-        const year = parseInt(tree.planted_at.slice(0, 4), 10);
-        if (!year || year < 100) return 'N/D';
-        const years = new Date().getFullYear() - year;
-        if (years <= 0) return 'N/D';
-        if (years >= 200) return 'circa 200 anni';
-        if (years >= 150) return 'circa 150 anni';
-        if (years >= 120) return 'circa 120 anni';
-        if (years >= 100) return 'circa 100 anni';
-        return `${years} anni`;
-    };
-
-    let treeDetailLeafletMap = null;
-
-    const renderTreeDetail = (data) => {
-        _statCardIdx = 0;
-        if (!data.tree) {
-            console.error('[AgriSaas] renderTreeDetail: data.tree is missing. Full response:', data);
-            throw new Error(`Dati elemento non trovati. Risposta API: ${JSON.stringify(Object.keys(data))}`);
-        }
-        const tree = data.tree;
-        const treeUrl = appUrl(`trees/${tree.id}/`);
-        const adoption = data.user_adoption;
-        const isAvailable = tree.status === 'available';
-        const isAdopter   = adoption && Number(tree.adopter_user_id) === Number(window.AgriSaas.userId);
-        const isCancelReq = adoption?.status === 'cancel_requested';
-        const isPending   = adoption?.status === 'pending';
-
-        let adoptionHtml = '';
-        if (isAvailable && !adoption) {
-            adoptionHtml = `<div style="margin-top:16px;"><button class="button" type="button" data-request-adoption="${escapeHtml(tree.id)}">🌱 Adotta questo elemento</button></div>`;
-        } else if (isPending) {
-            adoptionHtml = `<div style="margin-top:16px;"><span class="badge-pending">⏳ Richiesta di adozione inviata — in attesa di conferma</span></div>`;
-        } else if (isAdopter && isCancelReq) {
-            adoptionHtml = `<div style="margin-top:16px;"><span class="badge-warning">⏳ Richiesta di cancellazione in attesa di conferma dal produttore</span></div>`;
-        } else if (isAdopter && adoption?.status === 'active') {
-            adoptionHtml = `<div style="margin-top:16px;"><button class="button ghost" type="button" style="font-size:.82rem;" data-request-cancel="${escapeHtml(adoption.id)}">Richiedi cancellazione adozione</button></div>`;
-        }
-
-        // Step 1 = available+no adoption; Step 2 = pending; Step 3 = active
-        const _step = !adoption ? 1 : isPending ? 2 : isAdopter && adoption.status === 'active' ? 3 : 2;
-        const adoptionStepsHtml = `
-        <div class="adoption-steps">
-            <div class="adoption-step ${_step > 1 ? 'done' : 'active'}">
-                <div class="adoption-step-num">${_step > 1 ? '✓' : '1'}</div>
-                <div class="adoption-step-body">
-                    <div class="adoption-step-title">Richiedi l'adozione</div>
-                    <div class="adoption-step-desc">Clicca su "Adotta" e invia la tua richiesta al farmer.</div>
-                </div>
-            </div>
-            <div class="adoption-step ${_step > 2 ? 'done' : _step === 2 ? 'active' : ''}">
-                <div class="adoption-step-num">${_step > 2 ? '✓' : '2'}</div>
-                <div class="adoption-step-body">
-                    <div class="adoption-step-title">Mettiti d'accordo con il farmer</div>
-                    <div class="adoption-step-desc">Concordate modalità di pagamento e raccolta dei prodotti.</div>
-                </div>
-            </div>
-            <div class="adoption-step ${_step >= 3 ? 'done' : ''}">
-                <div class="adoption-step-num">${_step >= 3 ? '✓' : '3'}</div>
-                <div class="adoption-step-body">
-                    <div class="adoption-step-title">Segui gli aggiornamenti e goditi i premi!</div>
-                    <div class="adoption-step-desc">Ricevi notizie dal campo su Wido e riscatta i premi inclusi nell'adozione.</div>
-                </div>
-            </div>
-        </div>`;
-
-        const WIDO_PH = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
-        const treePhoto = tree.media_url || tree.farm_photo || WIDO_PH;
-        const ageYrs = treeAgeYears(tree);
-
-        const _rewardTypeIcon = (type) => ({
-            product: '📦', experience: '🎟️', discount: '🏷️', surprise: '🎁', harvest: '🌾', oil: '🫒', wine: '🍷', honey: '🍯',
-        }[type] || '🎁');
-
-        const rewardsHeroHtml = data.rewards && data.rewards.length ? `
-        <div class="tree-rewards-hero">
-            <p class="rewards-hero-title">🎁 Cosa ricevi adottando</p>
-            <div class="rewards-hero-grid">
-                ${data.rewards.map((r) => {
-                    const whenLabel = { immediate: 'Subito', '6m': '6 mesi', '1y': '1 anno', harvest: 'Al raccolto', annually: 'Ogni anno' }[r.when_received] || r.when_received;
-                    return `<div class="reward-hero-card">
-                        <div class="reward-hero-icon">${_rewardTypeIcon(r.reward_type)}</div>
-                        <div class="reward-hero-body">
-                            <strong class="reward-hero-name">${escapeHtml(r.name)}</strong>
-                            <p class="reward-hero-desc">${escapeHtml(r.description)}</p>
-                            <div class="reward-hero-meta">
-                                <span class="reward-hero-when">⏱ ${whenLabel}</span>
-                                ${r.estimated_value ? `<span class="reward-hero-value">💰 ${escapeHtml(r.estimated_value)}</span>` : ''}
-                            </div>
-                        </div>
-                    </div>`;
-                }).join('')}
-            </div>
-        </div>` : '';
-
-        root.querySelector('[data-slot="tree"]').innerHTML = `
-            <div class="tree-hero-photo"><img src="${escapeHtml(treePhoto)}" alt="${escapeHtml(tree.species)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}';this.style.objectFit='contain';this.style.padding='40px';this.style.background='var(--surface-soft)'"></div>
-            <div class="tree-hero-info">
-                <p class="eyebrow">${escapeHtml(tree.code)}${tree.type ? ` · ${escapeHtml(tree.type)}` : ''}</p>
-                <h2 style="margin-top:4px;font-size:1.8rem;">${escapeHtml(tree.species)}</h2>
-                <p style="margin-top:6px;"><a href="${appUrl(`farms/${tree.farm_id}/`)}" style="color:var(--brand);font-weight:600;">${escapeHtml(tree.farm_name)}</a> · ${escapeHtml(tree.location)}${tree.crop_focus ? ` · ${escapeHtml(tree.crop_focus)}` : ''}</p>
-                <div class="tree-meta-badges">
-                    <span class="tree-meta-badge">📋 ${escapeHtml(tree.status)}</span>
-                    ${ageYrs !== null ? `<span class="tree-meta-badge">🌱 ${ageYrs} anni</span>` : ''}
-                    ${secolareBadge(tree) ? `<span class="tree-meta-badge">🏛️ Secolare</span>` : ''}
-                </div>
-            </div>
-            ${rewardsHeroHtml}
-            <div class="tree-adoption-section">
-                ${adoptionStepsHtml}
-                ${adoptionHtml}
-                <div class="share-section" style="margin-top:16px;">
-                    <span class="share-label">Condividi:</span>
-                    ${shareButtons(treeUrl, `🌱 ${tree.species} — Adotta su Wido!`)}
-                </div>
-            </div>`;
-
-        // Map slot
-        const mapSlot = root.querySelector('[data-slot="tree-map"]');
-        if (mapSlot) {
-            const lat = Number(tree.latitude || tree.farm_latitude);
-            const lng = Number(tree.longitude || tree.farm_longitude);
-            if (lat && lng) {
-                mapSlot.innerHTML = '<p class="eyebrow">Posizione</p><div id="tree-detail-leaflet-map" class="leaflet-map"></div>';
-                if (!treeDetailLeafletMap) {
-                    treeDetailLeafletMap = L.map('tree-detail-leaflet-map').setView([lat, lng], 14);
-                    makeTileLayer().addTo(treeDetailLeafletMap);
-                } else {
-                    treeDetailLeafletMap.setView([lat, lng], 14);
-                }
-                L.marker([lat, lng])
-                    .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.code)}`)
-                    .addTo(treeDetailLeafletMap);
-                setTimeout(() => treeDetailLeafletMap.invalidateSize(), 80);
-            } else {
-                mapSlot.innerHTML = '<p class="eyebrow">Posizione</p><div class="map-placeholder">&#9678;<br><small>Coordinate non disponibili</small></div>';
-            }
-        }
-
-        renderUpdates(data.updates || [], tree.farm_id);
-        renderFarmTreesSuggestions(data.farm_trees || [], tree.farm_id, tree.farm_name);
-    };
-
-    const renderFarmTreesSuggestions = (trees, farmId, farmName) => {
-        const slot = root?.querySelector('[data-slot="farm-trees"]');
-        if (!slot) return;
-        if (!trees.length) { slot.hidden = true; return; }
-        const WIDO_PH = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
-        slot.hidden = false;
-        slot.innerHTML = `
-            <div class="section-heading">
-                <div>
-                    <p class="eyebrow">Stesso farmer</p>
-                    <h2>Altre adozioni disponibili da <a href="${appUrl(`farms/${farmId}/`)}" style="color:var(--brand);">${escapeHtml(farmName)}</a></h2>
-                </div>
-            </div>
-            <div class="farm-suggestions-grid">
-                ${trees.map((t) => {
-                    const photo = t.media_url || t.farm_photo || WIDO_PH;
-                    return `<a class="farm-suggestion-card" href="${appUrl(`trees/${t.id}/`)}">
-                        <img src="${escapeHtml(photo)}" alt="${escapeHtml(t.species)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}';this.style.objectFit='contain';this.style.padding='16px';this.style.background='var(--surface-soft)'">
-                        <div class="farm-suggestion-info">
-                            <span class="eyebrow" style="font-size:.7rem;">${escapeHtml(t.code)}</span>
-                            <strong>${escapeHtml(t.species)}</strong>
-                            <span class="dist-label">${_TYPE_ICONS[t.type] || '🌿'} ${escapeHtml(t.type || 'elemento')}</span>
-                        </div>
-                    </a>`;
-                }).join('')}
-            </div>`;
     };
 
     // FEED STILE INSTAGRAM
@@ -1323,8 +699,7 @@
         slot.innerHTML = updates.map((update) => {
             const farmId = update.farm_id || contextFarmId;
             const farmUrl   = farmId ? appUrl(`farms/${farmId}/`) : null;
-            const treeUrl   = update.tree_id ? appUrl(`trees/${update.tree_id}/`) : null;
-            const detailUrl = treeUrl || farmUrl;
+            const detailUrl = farmUrl;
             const updateUrl = farmUrl ? farmUrl + `#update-${update.id}` : appUrl('updates/') + `#update-${update.id}`;
             return `
             <article class="ig-card" id="update-${escapeHtml(update.id)}">
@@ -1346,11 +721,10 @@
                 <div class="ig-card-body">
                     <p class="ig-card-title">${escapeHtml(update.title)}</p>
                     <p class="ig-card-text">${escapeHtml(update.body)}</p>
-                    ${update.tree_code ? `<a class="ig-tag" href="${escapeHtml(treeUrl || '#')}">🌱 ${escapeHtml(update.tree_code)}</a>` : ''}
                     ${detailUrl ? `<div style="margin-top:8px;"><a class="ig-scopri" href="${escapeHtml(detailUrl)}">Scopri di più →</a></div>` : ''}
                 </div>
                 <div class="ig-card-footer">
-                    ${shareButtons(updateUrl, `📰 ${update.title} — Adotta un elemento su Adotta!`)}
+                    ${shareButtons(updateUrl, `📰 ${update.title} — su wido`)}
                 </div>
             </article>`;
         }).join('');
@@ -1439,36 +813,6 @@
     };
 
     // MAPPA PROFILO PRODUTTORE (cluster)
-    const renderFarmProfileMap = (trees) => {
-        const slot = root?.querySelector('[data-slot="farm-profile-map"]');
-        if (!slot) return;
-        const mapped = trees.filter((t) => Number.isFinite(Number(t.map_latitude)) && Number.isFinite(Number(t.map_longitude)));
-        if (!mapped.length) {
-            slot.innerHTML = '<div class="map-placeholder">&#9678;<small>Nessuna coordinata per gli elementi</small></div>';
-            farmProfileLeafletMap = null;
-            return;
-        }
-        if (!farmProfileLeafletMap) {
-            slot.innerHTML = '<div id="farm-profile-leaflet-map" class="leaflet-map"></div><p class="map-note">I numeri nei cerchi indicano cluster — clicca per espandere e vedere i singoli elementi.</p>';
-            farmProfileLeafletMap = makeClusterMap('farm-profile-leaflet-map');
-        } else {
-            clearMapLayers(farmProfileLeafletMap);
-        }
-        const cluster = makeClusterGroup();
-        mapped.forEach((tree) => {
-            L.marker([Number(tree.map_latitude), Number(tree.map_longitude)], { icon: _makeTypeIcon(tree.type) })
-                .bindPopup(`<strong>${escapeHtml(tree.species)}</strong><br>${escapeHtml(tree.code)} · ${escapeHtml(tree.status)}<br><a href="${appUrl(`trees/${tree.id}/`)}">Vedi elemento →</a>`)
-                .addTo(cluster);
-        });
-        farmProfileLeafletMap.addLayer(cluster);
-        try {
-            mapped.length === 1
-                ? farmProfileLeafletMap.setView([Number(mapped[0].map_latitude), Number(mapped[0].map_longitude)], 14)
-                : farmProfileLeafletMap.fitBounds(cluster.getBounds ? cluster.getBounds() : mapped.map((t) => [Number(t.map_latitude), Number(t.map_longitude)]), { padding: [28, 28], maxZoom: 15 });
-        } catch (_) {}
-        setTimeout(() => farmProfileLeafletMap.invalidateSize(), 80);
-    };
-
     const contactButton = (href, label) => href ? `<a class="button ghost" href="${escapeHtml(href)}">${escapeHtml(label)}</a>` : '';
 
     // PROFILO PRODUTTORE
@@ -1520,31 +864,19 @@
 
         const heroActions = root.querySelector('.farm-hero-actions');
         if (heroActions && !heroActions.querySelector('.share-bar')) {
-            heroActions.insertAdjacentHTML('beforeend', shareButtons(farmUrl, `🌾 ${farm.name} — Adotta un elemento su Adotta!`));
+            heroActions.insertAdjacentHTML('beforeend', shareButtons(farmUrl, `🌾 ${farm.name} su wido`));
         }
 
         root.querySelector('[data-slot="farm-profile-stats"]').innerHTML = [
-            statCard('Elementi', data.stats.trees, 'Tutti visibili nella vetrina'),
-            statCard('Adottati', data.stats.adoptedTrees, 'Già sponsorizzati'),
+            statCard('Prodotti', data.stats.products, 'Nel mercato'),
+            statCard('Baratti', data.stats.baratti, 'Scambi proposti'),
             statCard('Follower', data.stats.followers, 'Utenti che seguono gli aggiornamenti'),
         ].join('');
-
-        root.querySelector('[data-slot="farm-profile-trees"]').innerHTML = data.trees.length
-            ? data.trees.map((tree) => `
-                <a class="tree-row" href="${appUrl(`trees/${tree.id}/`)}">
-                    <div>
-                        <strong>${escapeHtml(tree.species)}</strong><br>
-                        <small>${escapeHtml(tree.code)} · ${escapeHtml(tree.planted_at || 'Data N/D')} · coord. ${escapeHtml(tree.coordinate_source || 'produttore')}</small>
-                    </div>
-                    <span class="badge">${escapeHtml(tree.status)}${tree.adopter_name ? ` · ${escapeHtml(tree.adopter_name)}` : ''}</span>
-                </a>`).join('')
-            : '<div class="card empty-state">Nessun elemento pubblicato da questo produttore.</div>';
 
         root.querySelector('[data-slot="farm-photos"]').innerHTML = data.photos.length
             ? data.photos.slice(0, 6).map((url) => `<a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Foto del produttore" loading="lazy"></a>`).join('')
             : '<div class="card empty-state">Nessuna foto ancora.</div>';
 
-        renderFarmProfileMap(data.trees || []);
         renderUpdates(data.updates || [], farm.id);
         renderFarmReviews(data.farm.id, root);
 
@@ -1805,13 +1137,6 @@
         setTimeout(() => barattoLeafletMap.invalidateSize(), 80);
     };
 
-    const renderPublicCatalog = (data) => {
-        _lastAdoptableTrees = data.trees || [];
-        renderCatalogFilter(_lastAdoptableTrees);
-        renderAdoptableTrees(_filteredTrees());
-        _onGeo(() => { if (_lastAdoptableTrees) renderAdoptableTrees(_filteredTrees()); });
-    };
-
     // ── ADMIN DASHBOARD ───────────────────────────────────────────────
     const _adminPost = async (url, body = {}) => {
         const res = await fetch(`${window.AgriSaas.apiBase}${url}`, {
@@ -1855,7 +1180,7 @@
             root.querySelector('[data-slot="admin-farms"]').innerHTML = farms.map((r) => {
                 const verified = Number(r.is_verified) === 1;
                 return `<tr data-farm-row="${e(String(r.id))}">
-                    ${cell(r.id)}${cell(r.name)}${cell(r.location)}${cell(r.crop_focus)}${cell(r.owner_name)}${cell(r.owner_email)}${cell(r.tree_count)}${cell(r.adoption_count)}
+                    ${cell(r.id)}${cell(r.name)}${cell(r.location)}${cell(r.crop_focus)}${cell(r.owner_name)}${cell(r.owner_email)}${cell(r.product_count)}${cell(r.baratto_count)}
                     <td style="white-space:nowrap;">
                         <input type="number" step="0.0000001" min="-90" max="90" value="${r.latitude != null ? e(String(r.latitude)) : ''}" placeholder="lat" data-coord-lat style="width:110px;padding:4px 6px;font-size:.8rem;">
                         <input type="number" step="0.0000001" min="-180" max="180" value="${r.longitude != null ? e(String(r.longitude)) : ''}" placeholder="lng" data-coord-lng style="width:110px;padding:4px 6px;font-size:.8rem;">
@@ -1868,24 +1193,12 @@
                 </tr>`;
             }).join('') || '<tr><td colspan="10">Nessun produttore</td></tr>';
 
-            const adoptionStatuses = ['pending', 'active', 'cancelled', 'cancel_requested'];
-            root.querySelector('[data-slot="admin-adoptions"]').innerHTML = (d.adoptions || []).map((r) =>
-                `<tr data-adoption-row="${e(String(r.id))}">
-                 ${cell(r.id)}${cell(r.species)}${cell(r.type)}${cell(r.code)}${cell(r.farm_name)}${cell(r.adopter_name)}${cell(r.adopter_email)}
-                 <td>${r.adopter_whatsapp ? `<a href="https://wa.me/${String(r.adopter_whatsapp).replace(/\D/g,'')}" target="_blank">💬 ${e(r.adopter_whatsapp)}</a>` : '—'}</td>
-                 <td>${r.adopter_phone ? `<a href="tel:${e(r.adopter_phone)}">📞 ${e(r.adopter_phone)}</a>` : '—'}</td>
-                 <td><select class="admin-status-select" data-adoption-id="${e(String(r.id))}">
-                     ${adoptionStatuses.map((s) => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-                 </select></td>
-                 ${dateCell(r.requested_at)}</tr>`
-            ).join('') || '<tr><td colspan="11">Nessuna adozione</td></tr>';
-
             root.querySelector('[data-slot="admin-users"]').innerHTML = (d.users || []).map((r) =>
                 `<tr>
                  ${cell(r.id)}${cell(r.display_name)}${cell(r.user_email)}
                  <td>${r.whatsapp ? `<a href="https://wa.me/${String(r.whatsapp).replace(/\D/g,'')}" target="_blank">💬 ${e(r.whatsapp)}</a>` : '—'}</td>
                  <td>${r.phone ? `<a href="tel:${e(r.phone)}">📞 ${e(r.phone)}</a>` : '—'}</td>
-                 ${cell(r.active_adoptions)}${cell(r.farms_count)}${dateCell(r.user_registered)}
+                 ${cell(r.farms_count)}${dateCell(r.user_registered)}
                  <td><button class="admin-action-btn" data-impersonate="${e(String(r.id))}" title="Impersona">👤 Accedi come</button></td>
                 </tr>`
             ).join('') || '<tr><td colspan="9">Nessun utente</td></tr>';
@@ -2008,26 +1321,7 @@
             btn.disabled = false;
         }, { capture: false });
 
-        // ── Action: change adoption status ───────────────────────────
-        root.addEventListener('change', async (ev) => {
-            const sel = ev.target.closest('[data-adoption-id]');
-            if (!sel) return;
-            const adoptionId = sel.dataset.adoptionId;
-            const newStatus  = sel.value;
-            if (!confirm(`Imposta stato adozione #${adoptionId} → "${newStatus}"?`)) {
-                // revert
-                sel.value = sel.dataset.prev || sel.value;
-                return;
-            }
-            sel.dataset.prev = newStatus;
-            try {
-                await _adminPost(`/admin/adoptions/${adoptionId}/status`, { status: newStatus });
-                const row = root.querySelector(`[data-adoption-row="${adoptionId}"]`);
-                if (row) row.style.opacity = newStatus === 'cancelled' ? '.45' : '1';
-            } catch (_) { alert('Errore nel cambio stato.'); }
-        });
-
-        // ── Action: delete tree / product / baratto ──────────────────
+        // ── Action: delete product / baratto ─────────────────────────
         root.addEventListener('click', async (ev) => {
             const btn = ev.target.closest('[data-admin-delete]');
             if (!btn) return;
@@ -2082,8 +1376,7 @@
             slot.innerHTML = `
             <div class="admin-create-tabs">
                 <button class="admin-create-tab active" data-create-tab="farm">🏡 Produttore</button>
-                <button class="admin-create-tab" data-create-tab="tree">🌱 Elemento</button>
-                <button class="admin-create-tab" data-create-tab="product">🛒 Prodotto</button>
+                <button class="admin-create-tab" data-create-tab="product">🧺 Prodotto</button>
                 <button class="admin-create-tab" data-create-tab="baratto">🤝 Baratto</button>
                 <button class="admin-create-tab" data-create-tab="update">📣 Aggiornamento</button>
             </div>
@@ -2119,47 +1412,6 @@
             </div>
 
             <!-- FORM ELEMENTO -->
-            <div class="admin-create-form card" data-create-panel="tree" hidden>
-                <p class="eyebrow">Nuovo elemento</p>
-                <h2 style="margin-bottom:20px;">Crea elemento adottabile</h2>
-                <form data-admin-form="tree" class="admin-form-grid">
-                    <label>Produttore <select name="farm_id" required><option value="">Seleziona…</option>${farmOptions}</select></label>
-                    <div class="form-grid-2">
-                        <label>Specie / nome <input name="species" required placeholder="es. Oliva Taggiasca"></label>
-                        <label>Codice univoco <input name="code" required placeholder="es. OLV-001"></label>
-                    </div>
-                    <div class="form-grid-2">
-                        <label>Tipo <select name="type">
-                            <option value="albero">🌳 Elemento</option>
-                            <option value="olivo">🫒 Olivo</option>
-                            <option value="vite">🍇 Vite</option>
-                            <option value="alveare">🐝 Alveare</option>
-                            <option value="animale">🐄 Animale</option>
-                            <option value="bosco">🌲 Bosco</option>
-                            <option value="terreno">🌾 Terreno</option>
-                            <option value="orto">🥦 Orto</option>
-                            <option value="altro">🌿 Altro</option>
-                        </select></label>
-                        <label>Stato <select name="status">
-                            <option value="available">Disponibile</option>
-                            <option value="adopted">Adottato</option>
-                            <option value="maintenance">Manutenzione</option>
-                        </select></label>
-                    </div>
-                    <div class="form-grid-2">
-                        <label>Piantato/creato il <input name="planted_at" placeholder="es. 2010 o 2010-03"></label>
-                        <label>URL foto <input name="media_url" type="url"></label>
-                    </div>
-                    <div class="form-grid-2">
-                        <label>Latitudine <input name="latitude" type="number" step="0.0000001"></label>
-                        <label>Longitudine <input name="longitude" type="number" step="0.0000001"></label>
-                    </div>
-                    <label>Descrizione <textarea name="description" rows="3"></textarea></label>
-                    <button class="button" type="submit">Crea elemento</button>
-                    <p class="form-status" data-form-status></p>
-                </form>
-            </div>
-
             <!-- FORM PRODOTTO -->
             <div class="admin-create-form card" data-create-panel="product" hidden>
                 <p class="eyebrow">Nuovo prodotto</p>
@@ -2212,7 +1464,6 @@
                     <div class="form-grid-2">
                         <label>Visibilità <select name="visibility">
                             <option value="public">Pubblico</option>
-                            <option value="adopters">Solo adottanti</option>
                             <option value="private">Privato</option>
                         </select></label>
                         <label>URL foto <input name="media_url" type="url"></label>
@@ -2298,12 +1549,8 @@
     };
 
     const renderProfile = (data) => {
-        const user      = data.user || {};
-        const stats     = data.stats || {};
-        const adoptions = data.adoptions || [];
-        const WIDO_PH   = 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';
-
-        renderLevelBadge(stats.activeAdoptions || 0);
+        const user  = data.user || {};
+        const stats = data.stats || {};
 
         root.querySelector('[data-slot="profile-info"]').innerHTML = `
             <p class="eyebrow">Account</p>
@@ -2322,27 +1569,9 @@
         root.querySelector('[data-slot="profile-stats"]').innerHTML = `
             <p class="eyebrow">Le tue statistiche</p>
             <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">
-                <div class="profile-stat"><span class="profile-stat-num">${stats.activeAdoptions || 0}</span><span>Adozioni attive</span></div>
-                <div class="profile-stat"><span class="profile-stat-num">${stats.adoptedTrees || 0}</span><span>Elementi adottati</span></div>
+                <div class="profile-stat"><span class="profile-stat-num">${stats.following || 0}</span><span>Produttori seguiti</span></div>
                 ${stats.farms ? `<div class="profile-stat"><span class="profile-stat-num">${stats.farms}</span><span>Attività gestite</span></div>` : ''}
             </div>`;
-
-        const statusLabel = { active: '✅ Attiva', pending: '⏳ In attesa', cancelled: '❌ Cancellata', cancel_requested: '⚠️ Cancellazione richiesta' };
-        root.querySelector('[data-slot="profile-adoptions"]').innerHTML = `
-            <div class="section-heading"><div><p class="eyebrow">Storico</p><h2>Le mie adozioni</h2></div></div>
-            ${adoptions.length ? `<div class="profile-adoptions-grid">
-                ${adoptions.map((a) => {
-                    const photo = a.media_url || a.farm_photo || WIDO_PH;
-                    return `<a class="profile-adoption-card" href="${appUrl(`trees/${a.tree_id}/`)}">
-                        <img src="${escapeHtml(photo)}" alt="${escapeHtml(a.species || '')}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH}';this.style.objectFit='contain';this.style.padding='12px'">
-                        <div class="profile-adoption-info">
-                            <strong>${escapeHtml(a.species || '—')}</strong>
-                            <small>${escapeHtml(a.farm_name || '')} · ${escapeHtml(a.location || '')}</small>
-                            <span class="profile-adoption-status">${statusLabel[a.status] || a.status}</span>
-                        </div>
-                    </a>`;
-                }).join('')}
-            </div>` : '<div class="card empty-state">Nessuna adozione ancora.</div>'}`;
 
         // Form submit
         root.querySelector('[data-profile-form]')?.addEventListener('submit', async (ev) => {
@@ -2369,9 +1598,7 @@
     };
 
     const renderers = {
-        'client-dashboard': renderClientDashboard,
         'farm-dashboard':   renderFarmDashboard,
-        'tree-detail':      renderTreeDetail,
         'updates-feed':     (data) => {
             renderUpdates(data.updates || []);
             if (window.AgriSaas && window.AgriSaas.userId) {
@@ -2404,8 +1631,7 @@
         'farm-profile':     renderFarmProfile,
         'mercato':          renderMercato,
         'baratto':          renderBaratto,
-        'public-catalog':   renderPublicCatalog,
-        'public-explore':   (data) => { _lastAdoptableTrees = data.trees || []; renderCatalogFilter(_lastAdoptableTrees); initExplore(); },
+        'explore':          () => initExplore(),
         'admin-dashboard':  renderAdminDashboard,
         'profile':          renderProfile,
     };
@@ -2416,7 +1642,7 @@
             .then((data) => renderers[root.dataset.render]?.(data))
             .catch((err) => {
                 console.error('[AgriSaas] loadRoot error:', err);
-                const slot = root.querySelector('[data-slot="tree"], [data-slot="stats"], [data-slot="trees"]') || root;
+                const slot = root.querySelector('[data-slot="explore-map"], [data-slot="stats"], [data-slot="profile-info"]') || root;
                 slot.innerHTML = `<div class="card empty-state" style="color:#c62828;">⚠️ Impossibile caricare i dati: ${escapeHtml(err?.message || 'errore sconosciuto')}. Ricarica la pagina.</div>`;
             });
     };
@@ -2450,13 +1676,12 @@
 
     const bindDashboardActions = () => {
         if (!root) return;
-        document.querySelector('[data-open-tree-form]')?.addEventListener('click',     () => openModal('[data-tree-form]'));
         document.querySelector('[data-open-update-form]')?.addEventListener('click',   () => openModal('[data-update-form]'));
         document.querySelector('[data-open-product-form]')?.addEventListener('click',  () => openModal('[data-product-form]'));
         document.querySelector('[data-open-become-producer]')?.addEventListener('click', () => openModal('[data-become-producer-form]'));
         document.querySelector('[data-open-baratto-form]')?.addEventListener('click',  () => openModal('[data-baratto-form]'));
 
-        // Adoptable trees: view toggle (map ↔ list)
+        // Esplora: view toggle (map ↔ list)
         root.querySelectorAll('[data-view-toggle]').forEach((btn) => {
             if (btn.closest('[data-slot="mercato-map"]') || btn.closest('[data-slot="baratto-map"]')) return;
             btn.addEventListener('click', () => {
@@ -2465,13 +1690,13 @@
                     b.classList.toggle('active', b === btn);
                     b.classList.toggle('ghost', b !== btn);
                 });
-                const mapSlot  = root.querySelector('[data-slot="adoptable-map"]');
-                const listSlot = root.querySelector('[data-slot="adoptable-trees"]');
+                const mapSlot  = root.querySelector('[data-slot="explore-map"]');
+                const listSlot = root.querySelector('[data-slot="explore-list"]');
                 if (!mapSlot || !listSlot) return;
                 if (view === 'map') {
                     mapSlot.style.display  = '';
                     listSlot.style.display = 'none';
-                    if (adoptableLeafletMap) setTimeout(() => adoptableLeafletMap.invalidateSize(), 80);
+                    if (exploreLeafletMap) setTimeout(() => exploreLeafletMap.invalidateSize(), 80);
                 } else {
                     mapSlot.style.display  = 'none';
                     listSlot.style.display = '';
@@ -2480,15 +1705,6 @@
         });
 
         document.addEventListener('click', async (event) => {
-            const requestButton = event.target.closest('[data-request-adoption]');
-            if (requestButton) {
-                if (!window.AgriSaas.userId) { showAuthModal(); return; }
-                requestButton.disabled = true;
-                await apiFetch('/adoption-requests', { method: 'POST', body: JSON.stringify({ tree_id: requestButton.dataset.requestAdoption }) });
-                requestButton.textContent = 'In attesa';
-                loadAdoptableTrees();
-                return;
-            }
             const followButton = event.target.closest('[data-follow-farm]');
             if (followButton) {
                 if (!window.AgriSaas.userId) { showAuthModal(); return; }
@@ -2499,62 +1715,8 @@
                 followButton.disabled = false;
                 return;
             }
-            const cancelButton = event.target.closest('[data-request-cancel]');
-            if (cancelButton) {
-                if (!confirm('Sei sicuro di voler richiedere la cancellazione di questa adozione? Il produttore dovrà confermare.')) return;
-                cancelButton.disabled = true;
-                await apiFetch(`/adoption-requests/${cancelButton.dataset.requestCancel}/request-cancel`, { method: 'POST', body: JSON.stringify({}) });
-                loadRoot();
-                return;
-            }
-            const decisionButton = event.target.closest('[data-adoption-decision]');
-            if (decisionButton) {
-                decisionButton.disabled = true;
-                await apiFetch(`/adoption-requests/${decisionButton.dataset.requestId}/${decisionButton.dataset.adoptionDecision}`, { method: 'POST', body: JSON.stringify({}) });
-                loadRoot();
-            }
         });
 
-        document.querySelector('[data-agri-tree-form]')?.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const form = event.currentTarget;
-            const statusEl    = form.querySelector('[data-tree-form-status]');
-            const uploadStatus = form.querySelector('[data-tree-upload-status]');
-            const photoInput  = form.querySelector('[data-tree-photo-input]');
-            const mediaUrlEl  = form.querySelector('[data-tree-media-url]');
-            const submitBtn   = form.querySelector('[type="submit"]');
-
-            if (statusEl) statusEl.textContent = '';
-            submitBtn.disabled = true;
-
-            try {
-                if (photoInput?.files?.length) {
-                    if (uploadStatus) uploadStatus.textContent = 'Ottimizzazione foto a 100 KB…';
-                    const uploadData = new FormData();
-                    uploadData.append('photo', photoInput.files[0]);
-                    const upload = await apiFetch('/media/photo', { method: 'POST', body: uploadData });
-                    if (mediaUrlEl) mediaUrlEl.value = upload.url;
-                    if (uploadStatus) uploadStatus.textContent = `Foto caricata (${Math.round(upload.size / 1024)} KB).`;
-                }
-
-                const mediaUrl = form.querySelector('[data-tree-media-url]')?.value?.trim();
-                if (!mediaUrl) { if (statusEl) statusEl.textContent = '❌ Carica una foto prima di pubblicare.'; submitBtn.disabled = false; return; }
-
-                const formData = new FormData(form);
-                const payload = Object.fromEntries(formData.entries());
-                delete payload.tree_photo;
-                const rewardIds = formData.getAll('reward_ids[]').map(Number).filter(Boolean);
-                const hasRewards = form.querySelectorAll('[data-tree-reward-checkboxes] input[type="checkbox"]').length > 0;
-                if (hasRewards && !rewardIds.length) { if (statusEl) statusEl.textContent = '❌ Seleziona almeno un premio da associare all\'elemento.'; submitBtn.disabled = false; return; }
-                payload.reward_ids = rewardIds;
-
-                await apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) });
-                window.location.reload();
-            } catch (err) {
-                if (statusEl) statusEl.textContent = err.message || 'Errore durante la pubblicazione. Riprova.';
-                submitBtn.disabled = false;
-            }
-        });
 
         document.querySelector('[data-agri-update-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -2716,13 +1878,7 @@
         container.querySelectorAll('.catalog-toggle-btn').forEach((b) => b.classList.toggle('active', b === btn));
         container.querySelectorAll('[data-catalog-panel]').forEach((p) => { p.hidden = p.dataset.catalogPanel !== view; });
         if (view === 'map') {
-            setTimeout(() => {
-                if (adoptableLeafletMap) {
-                    adoptableLeafletMap.invalidateSize();
-                } else {
-                    _initAdoptableLeafletMap();
-                }
-            }, 150);
+            setTimeout(() => { if (exploreLeafletMap) exploreLeafletMap.invalidateSize(); }, 150);
         }
     });
 
