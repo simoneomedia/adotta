@@ -770,9 +770,11 @@
                     <p class="review-form-status" style="font-size:.85rem;"></p>
                    </form>`
                 : '';
+            // Sezione nascosta solo se non c'è nulla da mostrare né form da compilare
+            slot.hidden = !count && !formHtml;
             slot.innerHTML = `
                 <div class="section-heading"><div>
-                    <p class="eyebrow">Opinioni dei utenti</p>
+                    <p class="eyebrow">Opinioni degli utenti</p>
                     <h2>Recensioni</h2>
                 </div></div>
                 ${avgHtml}
@@ -816,6 +818,52 @@
     const contactButton = (href, label) => href ? `<a class="button ghost" href="${escapeHtml(href)}">${escapeHtml(label)}</a>` : '';
 
     // PROFILO PRODUTTORE
+    // ── Mappa "Dove siamo" della vetrina produttore ──────────────────
+    let farmLocationMap = null;
+
+    const farmHasCoords = (farm) =>
+        Number.isFinite(Number(farm.latitude)) && Number.isFinite(Number(farm.longitude))
+        && !(Number(farm.latitude) === 0 && Number(farm.longitude) === 0);
+
+    const farmMapsUrl = (farm) => farmHasCoords(farm)
+        ? `https://www.google.com/maps/dir/?api=1&destination=${Number(farm.latitude)},${Number(farm.longitude)}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(farm.location || farm.name || '')}`;
+
+    const renderFarmLocationMap = (farm) => {
+        const placeEl = root?.querySelector('[data-slot="farm-map-place"]');
+        if (placeEl) placeEl.textContent = farm.location || 'Il luogo di produzione';
+
+        const dirEl = root?.querySelector('[data-slot="farm-directions"]');
+        if (dirEl) dirEl.href = farmMapsUrl(farm);
+
+        const slot = root?.querySelector('[data-slot="farm-map"]');
+        if (!slot) return;
+
+        if (!farmHasCoords(farm)) {
+            // Nessuna coordinata salvata: mostra la località testuale via OpenStreetMap (nessuna API key)
+            const q = encodeURIComponent(farm.location || farm.name || '');
+            slot.innerHTML = farm.location
+                ? `<iframe class="farm-map-frame" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+                        title="Mappa di ${escapeHtml(farm.location)}"
+                        src="https://www.openstreetmap.org/export/embed.html?bbox=6.6,36.6,18.6,47.1&layer=mapnik&marker="></iframe>
+                   <p class="map-note">Posizione approssimativa basata su “${escapeHtml(farm.location)}”. <a href="https://www.openstreetmap.org/search?query=${q}" target="_blank" rel="noopener">Cerca su OpenStreetMap →</a></p>`
+                : '<div class="map-placeholder">&#9678;<small>Posizione non ancora indicata</small></div>';
+            return;
+        }
+
+        const lat = Number(farm.latitude);
+        const lng = Number(farm.longitude);
+        slot.innerHTML = '<div id="farm-location-map" class="leaflet-map"></div>';
+        farmLocationMap = makeClusterMap('farm-location-map');
+        L.marker([lat, lng], { icon: _makeTypeIcon('_farm') })
+            .bindPopup(`<strong>${escapeHtml(farm.name)}</strong><br>${escapeHtml(farm.location || '')}<br><a href="${escapeHtml(farmMapsUrl(farm))}" target="_blank" rel="noopener">🧭 Indicazioni →</a>`)
+            .addTo(farmLocationMap);
+        setTimeout(() => {
+            farmLocationMap.invalidateSize();
+            try { farmLocationMap.setView([lat, lng], 13); } catch (_) {}
+        }, 120);
+    };
+
     const renderFarmProfile = (data) => {
         _statCardIdx = 0;
         const farm = data.farm;
@@ -838,7 +886,7 @@
         const shellH1 = document.querySelector('.app-topbar h1');
         if (shellH1) shellH1.textContent = farm.name;
         root.querySelector('[data-slot="farm-summary"]').innerHTML =
-            `${escapeHtml(farm.location)} · ${escapeHtml(farm.crop_focus || 'Produzione mista')}<br>${escapeHtml(farm.description || "Questo produttore usa il suo profilo come vetrina pubblica per elementi, foto e aggiornamenti dal campo.")}`;
+            `📍 ${escapeHtml(farm.location || '')}${farm.crop_focus ? ` · ${escapeHtml(farm.crop_focus)}` : ''}`;
         if (!data.logged_in) {
             root.querySelector('[data-slot="farm-contacts"]').innerHTML =
                 `<button class="button ghost" type="button" data-auth-contact>🔒 Accedi per vedere i contatti</button>`;
@@ -867,15 +915,72 @@
             heroActions.insertAdjacentHTML('beforeend', shareButtons(farmUrl, `🌾 ${farm.name} su wido`));
         }
 
-        root.querySelector('[data-slot="farm-profile-stats"]').innerHTML = [
-            statCard('Prodotti', data.stats.products, 'Nel mercato'),
-            statCard('Baratti', data.stats.baratti, 'Scambi proposti'),
-            statCard('Follower', data.stats.followers, 'Utenti che seguono gli aggiornamenti'),
-        ].join('');
+        // ── Statistiche (nascoste se tutte a zero) ──────────────────
+        const statsSlot = root.querySelector('[data-slot="farm-profile-stats"]');
+        const statTotal = Number(data.stats.products || 0) + Number(data.stats.baratti || 0) + Number(data.stats.followers || 0);
+        if (statsSlot) {
+            statsSlot.hidden = statTotal === 0;
+            statsSlot.innerHTML = [
+                statCard('Prodotti', data.stats.products, 'Nel mercato'),
+                statCard('Baratti', data.stats.baratti, 'Scambi proposti'),
+                statCard('Follower', data.stats.followers, 'Utenti che seguono gli aggiornamenti'),
+            ].join('');
+        }
 
-        root.querySelector('[data-slot="farm-photos"]').innerHTML = data.photos.length
-            ? data.photos.slice(0, 6).map((url) => `<a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Foto del produttore" loading="lazy"></a>`).join('')
-            : '<div class="card empty-state">Nessuna foto ancora.</div>';
+        // ── Dove siamo: mappa del luogo di produzione ───────────────
+        renderFarmLocationMap(farm);
+
+        // ── La nostra storia ────────────────────────────────────────
+        const storyText  = root.querySelector('[data-slot="farm-story"]');
+        const storyPhoto = root.querySelector('[data-slot="farm-story-photo"]');
+        if (storyText) {
+            const bits = [];
+            if (farm.description) bits.push(`<p>${escapeHtml(farm.description)}</p>`);
+            const meta = [];
+            if (farm.crop_focus) meta.push(`🌿 ${escapeHtml(farm.crop_focus)}`);
+            if (Number(farm.acreage) > 0) meta.push(`📐 ${escapeHtml(String(farm.acreage))} ettari`);
+            if (farm.location) meta.push(`📍 ${escapeHtml(farm.location)}`);
+            if (meta.length) bits.push(`<p class="farm-story-meta">${meta.join(' · ')}</p>`);
+            storyText.innerHTML = bits.join('') ||
+                '<p style="color:var(--muted);">Questo produttore non ha ancora raccontato la sua storia.</p>';
+        }
+        const storyImg = farm.cover_url || farm.logo_url || (data.photos || [])[0];
+        if (storyPhoto && storyImg) {
+            storyPhoto.src = storyImg;
+            storyPhoto.alt = `Il luogo di produzione di ${farm.name}`;
+            storyPhoto.hidden = false;
+        }
+
+        // ── Contatti (sezione finale) ───────────────────────────────
+        const contactsFull = root.querySelector('[data-slot="farm-contacts-full"]');
+        if (contactsFull) {
+            const mapsUrl = farmMapsUrl(farm);
+            if (!data.logged_in) {
+                contactsFull.innerHTML = `
+                    <div class="farm-contact-item"><span class="eyebrow">Indirizzo</span><strong>${escapeHtml(farm.location || '—')}</strong></div>
+                    <div class="farm-contact-item"><span class="eyebrow">Contatti diretti</span>
+                        <button class="button ghost" type="button" data-auth-contact>🔒 Accedi per vedere i contatti</button></div>
+                    <div class="farm-contact-item"><span class="eyebrow">Mappa</span>
+                        <a class="button ghost" href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener" aria-label="Apri il luogo di produzione in Google Maps">🧭 Apri in Google Maps</a></div>`;
+            } else {
+                const rows = [
+                    `<div class="farm-contact-item"><span class="eyebrow">Indirizzo</span><strong>${escapeHtml(farm.location || '—')}</strong></div>`,
+                ];
+                if (farm.contact_whatsapp) rows.push(`<div class="farm-contact-item"><span class="eyebrow">WhatsApp</span><a class="button" href="https://wa.me/${String(farm.contact_whatsapp).replace(/\D/g, '')}" target="_blank" rel="noopener">💬 ${escapeHtml(farm.contact_whatsapp)}</a></div>`);
+                if (farm.contact_phone) rows.push(`<div class="farm-contact-item"><span class="eyebrow">Telefono</span><a class="button ghost" href="tel:${escapeHtml(farm.contact_phone)}">📞 ${escapeHtml(farm.contact_phone)}</a></div>`);
+                if (farm.contact_email) rows.push(`<div class="farm-contact-item"><span class="eyebrow">Email</span><a class="button ghost" href="mailto:${escapeHtml(farm.contact_email)}">📧 ${escapeHtml(farm.contact_email)}</a></div>`);
+                rows.push(`<div class="farm-contact-item"><span class="eyebrow">Mappa</span><a class="button ghost" href="${escapeHtml(mapsUrl)}" target="_blank" rel="noopener" aria-label="Apri il luogo di produzione in Google Maps">🧭 Apri in Google Maps</a></div>`);
+                contactsFull.innerHTML = rows.join('');
+            }
+        }
+
+        const photosSection = root.querySelector('[data-profile-section="photos"]');
+        const photos = data.photos || [];
+        if (photosSection) photosSection.hidden = photos.length === 0;
+        if (photos.length) {
+            root.querySelector('[data-slot="farm-photos"]').innerHTML = photos.slice(0, 6)
+                .map((url) => `<a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Foto di ${escapeHtml(farm.name)}" loading="lazy"></a>`).join('');
+        }
 
         renderUpdates(data.updates || [], farm.id);
         renderFarmReviews(data.farm.id, root);
@@ -909,9 +1014,14 @@
                 : '<div class="card empty-state">Nessun prodotto pubblicato da questo produttore.</div>';
         }
 
+        const barattiSection = root.querySelector('[data-profile-section="baratti"]');
+        const barattiNav     = root.querySelector('[data-nav-for="baratti"]');
+        const hasBaratti     = (data.baratti || []).length > 0;
+        if (barattiSection) barattiSection.hidden = !hasBaratti;
+        if (barattiNav) barattiNav.hidden = !hasBaratti;
         const barattiSlot = root.querySelector('[data-slot="farm-baratti"]');
-        if (barattiSlot) {
-            barattiSlot.innerHTML = (data.baratti || []).length ? data.baratti.map((b) => `
+        if (barattiSlot && hasBaratti) {
+            barattiSlot.innerHTML = data.baratti.map((b) => `
                 <article class="product-card barter-card">
                     <img class="product-img" src="${escapeHtml(b.media_url || _fallbackImg)}" alt="${escapeHtml(b.offer_title)}" ${_imgAttrs}>
                     <div class="product-body">
@@ -928,8 +1038,7 @@
                         </div>
                         <div class="product-actions">${_offerContacts(`Ciao! Ho visto la tua offerta di baratto su wido: offri "${b.offer_title}" in cambio di "${b.wants_title}", e sono interessato.`)}</div>
                     </div>
-                </article>`).join('')
-                : '<div class="card empty-state">Nessun baratto attivo di questo produttore.</div>';
+                </article>`).join('');
         }
     };
 
