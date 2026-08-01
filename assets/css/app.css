@@ -737,7 +737,7 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.6; }
 .ig-feed {
     display: grid;
     gap: 20px;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
 }
 .ig-card {
     background: var(--surface);
@@ -1058,7 +1058,7 @@ a.ig-farm-name:hover { color: var(--brand); }
 .product-grid {
     display: grid;
     gap: 18px;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
 }
 .product-card {
     background: var(--surface);
@@ -1144,7 +1144,7 @@ a.ig-farm-name:hover { color: var(--brand); }
     .farm-profile-shell { padding: 16px; }
     .farm-profile-topnav { padding: 10px 12px; gap: 10px; }
     .farm-hero { flex-direction: column; }
-    .product-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .product-grid { grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); }
 }
 @media (max-width: 640px) {
     .app-main { padding: 16px 14px 80px; }
@@ -1611,12 +1611,7 @@ a.ig-farm-name:hover { color: var(--brand); }
 /* keep old chips for farm dashboard use */
 
 /* ── Farm suggestions grid (other adoptions from same farm) ──────── */
-.farm-suggestions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 14px;
-    margin-top: 16px;
-}
+
 .farm-suggestion-card {
     display: flex;
     flex-direction: column;
@@ -1778,12 +1773,7 @@ a.ig-farm-name:hover { color: var(--brand); }
     font-family: 'Fraunces', Georgia, serif;
     color: var(--brand);
 }
-.profile-adoptions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 14px;
-    margin-top: 4px;
-}
+
 .profile-adoption-card {
     border-radius: var(--radius-sm);
     border: 1.5px solid var(--border);
@@ -1870,7 +1860,7 @@ a.ig-farm-name:hover { color: var(--brand); }
 .market-list .product-name { font-size: 1rem; }
 .market-list .barter-row { gap: 8px; }
 /* Vetrina produttore: prodotti e baratti */
-.farm-offer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.farm-offer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 14px; }
 
 /* ── Esplora: desktop, mappa alta e lista a 2 colonne ────── */
 @media (min-width: 901px) {
@@ -1971,7 +1961,7 @@ a.ig-farm-name:hover { color: var(--brand); }
 /* ── Vetrina produttore: Contatti ────────────────────────── */
 .farm-contacts-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
     gap: 16px;
     margin-top: 6px;
 }
@@ -2012,7 +2002,7 @@ html { scroll-behavior: smooth; }
     padding: 2px 10px;
     font-size: .75rem;
     font-weight: 600;
-    white-space: nowrap;
+    max-width: 100%;
 }
 .product-card--unavailable { opacity: .72; }
 .product-card--unavailable .product-img { filter: grayscale(.7); }
@@ -2067,4 +2057,76 @@ html { scroll-behavior: smooth; }
 @media (display-mode: standalone) {
     .pwa-banner { display: none; }
     body { overscroll-behavior-y: none; }
+}
+
+/* ══ Vetrina produttore: contenimento mobile ═══════════════════════
+   Evita che griglie, testi lunghi e media escano dalla larghezza
+   dello schermo. Regole difensive valide su tutti i breakpoint.     */
+.farm-profile-shell,
+.farm-profile-shell * { min-width: 0; }
+
+.farm-profile-shell { max-width: 100%; overflow-x: clip; }
+
+/* Nessun elemento può superare la propria colonna */
+.farm-profile-shell img,
+.farm-profile-shell iframe,
+.farm-profile-shell video,
+.farm-profile-shell canvas { max-width: 100%; }
+
+/* Titoli e descrizioni: spezza parole lunghissime invece di allargare */
+.farm-profile-shell h1,
+.farm-profile-shell h2,
+.farm-profile-shell h3,
+.farm-profile-shell p,
+.farm-profile-shell small,
+.farm-profile-shell strong,
+.farm-profile-shell .product-name,
+.farm-profile-shell .product-desc,
+.farm-profile-shell .farm-contact-item a { overflow-wrap: anywhere; }
+
+/* Le card della vetrina non hanno larghezza minima propria */
+.farm-profile-shell .card,
+.farm-profile-shell .product-card,
+.farm-offer-grid > * { max-width: 100%; }
+
+@media (max-width: 700px) {
+    .farm-profile-shell { padding: 12px; gap: 14px; }
+
+    /* Una colonna piena per tutte le griglie della vetrina */
+    .farm-offer-grid,
+    .farm-contacts-grid,
+    .farm-story-layout,
+    .farm-profile-shell .product-grid,
+    .farm-profile-shell .photo-grid { grid-template-columns: 1fr; }
+
+    .farm-profile-shell .stats-grid { grid-template-columns: 1fr; }
+
+    /* Hero: logo e testo impilati, azioni a piena larghezza */
+    .farm-hero-inner { flex-direction: column; align-items: stretch; gap: 12px; }
+    .farm-hero-actions { margin-left: 0; width: 100%; }
+    .farm-hero-actions .button,
+    .farm-hero-actions .share-bar { flex: 1 1 auto; }
+    .farm-hero-text h1 { font-size: 1.35rem; }
+
+    /* Contatti e azioni prodotto: bottoni che si adattano */
+    .farm-contact-item .button,
+    .farm-profile-shell .product-actions .button { max-width: 100%; }
+    .farm-profile-shell .product-actions { flex-wrap: wrap; gap: 8px; }
+
+    /* Baratto: le due colonne offro/cerco vanno in verticale */
+    .farm-profile-shell .barter-row { flex-direction: column; gap: 6px; }
+    .farm-profile-shell .barter-arrow { transform: rotate(90deg); padding-top: 0; margin: 2px 0; }
+
+    /* Recensioni */
+    .farm-profile-shell .review-meta { flex-wrap: wrap; gap: 6px; }
+    .farm-profile-shell .reviews-avg { flex-wrap: wrap; }
+}
+
+@media (max-width: 420px) {
+    .farm-profile-shell { padding: 10px; }
+    .farm-cover { height: 168px; }
+    .farm-logo-avatar { width: 68px; height: 68px; margin-top: -46px; }
+    .farm-hero-inner { padding: 14px 14px 18px; }
+    .farm-cover-name { padding: 0 14px 12px; font-size: 1.5rem; }
+    .farm-map-canvas { height: 190px; }
 }
