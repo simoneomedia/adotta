@@ -2014,6 +2014,91 @@
         }
     });
 
+    // ── PWA: service worker + banner "Aggiungi a schermata Home" ──────
+    const PWA_DISMISS_KEY = 'wido_pwa_dismissed_at';
+    const PWA_SNOOZE_DAYS = 14;
+
+    const isStandalone = () =>
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true ||
+        document.referrer.startsWith('android-app://');
+
+    const isMobile = () => window.matchMedia('(max-width: 900px)').matches ||
+        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    const isIos = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    const pwaSnoozed = () => {
+        try {
+            const at = Number(localStorage.getItem(PWA_DISMISS_KEY) || 0);
+            return at && (Date.now() - at) < PWA_SNOOZE_DAYS * 864e5;
+        } catch (_) { return false; }
+    };
+    const snoozePwa = () => { try { localStorage.setItem(PWA_DISMISS_KEY, String(Date.now())); } catch (_) {} };
+
+    const showInstallBanner = ({ ios = false, prompt = null } = {}) => {
+        if (document.getElementById('pwa-install-banner')) return;
+        const banner = document.createElement('div');
+        banner.id = 'pwa-install-banner';
+        banner.className = 'pwa-banner';
+        banner.setAttribute('role', 'dialog');
+        banner.setAttribute('aria-label', 'Installa wido sul telefono');
+        banner.innerHTML = `
+            <img class="pwa-banner-icon" src="${escapeHtml(window.AgriSaas.appIcon || '')}" alt="" aria-hidden="true">
+            <div class="pwa-banner-text">
+                <strong>Aggiungi wido alla schermata Home</strong>
+                <small>${ios
+                    ? 'Tocca <span aria-hidden="true">⎋</span> Condividi, poi “Aggiungi a Home”.'
+                    : 'Apri wido come app, a schermo intero e più veloce.'}</small>
+            </div>
+            <div class="pwa-banner-actions">
+                ${ios ? '' : '<button class="button" type="button" data-pwa-install>Installa</button>'}
+                <button class="pwa-banner-close" type="button" data-pwa-dismiss aria-label="Chiudi">✕</button>
+            </div>`;
+        document.body.appendChild(banner);
+        requestAnimationFrame(() => banner.classList.add('is-visible'));
+
+        banner.querySelector('[data-pwa-dismiss]')?.addEventListener('click', () => {
+            snoozePwa();
+            banner.classList.remove('is-visible');
+            setTimeout(() => banner.remove(), 250);
+        });
+
+        banner.querySelector('[data-pwa-install]')?.addEventListener('click', async () => {
+            if (!prompt) return;
+            banner.classList.remove('is-visible');
+            prompt.prompt();
+            try { await prompt.userChoice; } catch (_) {}
+            snoozePwa();
+            setTimeout(() => banner.remove(), 250);
+        });
+    };
+
+    if ('serviceWorker' in navigator && window.AgriSaas?.swUrl) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register(window.AgriSaas.swUrl, { scope: '/' })
+                .catch((err) => console.warn('[wido] service worker non registrato:', err));
+        });
+    }
+
+    // Android / Chrome: prompt nativo differito
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        if (isStandalone() || pwaSnoozed() || !isMobile()) return;
+        showInstallBanner({ prompt: e });
+    });
+
+    window.addEventListener('appinstalled', () => {
+        snoozePwa();
+        document.getElementById('pwa-install-banner')?.remove();
+    });
+
+    // iOS Safari: nessun prompt nativo, mostriamo le istruzioni
+    if (isIos() && isMobile() && !isStandalone() && !pwaSnoozed()) {
+        setTimeout(() => showInstallBanner({ ios: true }), 2500);
+    }
+
     window._agriShowAuthModal = showAuthModal;
     bindCoordinateButtons();
     bindRegistration();

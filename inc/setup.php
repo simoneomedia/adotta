@@ -30,5 +30,7 @@ function agri_saas_enqueue_assets(): void
         'userId'  => get_current_user_id(),
         'homeUrl' => esc_url_raw(home_url('/')),
         'version' => AGRI_SAAS_VERSION,
+        'swUrl'   => esc_url_raw(home_url('/' . AGRI_SAAS_PWA_SW_PATH)),
+        'appIcon' => esc_url_raw(agri_saas_pwa_icon_url()),
     ]);
 }

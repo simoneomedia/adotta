@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="wido">
+  <rect width="512" height="512" rx="112" fill="#2E5D34"/>
+  <circle cx="256" cy="214" r="118" fill="#7FB069"/>
+  <circle cx="196" cy="186" r="46" fill="#A8D5A2" opacity=".85"/>
+  <rect x="236" y="286" width="40" height="130" rx="18" fill="#3E3A34"/>
+  <rect x="150" y="404" width="212" height="26" rx="13" fill="#F1EFE8"/>
+</svg>

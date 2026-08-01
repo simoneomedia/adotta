@@ -2017,3 +2017,54 @@ html { scroll-behavior: smooth; }
 .product-card--unavailable { opacity: .72; }
 .product-card--unavailable .product-img { filter: grayscale(.7); }
 .product-card--unavailable .product-price { text-decoration: line-through; color: var(--muted); }
+
+/* ── Banner installazione PWA ────────────────────────────── */
+.pwa-banner {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e3e0d8);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    transform: translateY(140%);
+    opacity: 0;
+    transition: transform .28s ease, opacity .28s ease;
+}
+.pwa-banner.is-visible { transform: translateY(0); opacity: 1; }
+.pwa-banner-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+    object-fit: cover;
+    background: var(--surface-soft, #f2f0e9);
+    flex-shrink: 0;
+}
+.pwa-banner-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pwa-banner-text strong { font-size: .92rem; line-height: 1.25; }
+.pwa-banner-text small { color: var(--muted, #6b6b6b); font-size: .8rem; line-height: 1.3; }
+.pwa-banner-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.pwa-banner-actions .button { padding: 8px 16px; font-size: .85rem; }
+.pwa-banner-close {
+    background: none;
+    border: 0;
+    font-size: 1rem;
+    color: var(--muted, #6b6b6b);
+    padding: 6px;
+    cursor: pointer;
+    line-height: 1;
+}
+@media (min-width: 901px) {
+    .pwa-banner { bottom: 16px; left: auto; right: 16px; max-width: 380px; }
+}
+/* In modalità app installata: niente barre del browser da compensare */
+@media (display-mode: standalone) {
+    .pwa-banner { display: none; }
+    body { overscroll-behavior-y: none; }
+}

@@ -22,3 +22,4 @@ require_once AGRI_SAAS_PATH . '/inc/routes.php';
 require_once AGRI_SAAS_PATH . '/inc/api.php';
 require_once AGRI_SAAS_PATH . '/inc/auth.php';
 require_once AGRI_SAAS_PATH . '/inc/updater.php';
+require_once AGRI_SAAS_PATH . '/inc/pwa.php';
