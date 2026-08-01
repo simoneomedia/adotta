@@ -794,6 +794,7 @@
                 : '';
             // Sezione nascosta solo se non c'è nulla da mostrare né form da compilare
             slot.hidden = !count && !formHtml;
+            slot.classList.toggle('is-empty', !count && !formHtml);
             slot.innerHTML = `
                 <div class="section-heading"><div>
                     <p class="eyebrow">Opinioni degli utenti</p>
@@ -892,7 +893,7 @@
         const farmUrl = appUrl(`farms/${farm.id}/`);
         const coverEl = root.querySelector('[data-farm-cover]');
         if (coverEl && farm.cover_url) {
-            coverEl.style.backgroundImage = `linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.45)), url('${farm.cover_url}')`;
+            coverEl.style.backgroundImage = `url('${farm.cover_url}')`;
         }
         const coverName = root.querySelector('[data-farm-cover-name]');
         if (coverName) coverName.textContent = farm.name;
@@ -942,6 +943,7 @@
         const statTotal = Number(data.stats.products || 0) + Number(data.stats.baratti || 0) + Number(data.stats.followers || 0);
         if (statsSlot) {
             statsSlot.hidden = statTotal === 0;
+            statsSlot.classList.toggle('is-empty', statTotal === 0);
             statsSlot.innerHTML = [
                 statCard('Prodotti', data.stats.products, 'Nel mercato'),
                 statCard('Baratti', data.stats.baratti, 'Scambi proposti'),
@@ -998,7 +1000,10 @@
 
         const photosSection = root.querySelector('[data-profile-section="photos"]');
         const photos = data.photos || [];
-        if (photosSection) photosSection.hidden = photos.length === 0;
+        if (photosSection) {
+            photosSection.hidden = photos.length === 0;
+            photosSection.classList.toggle('is-empty', photos.length === 0);
+        }
         if (photos.length) {
             root.querySelector('[data-slot="farm-photos"]').innerHTML = photos.slice(0, 6)
                 .map((url) => `<a href="${escapeHtml(url)}"><img src="${escapeHtml(url)}" alt="Foto di ${escapeHtml(farm.name)}" loading="lazy"></a>`).join('');
@@ -1040,7 +1045,10 @@
         const barattiSection = root.querySelector('[data-profile-section="baratti"]');
         const barattiNav     = root.querySelector('[data-nav-for="baratti"]');
         const hasBaratti     = (data.baratti || []).length > 0;
-        if (barattiSection) barattiSection.hidden = !hasBaratti;
+        if (barattiSection) {
+            barattiSection.hidden = !hasBaratti;
+            barattiSection.classList.toggle('is-empty', !hasBaratti);
+        }
         if (barattiNav) barattiNav.hidden = !hasBaratti;
         const barattiSlot = root.querySelector('[data-slot="farm-baratti"]');
         if (barattiSlot && hasBaratti) {
