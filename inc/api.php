@@ -596,7 +596,7 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
     $photos          = array_values(array_filter(array_map(static fn(array $u): string => (string) ($u['media_url'] ?? ''), $visible_updates)));
 
     $products = $wpdb->get_results($wpdb->prepare(
-        "SELECT id, name, description, price, unit, media_url FROM {$tables['products']} WHERE farm_id = %d AND is_active = 1 ORDER BY created_at DESC LIMIT 12",
+        "SELECT id, name, description, price, unit, media_url, is_active FROM {$tables['products']} WHERE farm_id = %d ORDER BY is_active DESC, created_at DESC LIMIT 24",
         $farm_id
     ), ARRAY_A);
 
@@ -1834,6 +1834,9 @@ function agri_saas_api_update_farm_branding(WP_REST_Request $request): WP_REST_R
     if ($request->get_param('contact_email') !== null) {
         $data['contact_email'] = sanitize_email((string) $request->get_param('contact_email'));
     }
+    if ($request->get_param('description') !== null) {
+        $data['description'] = wp_kses_post((string) $request->get_param('description'));
+    }
     if (!$data) {
         return new WP_Error('agri_saas_branding_empty', __('Nessun dato da salvare.', 'agri-saas'), ['status' => 400]);
     }
@@ -1859,6 +1862,7 @@ function agri_saas_api_update_product_owner(WP_REST_Request $request): WP_REST_R
     if ($request->get_param('price') !== null)       $data['price'] = $request->get_param('price') === '' ? null : (float) $request->get_param('price');
     if ($request->get_param('unit') !== null)        $data['unit'] = sanitize_text_field($request->get_param('unit'));
     if ($request->get_param('media_url'))            $data['media_url'] = esc_url_raw($request->get_param('media_url'));
+    if ($request->get_param('is_active') !== null)   $data['is_active'] = (int) (bool) filter_var($request->get_param('is_active'), FILTER_VALIDATE_BOOLEAN);
     if (isset($data['name']) && $data['name'] === '') {
         return new WP_Error('agri_saas_product_required', __('Il nome del prodotto è obbligatorio.', 'agri-saas'), ['status' => 400]);
     }
@@ -1883,6 +1887,7 @@ function agri_saas_api_update_baratto_owner(WP_REST_Request $request): WP_REST_R
     if ($request->get_param('wants_title') !== null)       $data['wants_title'] = sanitize_text_field($request->get_param('wants_title'));
     if ($request->get_param('wants_description') !== null) $data['wants_description'] = sanitize_textarea_field($request->get_param('wants_description'));
     if ($request->get_param('media_url'))                  $data['media_url'] = esc_url_raw($request->get_param('media_url'));
+    if ($request->get_param('is_active') !== null)         $data['is_active'] = (int) (bool) filter_var($request->get_param('is_active'), FILTER_VALIDATE_BOOLEAN);
     if ((isset($data['offer_title']) && $data['offer_title'] === '') || (isset($data['wants_title']) && $data['wants_title'] === '')) {
         return new WP_Error('agri_saas_baratto_required', __('Titolo offerta e titolo richiesta sono obbligatori.', 'agri-saas'), ['status' => 400]);
     }

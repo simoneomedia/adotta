@@ -502,10 +502,11 @@
                 <div class="tree-row tree-row--manageable">
                     <img class="product-img product-img--small" src="${escapeHtml(p.media_url || WIDO_PH2)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='${WIDO_PH2}'">
                     <div class="tree-row-top">
-                        <div><strong>${escapeHtml(p.name)}</strong><br><small>${p.description ? escapeHtml(p.description) : ''}</small></div>
+                        <div><strong>${escapeHtml(p.name)}</strong>${Number(p.is_active) === 1 ? '' : ' <span class="badge-unavailable">Non disponibile</span>'}<br><small>${p.description ? escapeHtml(p.description) : ''}</small></div>
                         <span class="badge">${p.price != null ? `€${Number(p.price).toFixed(2)} / ${escapeHtml(p.unit)}` : escapeHtml(p.unit || '')}</span>
                     </div>
                     <div class="tree-row-actions">
+                        <button class="button ghost" style="padding:6px 12px;font-size:.8rem;" data-toggle-product="${p.id}" data-active="${Number(p.is_active) === 1 ? '1' : '0'}">${Number(p.is_active) === 1 ? '🟢 Disponibile' : '⏸ Non disponibile'}</button>
                         <button class="button ghost" style="padding:6px 12px;font-size:.8rem;" data-edit-product='${escapeHtml(JSON.stringify({id:p.id,name:p.name,description:p.description||"",price:p.price,unit:p.unit||"unità"}))}'>✏️ Modifica</button>
                         <button class="button ghost" style="padding:6px 12px;font-size:.8rem;color:#c62828;" data-delete-product="${p.id}">🗑 Elimina</button>
                     </div>
@@ -530,6 +531,22 @@
         }
 
         root.addEventListener('click', async (ev) => {
+            const toggleP = ev.target.closest('[data-toggle-product]');
+            if (toggleP) {
+                const nowActive = toggleP.dataset.active === '1';
+                toggleP.disabled = true;
+                try {
+                    await apiFetch(`/mercato/${toggleP.dataset.toggleProduct}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ is_active: nowActive ? 0 : 1 }),
+                    });
+                    window.location.reload();
+                } catch (err) {
+                    alert(`Errore: ${err.message}`);
+                    toggleP.disabled = false;
+                }
+                return;
+            }
             const editP = ev.target.closest('[data-edit-product]');
             if (editP) {
                 const d = JSON.parse(editP.dataset.editProduct);
@@ -639,6 +656,10 @@
                         <label style="margin-top:6px;display:block;"><input type="file" accept="image/*" data-brand-input="cover"></label>
                     </div>
                     <div style="grid-column:1/-1;">
+                        <p class="eyebrow" style="margin:8px 0 6px;">La nostra storia (mostrata nella vetrina pubblica)</p>
+                        <textarea data-brand-description rows="5" placeholder="Racconta la tua produzione: cosa coltivi, come lavori, da quanto tempo, cosa ti rende diverso…" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:.9rem;resize:vertical;">${escapeHtml(farm.description || '')}</textarea>
+                    </div>
+                    <div style="grid-column:1/-1;">
                         <p class="eyebrow" style="margin:8px 0 6px;">Contatti pubblici (usati dal bottone Contatta)</p>
                         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
                             <label style="font-size:.82rem;">WhatsApp<input type="tel" data-brand-contact="whatsapp" value="${escapeHtml(farm.contact_whatsapp || '')}" placeholder="+39…"></label>
@@ -662,6 +683,7 @@
                     statusEl.textContent = 'Salvataggio…';
                     try {
                         const payload = {
+                            description:      infoEl.querySelector('[data-brand-description]')?.value ?? '',
                             contact_whatsapp: infoEl.querySelector('[data-brand-contact="whatsapp"]')?.value ?? '',
                             contact_phone:    infoEl.querySelector('[data-brand-contact="phone"]')?.value ?? '',
                             contact_email:    infoEl.querySelector('[data-brand-contact="email"]')?.value ?? '',
@@ -1002,13 +1024,14 @@
         const productsSlot = root.querySelector('[data-slot="farm-products"]');
         if (productsSlot) {
             productsSlot.innerHTML = (data.products || []).length ? data.products.map((p) => `
-                <article class="product-card">
+                <article class="product-card${Number(p.is_active) === 0 ? ' product-card--unavailable' : ''}">
                     <img class="product-img" src="${escapeHtml(p.media_url || _fallbackImg)}" alt="${escapeHtml(p.name)}" ${_imgAttrs}>
                     <div class="product-body">
                         <h3 class="product-name">${escapeHtml(p.name)}</h3>
+                        ${Number(p.is_active) === 0 ? '<span class="badge-unavailable">⏸ Non disponibile al momento</span>' : ''}
                         ${p.description ? `<p class="product-desc">${escapeHtml(p.description)}</p>` : ''}
                         <p class="product-price">${p.price != null ? `€${Number(p.price).toFixed(2)} / ${escapeHtml(p.unit)}` : escapeHtml(p.unit)}</p>
-                        <div class="product-actions">${_offerContacts(`Ciao, sono interessato al prodotto "${p.name}" di ${farm.name}`)}</div>
+                        <div class="product-actions">${Number(p.is_active) === 0 ? '' : _offerContacts(`Ciao, sono interessato al prodotto "${p.name}" di ${farm.name}`)}</div>
                     </div>
                 </article>`).join('')
                 : '<div class="card empty-state">Nessun prodotto pubblicato da questo produttore.</div>';
