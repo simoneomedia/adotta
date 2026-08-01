@@ -55,6 +55,13 @@ function agri_saas_template_router(string $template): string
         return $template;
     }
 
+    // La dashboard è l'entry point dell'app: se manca la sessione mostriamo la
+    // home pubblica invece di sbattere l'utente sul login di WordPress.
+    if ($route === 'dashboard' && !is_user_logged_in()) {
+        wp_safe_redirect(home_url('/'));
+        exit;
+    }
+
     $public_routes = ['farm-profile', 'mercato', 'baratto', 'updates', 'login'];
     if (!in_array($route, $public_routes, true)) {
         agri_saas_require_login();

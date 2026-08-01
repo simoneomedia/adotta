@@ -63,8 +63,10 @@ function agri_saas_pwa_icon_url(): string
 
 function agri_saas_pwa_output_manifest(): void
 {
-    $icon  = agri_saas_pwa_icon_url();
-    $start = home_url('/dashboard/');
+    $icon = agri_saas_pwa_icon_url();
+    // La home è pubblica e reindirizza da sola chi ha già una sessione attiva:
+    // così aprendo l'app dall'icona non si finisce mai sul login di WordPress.
+    $start = home_url('/');
 
     $manifest = [
         'id'                 => home_url('/'),
