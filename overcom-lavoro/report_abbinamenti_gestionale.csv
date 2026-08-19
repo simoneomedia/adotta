@@ -1,0 +1,11 @@
+﻿CATEGORIA,SKU_WOO,ID_WOO,NOME_WOO,GESTIONALE,AZIONE_SUGGERITA
+SENZA_MATCH,FAN83710,1842,CREMA COLORE CAPELLI 100 ML 9.00 BIONDO CHIARISSIMO NATURALE,(nessun codice simile a gestionale),"Verificare SKU: possibile refuso, codice inesistente a gestionale"
+SENZA_MATCH,"ID4441,15",1925,Lama Sgorbia Sterile N 15 Acciaio Kiepe,KP4441.15 = SGORBIA MONOUSO 15mm CONF.20 PZ,"SKU con prefisso sbagliato: ID4441,15 -> KP4441.15 (stesso prodotto)"
+SENZA_MATCH,MD07AX0401,1943,PULITORE RAPIDO FRIGGITRICI FRY COMPRESSE CONF.25,(nessun codice simile a gestionale),Verificare SKU: codice inesistente a gestionale
+ABBINAMENTO_SBAGLIATO,FAN86334,1658,Maschera ricci e capelli mossi 100 ml,CREMA COLORE R.66 RED BOOSTER 100 ML,"Titolo woo sbagliato: il codice e Red Booster R.66, non una maschera"
+ABBINAMENTO_SBAGLIATO,FAN96628,1919,"ghd Platinum Styler, bianco, 1 unita",S.1202 SUPERSCHIARENTE ANTIGIALLO 100 ML,Titolo woo sbagliato (match Amazon errato): e un superschiarente antigiallo
+ABBINAMENTO_SBAGLIATO,RODEP539,1947,OLIO POST-EPILAZIONE 1000 ML - Xanitalia Regea,STRISCE DEPILAZIONE 7x20 CM CONF.100 PZ,"Titolo woo sbagliato: il codice e strisce depilazione, non olio"
+TITOLO_GENERICO,FAN86707,1912,"FANOLA Fanola, Colorazione permanente",CREMA COLORE 6.00 BIONDO SCURO INTENSO FANOLA,Titolo woo incompleto: specificare 6.00 biondo scuro intenso
+OK_NOME_DIVERSO,FAN1076025,743,FANOLA CREMA TERMOPROTETTIVA,NO YELLOW THERMO-PROTECTIVE CREAM 150 ML,"Stesso prodotto, solo lingua diversa - OK"
+OK_NOME_DIVERSO,FAN86296,1871,Fanola WONDER Smooth Extra Care Siero 100 ml,SERUM LISCIANTE PROTETTIVO FANOLA 100 ML,Stesso prodotto - OK
+OK_NOME_DIVERSO,VD11705,1952,BIS POSATE BIANCHE + TOVAGLIOLI 2 VELI,BIS BIO (FORCHETTA+COLTELLO)+TOVAGL.2V CRT.500 PZ,Stesso prodotto - OK
