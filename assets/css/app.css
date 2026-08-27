@@ -441,13 +441,22 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.6; }
     transition: border-color var(--transition), background var(--transition);
 }
 .hamburger:hover { background: var(--surface-soft); border-color: #C5C3BC; }
+.hamburger { color: var(--text); }
 .hamburger span {
-    background: var(--text);
+    background: currentColor;
     border-radius: 2px;
     display: block;
+    width: 100%;
+    min-width: 18px;
     height: 2px;
-    transition: var(--transition);
+    min-height: 2px;
+    flex: 0 0 2px;
+    transition: transform var(--transition), opacity var(--transition);
 }
+/* Stato aperto: le barre diventano una X */
+.hamburger.is-open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.hamburger.is-open span:nth-child(2) { opacity: 0; }
+.hamburger.is-open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 .mobile-user { font-size: .83rem; font-weight: 600; color: var(--muted); }
 
 /* ── Nav drawer ─────────────────────────────────────────────────── */
@@ -462,7 +471,8 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.6; }
     opacity: 0;
     transition: opacity var(--transition-slow);
 }
-.nav-overlay.is-open { display: block; opacity: 1; }
+.nav-overlay.is-open,
+.nav-overlay.is-visible { display: block; opacity: 1; }
 .nav-drawer {
     background: var(--sidebar-bg);
     bottom: 0;
@@ -1064,7 +1074,7 @@ a.ig-farm-name:hover { color: var(--brand); }
     -webkit-overflow-scrolling: touch;
 }
 .farm-profile-topnav-links::-webkit-scrollbar { display: none; }
-.farm-profile-topnav-links a { white-space: nowrap; }
+.farm-profile-topnav-links a { white-space: nowrap; flex: 0 0 auto; }
 .farm-profile-topnav-links a {
     color: rgba(241,239,232,.65);
     font-size: .88rem;
@@ -2179,4 +2189,71 @@ html { scroll-behavior: smooth; }
         gap: 10px;
         border-radius: 0 0 var(--radius) var(--radius);
     }
+}
+
+/* ══ Fix audit UX ══════════════════════════════════════════════════ */
+
+/* P2 — l'avatar non deve mai coprire il nome sulla copertina.
+   Su schermi larghi il nome resta sulla cover, spostato a destra
+   dell'avatar; sotto i 900px il nome grande sparisce e resta l'h1
+   dell'intestazione, che dice già la stessa cosa senza sovrapporsi. */
+@media (min-width: 901px) {
+    .farm-cover-name { padding-left: 9.5rem; }
+}
+@media (max-width: 900px) {
+    .farm-cover-name { display: none; }
+    .farm-logo-avatar { margin-top: -2.5rem; }
+    .farm-hero-text h1 { margin-top: .25rem; }
+}
+
+/* P3 — tablet (768–1023px): le statistiche sfruttano lo spazio */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .farm-profile-shell .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .farm-offer-grid,
+    .product-grid { grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }
+    .farm-story-layout { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+}
+
+/* P3 — campo file coerente col resto dell'interfaccia */
+input[type="file"] {
+    display: block;
+    width: 100%;
+    font-size: .88rem;
+    color: var(--muted);
+    padding: .5rem 0;
+}
+input[type="file"]::file-selector-button {
+    font-family: inherit;
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--surface-soft, #F2F0E9);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-full);
+    padding: .5rem 1.1rem;
+    margin-right: .75rem;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition);
+}
+input[type="file"]::file-selector-button:hover {
+    background: var(--surface);
+    border-color: #C5C3BC;
+}
+
+/* P3 — stato vuoto dell'Area Produttore come invito, non come errore */
+.empty-cta {
+    text-align: center;
+    padding: 2rem 1.25rem;
+}
+.empty-cta .empty-cta-icon { font-size: 2.5rem; display: block; margin-bottom: .5rem; }
+.empty-cta h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: .5rem; }
+.empty-cta p { color: var(--muted); font-size: .95rem; max-width: 46ch; margin: 0 auto 1.25rem; }
+
+/* P3 — voto numerico accanto ai quadrifogli */
+.review-score-label {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    color: var(--text);
+    margin-left: .35rem;
 }

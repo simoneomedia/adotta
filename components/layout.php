@@ -116,7 +116,7 @@ function agri_saas_nav_items(): array
          'url'   => $logged_in ? home_url('/dashboard/') : home_url('/'),
          'icon'  => '🌱'],
         ['label' => __('Aggiornamenti', 'agri-saas'), 'url' => home_url('/updates/'),  'icon' => '🛰️'],
-        ['label' => __('Mercato', 'agri-saas'),        'url' => home_url('/mercato/'), 'icon' => '🛒'],
+        ['label' => __('Mercato', 'agri-saas'),        'url' => home_url('/mercato/'), 'icon' => '🧺'],
         ['label' => __('Baratto', 'agri-saas'),        'url' => home_url('/baratto/'), 'icon' => '🤝'],
     ];
 
@@ -166,13 +166,22 @@ function agri_saas_render_sidebar(): void
 
 function agri_saas_render_bottom_nav(): void
 {
-    $home = is_user_logged_in() ? home_url('/dashboard/') : home_url('/');
+    $home  = is_user_logged_in() ? home_url('/dashboard/') : home_url('/');
+    $user  = wp_get_current_user();
+    $is_fm = is_user_logged_in()
+             && (in_array('farm_manager', (array) $user->roles, true) || current_user_can('manage_options'));
+
     $bottom_items = [
         ['label' => __('Home', 'agri-saas'),    'url' => $home,                 'icon' => '🌱'],
-        ['label' => __('Novità', 'agri-saas'),  'url' => home_url('/updates/'), 'icon' => '🛰️'],
-        ['label' => __('Mercato', 'agri-saas'), 'url' => home_url('/mercato/'), 'icon' => '🛒'],
+        ['label' => __('Mercato', 'agri-saas'), 'url' => home_url('/mercato/'), 'icon' => '🧺'],
         ['label' => __('Baratto', 'agri-saas'), 'url' => home_url('/baratto/'), 'icon' => '🤝'],
     ];
+
+    // Per chi gestisce una vetrina, l'Area Produttore è la sezione piu usata:
+    // deve stare nella barra, non dietro al menu a cassetto.
+    $bottom_items[] = $is_fm
+        ? ['label' => __('Vetrina', 'agri-saas'), 'url' => home_url('/farm-dashboard/'), 'icon' => '🚜']
+        : ['label' => __('Novità', 'agri-saas'),  'url' => home_url('/updates/'),        'icon' => '🛰️'];
     $current = trailingslashit(home_url(add_query_arg([], $_SERVER['REQUEST_URI'] ?? '/')));
     ?>
     <nav class="mobile-bottom-nav" aria-label="<?php esc_attr_e('Navigazione rapida', 'agri-saas'); ?>">

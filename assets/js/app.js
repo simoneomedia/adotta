@@ -671,7 +671,13 @@
                         <button class="button" type="button" data-save-branding>Salva profilo pubblico</button>
                         <span class="map-note" data-branding-status></span>
                     </div>
-                </div>` : '<div class="card empty-state">Profilo produttore non trovato.</div>';
+                </div>` : `
+                <div class="empty-cta">
+                    <span class="empty-cta-icon">🚜</span>
+                    <h3>Non hai ancora una vetrina</h3>
+                    <p>Crea il tuo profilo produttore con il luogo di produzione: potrai pubblicare prodotti nel mercato, proporre baratti e raccontare la tua storia.</p>
+                    <a class="button" href="${appUrl('dashboard/')}">Diventa produttore</a>
+                </div>`;
 
             const saveBtn = infoEl.querySelector('[data-save-branding]');
             if (saveBtn) {
@@ -766,6 +772,7 @@
                 ? `<div class="reviews-avg">
                     <span class="reviews-avg-score">${avg}</span>
                     <span class="review-clovers">${clovers(Math.round(avg))}</span>
+                    <span class="review-score-label">${avg}/5</span>
                     <span style="color:var(--muted);font-size:.85rem;">${count} recension${count === 1 ? 'e' : 'i'}</span>
                   </div>`
                 : '<p style="color:var(--muted);font-size:.9rem;">Nessuna recensione ancora. Sii il primo!</p>';
@@ -2000,7 +2007,10 @@
         document.body.style.overflow = '';
     };
 
-    hamburger?.addEventListener('click', openDrawer);
+    // Il bottone è un vero toggle: apre se chiuso, chiude se aperto
+    hamburger?.addEventListener('click', () => {
+        if (navDrawer?.classList.contains('is-open')) closeDrawer(); else openDrawer();
+    });
     navClose?.addEventListener('click', closeDrawer);
     navOverlay?.addEventListener('click', closeDrawer);
     navDrawer?.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeDrawer));
