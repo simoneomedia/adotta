@@ -195,6 +195,16 @@
 
     const appUrl = (path) => new URL(path.replace(/^\//, ''), window.AgriSaas.homeUrl).toString();
 
+    // URL pubblico di un produttore: usa il link personalizzato se impostato
+    const farmPublicUrl = (farm) => farm && farm.slug
+        ? appUrl(`${farm.slug}/`)
+        : appUrl(`farms/${farm.id}/`);
+
+    // Variante per righe/card che espongono farm_id + farm_slug
+    const farmLinkFrom = (item) => item && item.farm_slug
+        ? appUrl(`${item.farm_slug}/`)
+        : appUrl(`farms/${item.farm_id}/`);
+
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
     }[char]));
@@ -401,7 +411,7 @@
             if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
             if (kind === 'mercato') return { lat, lng, type: '_shop', popup: `<strong>${escapeHtml(it.name)}</strong><br>${escapeHtml(it.farm_name)}<br><a href="${appUrl('mercato/')}">Vai al mercato →</a>` };
             if (kind === 'baratto') return { lat, lng, type: '_barter', popup: `<strong>${escapeHtml(it.offer_title)}</strong><br>Cerca: ${escapeHtml(it.wants_title)}<br><a href="${appUrl('baratto/')}">Vai al baratto →</a>` };
-            return { lat, lng, type: '_farm', popup: `<strong>${escapeHtml(it.name)}</strong><br>${escapeHtml(it.location || '')}<br><a href="${appUrl(`farms/${it.id}/`)}">Vedi vetrina →</a>` };
+            return { lat, lng, type: '_farm', popup: `<strong>${escapeHtml(it.name)}</strong><br>${escapeHtml(it.location || '')}<br><a href="${farmPublicUrl(it)}">Vedi vetrina →</a>` };
         };
 
         const _exploreRow = (kind, it) => {
@@ -430,7 +440,7 @@
                     <div class="row-actions">${waBtn(`Ciao! Ho visto la tua offerta di baratto su wido: offri "${it.offer_title}" in cambio di "${it.wants_title}", e sono interessato.`, it)}</div>
                 </div>`;
             return `
-                <a class="tree-row tree-row--link" href="${appUrl(`farms/${it.id}/`)}">
+                <a class="tree-row tree-row--link" href="${farmPublicUrl(it)}">
                     ${img(it.logo_url || it.media_url, it.name)}
                     <div class="tree-row-top">
                         <div><strong>${escapeHtml(it.name)}</strong>${Number(it.is_verified) === 1 ? ' ✅' : ''}<br><small>${escapeHtml(it.location || '')}${it.crop_focus ? ` · ${escapeHtml(it.crop_focus)}` : ''}</small></div>
@@ -639,9 +649,9 @@
                         <small>${escapeHtml(farm.location)}${farm.crop_focus ? ` · ${escapeHtml(farm.crop_focus)}` : ''}${farm.latitude && farm.longitude ? ` · 📍 ${escapeHtml(farm.latitude)}, ${escapeHtml(farm.longitude)}` : ''}</small>
                     </div>
                     <div class="farm-row-end">
-                        <a class="button ghost" href="${appUrl(`farms/${farm.id}/`)}" target="_blank" rel="noopener">👁 Vedi profilo pubblico</a>
+                        <a class="button ghost" href="${farmPublicUrl(farm)}" target="_blank" rel="noopener">👁 Vedi profilo pubblico</a>
                         <span class="badge">${escapeHtml(farm.health_score)} salute</span>
-                        ${shareButtons(appUrl(`farms/${farm.id}/`), `🌾 ${farm.name} — Adotta un elemento!`)}
+                        ${shareButtons(farmPublicUrl(farm), `🌾 ${farm.name} su wido`)}
                     </div>
                 </div>
                 <div class="farm-branding" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;">
@@ -654,6 +664,15 @@
                         <p class="eyebrow" style="margin-bottom:6px;">Foto copertina</p>
                         <div data-brand-preview="cover">${brandPreview(farm.cover_url, 'Copertina')}</div>
                         <label style="margin-top:6px;display:block;"><input type="file" accept="image/*" data-brand-input="cover"></label>
+                    </div>
+                    <div style="grid-column:1/-1;">
+                        <p class="eyebrow" style="margin:8px 0 6px;">Link personalizzato del profilo</p>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span style="color:var(--muted);font-size:.85rem;">${escapeHtml(String(window.AgriSaas.homeUrl || '').replace(/^https?:\/\//, ''))}</span>
+                            <input type="text" data-brand-slug value="${escapeHtml(farm.slug || '')}" placeholder="nome-produttore"
+                                   style="flex:1;min-width:160px;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:.9rem;">
+                        </div>
+                        <p style="color:var(--muted);font-size:.8rem;margin-top:4px;">Solo lettere minuscole, numeri e trattini. Lascia vuoto per usare il link automatico.</p>
                     </div>
                     <div style="grid-column:1/-1;">
                         <p class="eyebrow" style="margin:8px 0 6px;">La nostra storia (mostrata nella vetrina pubblica)</p>
@@ -689,6 +708,7 @@
                     statusEl.textContent = 'Salvataggio…';
                     try {
                         const payload = {
+                            slug:             infoEl.querySelector('[data-brand-slug]')?.value ?? '',
                             description:      infoEl.querySelector('[data-brand-description]')?.value ?? '',
                             contact_whatsapp: infoEl.querySelector('[data-brand-contact="whatsapp"]')?.value ?? '',
                             contact_phone:    infoEl.querySelector('[data-brand-contact="phone"]')?.value ?? '',
@@ -726,7 +746,7 @@
         slot.className = 'ig-feed';
         slot.innerHTML = updates.map((update) => {
             const farmId = update.farm_id || contextFarmId;
-            const farmUrl   = farmId ? appUrl(`farms/${farmId}/`) : null;
+            const farmUrl   = farmId ? (update.farm_slug ? appUrl(`${update.farm_slug}/`) : appUrl(`farms/${farmId}/`)) : null;
             const detailUrl = farmUrl;
             const updateUrl = farmUrl ? farmUrl + `#update-${update.id}` : appUrl('updates/') + `#update-${update.id}`;
             return `
@@ -897,7 +917,7 @@
     const renderFarmProfile = (data) => {
         _statCardIdx = 0;
         const farm = data.farm;
-        const farmUrl = appUrl(`farms/${farm.id}/`);
+        const farmUrl = farmPublicUrl(farm);
         const coverEl = root.querySelector('[data-farm-cover]');
         if (coverEl && farm.cover_url) {
             coverEl.style.backgroundImage = `url('${farm.cover_url}')`;
@@ -1143,14 +1163,14 @@
             if (p.contact_whatsapp) return `<a class="button" href="https://wa.me/${p.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">💬 WhatsApp</a>`;
             if (p.contact_phone) return `<a class="button ghost" href="tel:${escapeHtml(p.contact_phone)}">📞 Chiama</a>`;
             if (p.contact_email) return `<a class="button ghost" href="mailto:${escapeHtml(p.contact_email)}">📧 Email</a>`;
-            return `<a class="button ghost" href="${appUrl(`farms/${p.farm_id}/`)}">🏡 Vedi produttore</a>`;
+            return `<a class="button ghost" href="${farmLinkFrom(p)}">🏡 Vedi produttore</a>`;
         };
 
         slot.innerHTML = data.products.length ? `<div class="product-grid">${data.products.map((p) => `
             <article class="product-card">
                 <img class="product-img" src="${escapeHtml(p.media_url || 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png')}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';this.style.objectFit='contain';this.style.padding='20px';this.style.background='var(--surface-soft)'">
                 <div class="product-body">
-                    <a class="product-farm-link" href="${appUrl(`farms/${p.farm_id}/`)}">
+                    <a class="product-farm-link" href="${farmLinkFrom(p)}">
                         <span class="product-farm">${escapeHtml(p.farm_name)}</span>
                         <span class="product-location">📍 ${escapeHtml(p.location)}${_distLabel(p.map_latitude, p.map_longitude) ? ` · ${_distLabel(p.map_latitude, p.map_longitude).replace(/<[^>]+>/g, '')}` : ''}</span>
                     </a>
@@ -1192,14 +1212,14 @@
             if (b.contact_whatsapp) return `<a class="button" href="https://wa.me/${b.contact_whatsapp.replace(/\D/g,'')}?text=${text}" target="_blank" rel="noopener">💬 Contatta</a>`;
             if (b.contact_phone) return `<a class="button ghost" href="tel:${escapeHtml(b.contact_phone)}">📞 Chiama</a>`;
             if (b.contact_email) return `<a class="button ghost" href="mailto:${escapeHtml(b.contact_email)}">📧 Email</a>`;
-            return `<a class="button ghost" href="${appUrl(`farms/${b.farm_id}/`)}">🏡 Vedi produttore</a>`;
+            return `<a class="button ghost" href="${farmLinkFrom(b)}">🏡 Vedi produttore</a>`;
         };
 
         slot.innerHTML = data.baratti.length ? `<div class="product-grid">${data.baratti.map((b) => `
             <article class="product-card barter-card">
                 <img class="product-img" src="${escapeHtml(b.media_url || 'https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png')}" alt="${escapeHtml(b.offer_title)}" loading="lazy" onerror="this.onerror=null;this.src='https://overcom.growmydigital.com/wp-content/uploads/2026/06/icon-light.png';this.style.objectFit='contain';this.style.padding='20px';this.style.background='var(--surface-soft)'">
                 <div class="product-body">
-                    <a class="product-farm-link" href="${appUrl(`farms/${b.farm_id}/`)}">
+                    <a class="product-farm-link" href="${farmLinkFrom(b)}">
                         <span class="product-farm">${escapeHtml(b.farm_name)}</span>
                         <span class="product-location">📍 ${escapeHtml(b.location)}</span>
                     </a>
@@ -1243,7 +1263,7 @@
         mapped.forEach((item) => {
             const label = item.name || item.offer_title;
             L.marker([Number(item.map_latitude), Number(item.map_longitude)], { icon: _makeTypeIcon('_shop') })
-                .bindPopup(`<strong>${escapeHtml(label)}</strong><br><a href="${appUrl(`farms/${item.farm_id}/`)}">→ ${escapeHtml(item.farm_name)}</a>`)
+                .bindPopup(`<strong>${escapeHtml(label)}</strong><br><a href="${farmLinkFrom(item)}">→ ${escapeHtml(item.farm_name)}</a>`)
                 .addTo(cluster);
         });
         mercatoLeafletMap.addLayer(cluster);
@@ -1272,7 +1292,7 @@
         const cluster = makeClusterGroup();
         mapped.forEach((item) => {
             L.marker([Number(item.map_latitude), Number(item.map_longitude)], { icon: _makeTypeIcon('_barter') })
-                .bindPopup(`<strong>${escapeHtml(item.offer_title)}</strong><br>Cerca: ${escapeHtml(item.wants_title)}<br><a href="${appUrl(`farms/${item.farm_id}/`)}">→ ${escapeHtml(item.farm_name)}</a>`)
+                .bindPopup(`<strong>${escapeHtml(item.offer_title)}</strong><br>Cerca: ${escapeHtml(item.wants_title)}<br><a href="${farmLinkFrom(item)}">→ ${escapeHtml(item.farm_name)}</a>`)
                 .addTo(cluster);
         });
         barattoLeafletMap.addLayer(cluster);

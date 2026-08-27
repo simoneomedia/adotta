@@ -27,6 +27,8 @@
 
     /* Radius */
     --radius:       16px;
+    --mobile-header-h:    71px;   /* altezza reale dell'header mobile sticky */
+    --topnav-compact-h:   57px;   /* altezza della topnav vetrina compatta */
     --radius-sm:    10px;
     --radius-xs:    6px;
     --radius-full:  9999px;
@@ -2021,13 +2023,18 @@ a.ig-farm-name:hover { color: var(--brand); }
 }
 @media (max-width: 700px) {
     .farm-map-canvas { height: 200px; }
-    .farm-profile-topnav { top: 0; border-radius: 0 0 var(--radius) var(--radius); }
+    .farm-profile-topnav { top: var(--mobile-header-h); border-radius: 0 0 var(--radius) var(--radius); }
     .farm-profile-topnav-links a { font-size: .8rem; padding: 6px 9px; }
 }
 
 /* Ancore: offset per la topnav sticky */
 html { scroll-behavior: smooth; }
-.farm-profile-shell [id] { scroll-margin-top: 84px; }
+.farm-profile-shell [id] { scroll-margin-top: calc(var(--topnav-compact-h) + 1.5rem); }
+@media (max-width: 980px) {
+    .farm-profile-shell [id] {
+        scroll-margin-top: calc(var(--mobile-header-h) + var(--topnav-compact-h) + .75rem);
+    }
+}
 
 /* ── Prodotti non disponibili ────────────────────────────── */
 .badge-unavailable {
@@ -2183,7 +2190,7 @@ html { scroll-behavior: smooth; }
 @media (max-width: 980px) {
     .farm-profile-topnav {
         position: sticky;
-        top: 0;
+        top: var(--mobile-header-h);
         z-index: 20;
         padding: 10px 12px;
         gap: 10px;

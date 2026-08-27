@@ -582,7 +582,7 @@ function agri_saas_api_farm_profile(WP_REST_Request $request): WP_REST_Response|
 
     $updates = $wpdb->get_results($wpdb->prepare(
         "SELECT u.id, u.farm_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
-                f.owner_user_id, f.name AS farm_name
+                f.owner_user_id, f.name AS farm_name, f.slug AS farm_slug
          FROM {$tables['updates']} u
          LEFT JOIN {$tables['farms']} f ON f.id = u.farm_id
          WHERE u.farm_id = %d
@@ -715,7 +715,7 @@ function agri_saas_api_farms_map(): WP_REST_Response
     global $wpdb;
     $tables = agri_saas_tables();
     $farms = $wpdb->get_results(
-        "SELECT id, name, location, crop_focus, latitude, longitude, media_url, is_verified
+        "SELECT id, name, slug, location, crop_focus, latitude, longitude, media_url, is_verified
          FROM {$tables['farms']}
          WHERE is_active = 1 AND latitude IS NOT NULL AND longitude IS NOT NULL
          ORDER BY name ASC",
@@ -895,7 +895,7 @@ function agri_saas_api_updates(WP_REST_Request $request): WP_REST_Response
         );
         $raw = $wpdb->get_results($wpdb->prepare(
             "SELECT u.id, u.farm_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
-                    f.owner_user_id, f.name AS farm_name
+                    f.owner_user_id, f.name AS farm_name, f.slug AS farm_slug
              FROM {$tables['updates']} u
              LEFT JOIN {$tables['farms']} f ON f.id = u.farm_id
              WHERE {$mine_subquery}
@@ -907,7 +907,7 @@ function agri_saas_api_updates(WP_REST_Request $request): WP_REST_Response
     } else {
         $raw = $wpdb->get_results($wpdb->prepare(
             "SELECT u.id, u.farm_id, u.author_user_id, u.title, u.body, u.media_url, u.visibility, u.created_at,
-                    f.owner_user_id, f.name AS farm_name
+                    f.owner_user_id, f.name AS farm_name, f.slug AS farm_slug
              FROM {$tables['updates']} u
              LEFT JOIN {$tables['farms']} f ON f.id = u.farm_id
              ORDER BY u.created_at DESC
@@ -1095,7 +1095,7 @@ function agri_saas_api_mercato(): WP_REST_Response
 
     $products = $wpdb->get_results(
         "SELECT p.id, p.farm_id, p.name, p.description, p.price, p.unit, p.media_url, p.is_active, p.created_at,
-                f.name AS farm_name, f.location, f.contact_whatsapp, f.contact_phone, f.contact_email,
+                f.name AS farm_name, f.slug AS farm_slug, f.location, f.contact_whatsapp, f.contact_phone, f.contact_email,
                 f.latitude AS map_latitude, f.longitude AS map_longitude
          FROM {$tables['products']} p
          INNER JOIN {$tables['farms']} f ON f.id = p.farm_id
@@ -1190,7 +1190,7 @@ function agri_saas_api_baratto(): WP_REST_Response
 
     $baratti = $wpdb->get_results(
         "SELECT b.id, b.farm_id, b.offer_title, b.offer_description, b.wants_title, b.wants_description, b.media_url, b.is_active, b.created_at,
-                f.name AS farm_name, f.location, f.contact_whatsapp, f.contact_phone, f.contact_email,
+                f.name AS farm_name, f.slug AS farm_slug, f.location, f.contact_whatsapp, f.contact_phone, f.contact_email,
                 f.latitude AS map_latitude, f.longitude AS map_longitude
          FROM {$tables['baratti']} b
          INNER JOIN {$tables['farms']} f ON f.id = b.farm_id
@@ -1837,6 +1837,37 @@ function agri_saas_api_update_farm_branding(WP_REST_Request $request): WP_REST_R
     if ($request->get_param('description') !== null) {
         $data['description'] = wp_kses_post((string) $request->get_param('description'));
     }
+    if ($request->get_param('slug') !== null) {
+        $raw_slug = trim((string) $request->get_param('slug'));
+        if ($raw_slug === '') {
+            // Torna al link automatico /farms/{id}/
+            $data['slug'] = null;
+        } else {
+            $slug     = sanitize_title($raw_slug);
+            $reserved = [
+                'farms', 'dashboard', 'farm-dashboard', 'updates', 'mercato', 'baratto',
+                'login', 'wido-admin', 'profilo', 'wp-admin', 'wp-content', 'wp-includes',
+                'wp-json', 'feed', 'sitemap', 'robots-txt', 'xmlrpc-php',
+            ];
+
+            if (strlen($slug) < 3) {
+                return new WP_Error('agri_saas_slug_invalid', __('Il link personalizzato deve avere almeno 3 caratteri (lettere, numeri, trattini).', 'agri-saas'), ['status' => 400]);
+            }
+            if (in_array($slug, $reserved, true)) {
+                return new WP_Error('agri_saas_slug_reserved', __('Questo link non è disponibile. Scegline un altro.', 'agri-saas'), ['status' => 400]);
+            }
+            $existing = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM {$tables['farms']} WHERE slug = %s AND id != %d",
+                $slug,
+                $farm_id
+            ));
+            if ($existing) {
+                return new WP_Error('agri_saas_slug_taken', __('Questo link è già in uso da un altro produttore.', 'agri-saas'), ['status' => 400]);
+            }
+            $data['slug'] = $slug;
+        }
+    }
+
     if (!$data) {
         return new WP_Error('agri_saas_branding_empty', __('Nessun dato da salvare.', 'agri-saas'), ['status' => 400]);
     }

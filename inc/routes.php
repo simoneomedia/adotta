@@ -16,10 +16,15 @@ function agri_saas_register_routes(): void
     add_rewrite_rule('^wido-admin/?$', 'index.php?agri_saas_route=wido-admin', 'top');
     add_rewrite_rule('^profilo/?$', 'index.php?agri_saas_route=profilo', 'top');
 
+    // Link personalizzato del produttore: dominio.com/nome-produttore/
+    // Registrata in coda ('bottom'): WordPress la valuta per ultima, quindi
+    // pagine, articoli e rotte dell'app hanno sempre la precedenza.
+    add_rewrite_rule('^([a-z0-9-]{1,80})/?$', 'index.php?agri_saas_route=farm-profile&farm_slug=$matches[1]', 'bottom');
+
     // Flush rewrite rules when route set changes
-    if (get_option('agri_saas_routes_version') !== '7') {
+    if (get_option('agri_saas_routes_version') !== '8') {
         flush_rewrite_rules();
-        update_option('agri_saas_routes_version', '7');
+        update_option('agri_saas_routes_version', '8');
     }
 }
 
@@ -28,6 +33,7 @@ function agri_saas_query_vars(array $vars): array
 {
     $vars[] = 'agri_saas_route';
     $vars[] = 'farm_id';
+    $vars[] = 'farm_slug';
     return $vars;
 }
 
@@ -53,6 +59,32 @@ function agri_saas_template_router(string $template): string
     $route = get_query_var('agri_saas_route');
     if (!$route) {
         return $template;
+    }
+
+    // Risolve il link personalizzato /nome-produttore/ nel produttore corrispondente
+    if ($route === 'farm-profile' && !get_query_var('farm_id')) {
+        $slug = sanitize_title((string) get_query_var('farm_slug'));
+        if ($slug === '') {
+            return $template;
+        }
+
+        global $wpdb;
+        $tables  = agri_saas_tables();
+        $farm_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM {$tables['farms']} WHERE slug = %s AND is_active = 1",
+            $slug
+        ));
+
+        if (!$farm_id) {
+            // Slug inesistente: 404 vero, non la home
+            global $wp_query;
+            $wp_query->set_404();
+            status_header(404);
+            nocache_headers();
+            return get_404_template() ?: $template;
+        }
+
+        set_query_var('farm_id', $farm_id);
     }
 
     // La dashboard è l'entry point dell'app: se manca la sessione mostriamo la
