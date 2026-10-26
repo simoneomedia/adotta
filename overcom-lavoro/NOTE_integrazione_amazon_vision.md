@@ -44,3 +44,15 @@
   - Anagrafiche + importi fattura -> Report di calcolo IVA (FBA+FBM)
   - Magazzino + stato ordini -> Report sugli ordini
 - Come trovarlo: barra "Cerca qualcosa" di Seller Central -> "Report di calcolo IVA".
+
+## ZONWIZARD = fonte anagrafiche (ottobre 2026)
+- Zonwizard genera le fatture elettroniche degli ordini Amazon (FBA+FBM, B2B+B2C). È LA fonte per le anagrafiche.
+- Export fatture ottobre: 55 fatture -> 51 clienti unici per P.IVA/CF (42 P.IVA B2B + 12 CF privati). 2 clienti ripetuti (prova che P.IVA = chiave dedup).
+- L'export .xlsx ha: Data, Fattura N., Ordine N., Logistica (FBA/FBM), B2B/B2C, P.IVA Acquirente, importi, PDF.
+- MANCANO nome/ragione sociale e indirizzo in questo export (XML vuoto).
+  -> Recuperarli dall'export XML di Zonwizard (fattura elettronica SDI = contiene nome+indirizzo per legge),
+     o da un export Zonwizard con le colonne cliente/indirizzo.
+- Conclusione flussi:
+  - Anagrafiche (chi + P.IVA/CF + importi) -> Zonwizard (già deduplicato per P.IVA)
+  - Nome+indirizzo -> XML Zonwizard
+  - Magazzino + stato -> Report ordini Amazon ("Tutti gli ordini")
