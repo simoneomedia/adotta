@@ -35,3 +35,12 @@
 - FBA vs FBM sui 221 spediti: 146 FBA (Amazon) / 75 FBM (Merchant). Maggioranza FBA (non passa da Spediamo Pro).
 - Flusso dati: filtro su report completo (chi+quando) -> dati anagrafici completi dei soli 22 dal report dettagliato o dalla fattura Amazon.
 - NB: xls legacy va letto con python3.13 + xlrd (python3=3.11 non ha xlrd).
+
+## FATTURE FBA — correzione importante (settimana campione)
+- Le fatture FBA esistono e sono ~1/3: su 42 ordini con documento, 13 FBA + 29 FBM.
+- Gli FBA NON si vedono in "Gestisci i tuoi ordini" (solo FBM); il report ordini dà P.IVA/CF + città/CAP ma NON nome/indirizzo completo.
+- Per le anagrafiche FBA (intestatario+indirizzo+n.fattura) serve SOLO il "Report di calcolo IVA" / libreria documenti fiscali (copre FBA+FBM).
+- Disegno pulito per Vision:
+  - Anagrafiche + importi fattura -> Report di calcolo IVA (FBA+FBM)
+  - Magazzino + stato ordini -> Report sugli ordini
+- Come trovarlo: barra "Cerca qualcosa" di Seller Central -> "Report di calcolo IVA".
