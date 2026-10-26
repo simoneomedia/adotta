@@ -23,3 +23,15 @@
 - Cambia invece l'ASIN (merge/re-mapping catalogo Amazon) → NON usare l'ASIN come chiave, usare il seller-SKU.
 - Nuovi SKU compaiono solo quando si creano nuove offerte/varianti (o se un tool ricrea i listing).
   → La tabella di corrispondenza va ri-sincronizzata periodicamente per intercettare i nuovi SKU, non per correggere i vecchi.
+
+## RISCONTRI DAL REPORT ORDINI COMPLETO (settimana 13-21 ott 2026)
+- Il "Report ordini completo" (.xls, 43 colonne) contiene: order-status, fulfillment-channel (FBA/FBM),
+  sku, asin, prezzi/IVA, E i campi fiscali (buyer-vat-number, buyer-tax-registration-id/-type, buyer-company-name),
+  order-item-id. NON contiene nome/indirizzo/email completi (solo company-name + città/CAP).
+- Criterio ANAGRAFICA confermato: creare solo se presente P.IVA o Codice Fiscale.
+  Settimana campione: 259 ordini, 221 spediti -> solo 22 con CF (anagrafica) vs 199 privati senza documento (corrispettivi).
+  => si evita ~90% delle anagrafiche.
+- Due criteri distinti: QUANDO = stato Shipped (trigger); CHI = presenza id fiscale.
+- FBA vs FBM sui 221 spediti: 146 FBA (Amazon) / 75 FBM (Merchant). Maggioranza FBA (non passa da Spediamo Pro).
+- Flusso dati: filtro su report completo (chi+quando) -> dati anagrafici completi dei soli 22 dal report dettagliato o dalla fattura Amazon.
+- NB: xls legacy va letto con python3.13 + xlrd (python3=3.11 non ha xlrd).
